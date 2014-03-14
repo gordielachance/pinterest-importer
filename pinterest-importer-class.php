@@ -10,6 +10,7 @@ if ( !class_exists( 'WP_Importer' ) ) return false;
 
 
 class Pinterest_Importer extends WP_Importer {
+
 	var $id; // HTML attachment ID
 
 	// information to import from HTML file
@@ -30,7 +31,7 @@ class Pinterest_Importer extends WP_Importer {
 	var $auth = false;
 
 	function Pinterest_Importer() {
-		add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
+		//add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
 	}
 	
 	function WP_Import() { /* nothing */ }
@@ -52,24 +53,17 @@ class Pinterest_Importer extends WP_Importer {
 
 		$step = empty( $_GET['step'] ) ? 0 : (int) $_GET['step'];
 		switch ( $step ) {
-			case 0:
+                        case 0: //welcome screen
 				$this->greet();
 				break;
 			case 1:
 				check_admin_referer( 'import-upload' );
-                            
-				if ( $this->handle_upload() )
-					$this->import_options();
+				if ( $this->handle_upload() ){
+                                    $file = get_attached_file( $this->id );
+                                    set_time_limit(0);
+                                    $this->import( $file );
+                                }
 				break;
-			case 2:
-                            
-				check_admin_referer( 'pinterest-importer' );
-				$this->id = (int) $_POST['import_id'];
-				$file = get_attached_file( $this->id );
-				set_time_limit(0);
-				$this->import( $file );
-				break;
-                        break;
 		}
 
 		$this->footer();
@@ -82,11 +76,14 @@ class Pinterest_Importer extends WP_Importer {
 	 * @param string $file Path to the HTML file for importing
 	 */
 	function import( $file ) {
+            
+                $bid = get_current_blog_id();
+            
 		add_filter( 'import_post_meta_key', array( $this, 'is_valid_meta_key' ) );
 		add_filter( 'http_request_timeout', array( &$this, 'bump_request_timeout' ) );
  
 		$this->attachments = $this->get_imported_attachments( 'pinterest' );
-		$this->processed_posts = $this->get_imported_posts( 'pinterest' ); 
+		$this->processed_posts = $this->get_imported_posts( 'pinterest', $bid ); 
 		
 		$this->import_start( $file );
 
@@ -97,28 +94,7 @@ class Pinterest_Importer extends WP_Importer {
 		wp_suspend_cache_invalidation( false );
 		$this->import_end();
 	}
-	
-	function get_imported_posts( $importer_name ) {
-		global $wpdb;
 
-		$hashtable = array ();
-
-		// Get all attachments
-		$sql = $wpdb->prepare( "SELECT post_id, meta_value FROM $wpdb->postmeta WHERE meta_key = '%s'", $importer_name . '_post' );
-		$results = $wpdb->get_results( $sql );
-
-		if (! empty( $results )) {
-			foreach ( $results as $r ) {
-				// Set permalinks into array
-				$hashtable[$r->meta_value] = (int) $r->post_id;
-			}
-		}
-
-		// unset to save memory
-		unset( $results, $r );
-
-		return $hashtable;
-	}
 	
 	/**
 	 * Set array with imported attachments from WordPress database
@@ -185,7 +161,6 @@ class Pinterest_Importer extends WP_Importer {
 	 */
 	function import_end() {
 		wp_import_cleanup( $this->id );
-                wp_import_cleanup( $this->cookie_id );
 
 		wp_cache_flush();
 		foreach ( get_taxonomies() as $tax ) {
@@ -207,22 +182,6 @@ class Pinterest_Importer extends WP_Importer {
 	 * @return bool False if error uploading or invalid file, true otherwise
 	 */
 	function handle_upload() {
-
-                //TO FIX
-                /*
-                $cookie = self::handle_cookie_upload();
-
-		if ( isset( $cookie['error'] ) ) {
-			echo '<p><strong>' . __( 'Sorry, there has been an error uploading the cookie file.', 'pinterest-importer' ) . '</strong><br />';
-			echo esc_html( $file['error'] ) . '</p>';
-			return false;
-		} else if ( ! file_exists( $cookie['file'] ) ) {
-			echo '<p><strong>' . __( 'Sorry, there has been an error.', 'wordpress-importer' ) . '</strong><br />';
-			printf( __( 'The cookie file could not be found at <code>%s</code>. It is likely that this was caused by a permissions problem.', 'pinterest-importer' ), esc_html( $cookie['file'] ) );
-			echo '</p>';
-			return false;
-		}
-                */
             
 		$file = wp_import_handle_upload();
 
@@ -250,44 +209,6 @@ class Pinterest_Importer extends WP_Importer {
 
 		return true;
 	}
-        
-        function handle_cookie_upload(){
-            
-                $cookiestring = null;
-                
-                if (isset($_POST['cookie'])) {
-                    $cookiestring=trim($_POST['cookie']);
-                }
-                
-                if(!$cookiestring){
-                    $file['error'] = __( 'Cookie is empty. Please upload something more substantial.','pinterest-importer');
-                    return $file;
-                }
-            
-                $file = wp_upload_bits('pinterestcookie.txt',false,$cookiestring);
-                
-                $url = $file['url'];
-                $type = $file['type'];
-                $file = $file['file'];
-                $filename = basename( $file );
-
-                // Construct the object array
-                $object = array( 'post_title' => $filename,
-                        'post_content' => $url,
-                        'post_mime_type' => $type,
-                        'guid' => $url,
-                        'context' => 'import',
-                        'post_status' => 'private'
-                );
-
-                // Save the data
-                $id = wp_insert_attachment( $object, $file );
-
-                // schedule a cleanup for one day from now in case of failed import or missing wp_import_cleanup() call
-                wp_schedule_single_event( time() + DAY_IN_SECONDS, 'importer_scheduled_cleanup', array( $id ) );
-
-                return array( 'file' => $file, 'id' => $id );
-        }
 
 	/**
 	 * Retrieve authors from parsed HTML data
@@ -331,112 +252,6 @@ class Pinterest_Importer extends WP_Importer {
 
 	}
 
-	/**
-	 * Display pre-import options, author importing/mapping and option to
-	 * fetch attachments
-	 */
-	function import_options() {
-		$j = 0;
-?>
-<form action="<?php echo admin_url( 'admin.php?import=pinterest-html&amp;step=2' ); ?>" method="post">
-	<?php wp_nonce_field( 'pinterest-importer' ); ?>
-	<input type="hidden" name="import_id" value="<?php echo $this->id; ?>" />
-        <input type="hidden" name="cookie_id" value="<?php echo $this->cookie_id; ?>" />
-
-<?php if ( ! empty( $this->authors ) ) : ?>
-	<h3><?php _e( 'Assign Authors', 'wordpress-importer' ); ?></h3>
-	<p><?php _e( 'To make it easier for you to edit and save the imported content, you may want to reassign the author of the imported item to an existing user of this site. For example, you may want to import all the entries as <code>admin</code>s entries.', 'wordpress-importer' ); ?></p>
-<?php if ( pinterest_importer()->import_allow_create_users ) : ?>
-	<p><?php printf( __( 'If a new user is created by WordPress, a new password will be randomly generated and the new user&#8217;s role will be set as %s. Manually changing the new user&#8217;s details will be necessary.', 'wordpress-importer' ), esc_html( get_option('default_role') ) ); ?></p>
-<?php endif; ?>
-	<ol id="authors">
-<?php foreach ( $this->authors as $author ) : ?>
-		<li><?php $this->author_select( $j++, $author ); ?></li>
-<?php endforeach; ?>
-	</ol>
-<?php endif; ?>
-
-	<p class="submit"><input type="submit" class="button" value="<?php esc_attr_e( 'Submit', 'wordpress-importer' ); ?>" /></p>
-</form>
-<?php
-	}
-
-	/**
-	 * Display import options for an individual author. That is, either create
-	 * a new user based on import info or map to an existing user
-	 *
-	 * @param int $n Index for each author in the form
-	 * @param array $author Author information, e.g. login, display name, email
-	 */
-	function author_select( $n, $author ) {
-		_e( 'Import author:', 'wordpress-importer' );
-		echo ' <strong>' . esc_html( $author['author_display_name'] );
-		if ( $this->version != '1.0' ) echo ' (' . esc_html( $author['author_login'] ) . ')';
-		echo '</strong><br />';
-
-		if ( $this->version != '1.0' )
-			echo '<div style="margin-left:18px">';
-
-		$create_users = pinterest_importer()->import_allow_create_users;
-		if ( $create_users ) {
-			if ( $this->version != '1.0' ) {
-				_e( 'or create new user with login name:', 'wordpress-importer' );
-				$value = '';
-			} else {
-				_e( 'as a new user:', 'wordpress-importer' );
-				$value = esc_attr( sanitize_user( $author['author_login'], true ) );
-			}
-
-			echo ' <input type="text" name="user_new['.$n.']" value="'. $value .'" /><br />';
-		}
-
-		if ( ! $create_users && $this->version == '1.0' )
-			_e( 'assign posts to an existing user:', 'wordpress-importer' );
-		else
-			_e( 'or assign posts to an existing user:', 'wordpress-importer' );
-		wp_dropdown_users( array( 'name' => "user_map[$n]", 'multi' => true, 'show_option_all' => __( '- Select -', 'wordpress-importer' ) ) );
-		echo '<input type="hidden" name="imported_authors['.$n.']" value="' . esc_attr( $author['author_login'] ) . '" />';
-
-		if ( $this->version != '1.0' )
-			echo '</div>';
-	}
-
-        function pinterest_pin_post_exists($pin_id){
-            $query_args = array(
-                'post_status'   => array('publish','pending','draft','future','private'),
-                'meta_query'        => array(
-                    array(
-                        'key'     => '_pinterest-pin_id',
-                        'value'   => $pin_id,
-                        'compare' => '='
-                    )
-                ),
-                'posts_per_page' => 1
-            );
-            $query = new WP_Query($query_args);
-            if (!$query->have_posts()) return false;
-            return $query->posts[0]->ID;
-        }
-        
-        function pinterest_pin_image_exists($img_url){
-            $query_args = array(
-                'post_type'         => 'attachment',
-                'post_status'       => 'inherit',
-                'meta_query'        => array(
-                    array(
-                        'key'     => '_pinterest-image-url',
-                        'value'   => $img_url,
-                        'compare' => '='
-                    )
-                ),
-                'posts_per_page'    => 1
-            );
-
-            $query = new WP_Query($query_args);
-            if (!$query->have_posts()) return false;
-            return $query->posts[0]->ID;
-        }
-
 
 	/**
 	 * Create new posts based on import information
@@ -470,9 +285,8 @@ class Pinterest_Importer extends WP_Importer {
 			$post['post_date'] = date('Y-m-d H:i:s', strtotime($post['post_date']));
 			$post['post_date_gmt'] = gmdate('Y-m-d H:i:s', strtotime($post['post_date']));
 
-			$post_exists = self::pinterest_pin_post_exists($import_id);
-                        
-                        $pin_url = sprintf('http://www.pinterest.com/pin/%s',$import_id);
+			$post_exists = pai_pin_exists($import_id);
+                        $pin_url = pai_get_pin_url($import_id);
                         
                         $pin_title = (strlen($post['post_title']) > 60) ? substr($post['post_title'],0,60).'...' : $post['post_title'];
 
@@ -531,9 +345,7 @@ class Pinterest_Importer extends WP_Importer {
                                 
                                 
                                 ///OPEN THE PIN///
-                                
-                                
-                                
+  
                                 //post format
                                 $post_format = $post['pinterest_data']['data-media_type'];
 
@@ -565,17 +377,19 @@ class Pinterest_Importer extends WP_Importer {
                                 
                                 //feedback
                                 echo'<span class="pinterest-feedback">';
-                                    _e('...Importing image...', 'pinterest-importer');
+                                    _e('...Importing pin thumbnail...', 'pinterest-importer');
                                 echo'</span>';
                                 echo '<br />';
                                 
 				$image_url = $this->get_featured_image_url($import_id, $post['post_id']);
                                 
-				if (!$this->process_featured_image($new_post, $image_url)){
+				if ($featured_image_id = $this->process_image($new_post, $image_url)){
+                                        set_post_thumbnail($new_post, $featured_image_id); 
+                                }else{
                                     
                                     //feedback
                                     echo'<span class="pinterest-feedback" style="color:red">';
-                                        _e('Error saving post image, delete this post', 'pinterest-importer');
+                                        _e('Error importing pin thumbnail, delete this post', 'pinterest-importer');
                                     echo'</span>';
                                     echo '<br />';
                                     
@@ -707,12 +521,12 @@ class Pinterest_Importer extends WP_Importer {
  	 * @param array $thumbs
 	 * @return void
 	 */
-	function process_featured_image( $post, $image_url ) {
+	function process_image( $post, $image_url ) {
 		
 		if ( empty( $image_url ) )
 			return false;
                 
-                $attachment_id = self::pinterest_pin_image_exists($image_url);
+                $attachment_id = pai_image_exists($image_url);
                 
                 if (!$attachment_id){
       
@@ -788,46 +602,9 @@ class Pinterest_Importer extends WP_Importer {
                     echo"</span>";
                     echo"<br/>";
                 }
-
-                //set thumbnail
-                set_post_thumbnail($post->ID, $attachment_id);          
                 
-                return true;
+                return $attachment_id;
 	}
-
-        
-        function get_pin_page($pin_id){
-
-            $url = sprintf('http://www.pinterest.com/pin/%s',$pin_id);
-
-
-            $curl = curl_init();
-            curl_setopt($curl, CURLOPT_URL, $url);
-            //curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true); // TO FIX : cannot be activated when safe_mode is enabled or an open_basedir 
-            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt ($curl, CURLOPT_HEADER, false);
-            
-            //curl_setopt($curl, CURLOPT_REFERER,'http://www.pinterest.com/');
-            //curl_setopt($curl, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 5.01; Windows NT 5.0)");
-            
-
-            $content = curl_exec($curl);
-            $info = curl_getinfo($curl); //Some information on the fetch
-            curl_close($curl);
-
-            $valid_http_codes = array(200,302);
-
-            if(!in_array($info['http_code'],$valid_http_codes)) return false;
-
-            if($info['http_code']==200){ // we have some content
-                //$content = $content;
-            }elseif($info['http_code']==302){ //we have been redirected
-                $content = self::get_pin_page($info['redirect_url'],$url);
-            }
-
-            return $content;
-
-        }
 	
 	/**
 	 * Return array of images from the post
@@ -838,21 +615,21 @@ class Pinterest_Importer extends WP_Importer {
 	function get_featured_image_url( $pin_id, $post_id ) {
 
                 //populate pin HTML
-                
-                $pin_page_markup = self::get_pin_page($pin_id);
-
-                if($pin_page_markup){
-                    $pin_page = phpQuery::newDocumentHTML($pin_page_markup);
+                $pin_url = pai_get_pin_url($pin_id);
+                $pin_doc = self::get_page($pin_url);
+      
+                if(isset($pin_doc['body'])){
+                    $pin_html = phpQuery::newDocumentHTML($pin_doc['body']);
                 }
 
-                if(!isset($pin_page)){
+                if(!isset($pin_html)){
                     return new WP_Error( 'phpQuery_parse_error', __( 'There was an error when reading this HTML file', 'wordpress-importer' ));
                 }
                 
-                phpQuery::selectDocument($pin_page);
+                phpQuery::selectDocument($pin_html);
                 
                 //default thumbnail url, from the document metas.
-                $featured_image = pq($pin_page)->find('meta[property=og:image]')->attr('content');
+                $featured_image = pq($pin_html)->find('meta[property=og:image]')->attr('content');
                 
                 //check if we can get better.
                 
@@ -962,49 +739,10 @@ class Pinterest_Importer extends WP_Importer {
 		echo '<p><ol><li>'.sprintf(__("Login to %1s and head to your pins page, which url should be %2s.", 'pinterest-importer' ),'<a href="http://www.pinterest.com" target="_blank">Pinterest.com</a>','<code>http://www.pinterest.com/YOURLOGIN/pins/</code>').'</li>';
 		echo '<li>'.__( 'Scroll down the page and be sure all your collection is loaded.', 'pinterest-importer' ).'</li>';
                 echo '<li>'.__( 'Save this file to your computer as an HTML file, then upload it here.', 'pinterest-importer' ).'</li></ol></p>';
-		self::import_upload_form( 'admin.php?import=pinterest-html&amp;step=1' );
+		wp_import_upload_form( 'admin.php?import=pinterest-html&amp;step=1' );
 		echo '</div>';
 	}
-        
-        //copy of wp_import_upload_form, but with textarea field added.
-        function import_upload_form( $action ) {
-                $bytes = apply_filters( 'import_upload_size_limit', wp_max_upload_size() );
-                $size = wp_convert_bytes_to_hr( $bytes );
-                $upload_dir = wp_upload_dir();
-                if ( ! empty( $upload_dir['error'] ) ) :
-                        ?><div class="error"><p><?php _e('Before you can upload your import file, you will need to fix the following error:'); ?></p>
-                        <p><strong><?php echo $upload_dir['error']; ?></strong></p></div><?php
-                else :
-        ?>
-        <form enctype="multipart/form-data" id="import-upload-form" method="post" class="wp-upload-form" action="<?php echo esc_attr(wp_nonce_url($action, 'import-upload')); ?>">
-        <p>
-        <label for="upload"><?php _e( 'Choose a file from your computer:' ); ?></label> (<?php printf( __('Maximum size: %s' ), $size ); ?>)
-        <input type="file" id="upload" name="import" size="25" />
-        <?php self::import_cookie_field();?>
-        <input type="hidden" name="action" value="save" />
-        <input type="hidden" name="max_file_size" value="<?php echo $bytes; ?>" />
-        </p>
-        <?php submit_button( __('Upload file and import'), 'button' ); ?>
-        </form>
-        <?php
-                endif;
-        }
-        
-        function import_cookie_field(){
-            ?>
-                <p>
-                    <h2>2. <?php _e('Copy and paste your Pinterest.com cookies','pinterest-importer');?></h2>
-                    <?php _e('You also need to set your cookies for Pinterest.com or it will not work.','pinterest-importer');?><br/>
-                <ol>
-                    <li><?php printf(__('To retrieve the cookies, you can install the extension %1s (for Chrome).','pinterest-importer'),'<a href="https://chrome.google.com/webstore/detail/cookietxt-export/lopabhfecdfhgogdbojmaicoicjekelh" target="_blank">cookie.txt export</a>');?></li>
-                    <li><?php printf(__('Then, while visiting %s, click the extension icon, and copy the content that is displayed.','pinterest-importer'),'<a href="http://www.pinterest.com" target="_blank">Pinterest.com</a>');?></li>
-                    <li><?php _e('Paste it here.','pinterest-importer');?></li>
-                </ol>
-                    
-                    <textarea id="cookie" name="cookie" rows="10" cols="100"></textarea>
-                </p>
-            <?php
-        }
+
 
 	/**
 	 * Decide if the given meta key maps to information we will want to import
@@ -1020,22 +758,6 @@ class Pinterest_Importer extends WP_Importer {
 		return $key;
 	}
 
-
-	/**
-	 * Added to http_request_timeout filter to force timeout at 60 seconds during import
-	 * @return int 60
-	 */
-	function bump_request_timeout() {
-		if ($this->auth) {
-			return 2;
-		}
-		return 60;
-	}
-
-	// return the difference in length between two strings
-	function cmpr_strlen( $a, $b ) {
-		return strlen($b) - strlen($a);
-	}
 }
 
 ?>

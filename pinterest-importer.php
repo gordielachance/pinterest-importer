@@ -18,7 +18,7 @@ class PinterestImporter {
     /**
     * @public string plugin version
     */
-    public $version = '0.1.0';
+    public $version = '0.1.1';
 
     /**
     * @public string plugin DB version
@@ -86,46 +86,62 @@ class PinterestImporter {
         
         if(!is_admin())return false;
         
-        if (!class_exists('phpQuery'))
-            require_once($this->plugin_dir . '_inc/lib/phpQuery/phpQuery.php');
-
+        // Load Importer API
+        require_once ABSPATH . 'wp-admin/includes/import.php';
+        
         require $this->plugin_dir . '/pinterest-importer-templates.php';
 
-        /*
+        if ( ! class_exists( 'WP_Importer' ) ) {
+                $class_wp_importer = ABSPATH . 'wp-admin/includes/class-wp-importer.php';
+                if ( file_exists( $class_wp_importer ) ) {
+                    require $class_wp_importer;
+                    require $this->plugin_dir . '/pinterest-importer-class.php';
+                }
+        }
+
         if ( ! class_exists( 'PinterestGridParser' ) ) {
             require $this->plugin_dir . '/pinterest-importer-parsers.php';
         }
-         * 
-         */
+        
+        if (!class_exists('phpQuery'))
+            require_once($this->plugin_dir . '_inc/lib/phpQuery/phpQuery.php');
         
     }
 
     function setup_actions(){   
         
-        if(!is_admin())return false;
+        if ( ! defined( 'WP_LOAD_IMPORTERS' ) ) return;
 
+        /** Display verbose errors */
+        if (!defined('IMPORT_DEBUG')) define( 'IMPORT_DEBUG', false );
+        
+        
         add_action( 'admin_init', array(&$this,'load_textdomain'));
+        add_action( 'admin_init', array(&$this,'register_importer'));
+
 
         //upgrade
         add_action( 'plugins_loaded', array($this, 'upgrade'));
-
-        
-        add_action ( 'admin_menu', array($this, 'admin_menu'));
-        
-        
 
     }
     
     function load_textdomain() {
         load_plugin_textdomain( 'pinterest-importer', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
     }
+    
+    function register_importer() {
+            /**
+            * WordPress Importer object for registering the import callback
+            * @global WP_Import $wp_import
+            */
+            $GLOBALS['pinterest_wp_import'] = new Pinterest_Importer();
+            register_importer( 'pinterest-html', 'Pinterest', sprintf(__('Import <strong>images and videos</strong> from your %s account to Wordpress', 'pinterest-importer'),'<a href="http://www.pinterest.com" target="_blank">Pinterest.com</a>'), array( $GLOBALS['pinterest_wp_import'], 'dispatch' ) );
+    }
 
     function upgrade(){
         global $wpdb;
-        
-        $meta_key = "_pinterest-importer-db_version";
 
-        $current_version = get_option($meta_key);
+        $current_version = get_option("_lovit-importer-db_version");
 
         if ($current_version==$this->db_version) return false;
 
@@ -135,36 +151,10 @@ class PinterestImporter {
             dbDelta($sql);
              */
         }
-        
+
         //update DB version
-        update_option($meta_key, $this->db_version );
+        update_option("_lovit-importer-db_version", $this->db_version );
 
-    }
-    
-    function admin_menu(){
-        add_management_page( __('Pinterest Importer','pinterest-importer'), __('Pinterest Importer','pinterest-importer'), 'manage_options', 'pinterest-importer', array(&$this,'admin_page'));
-    }
-
-    function admin_page(){
-
-        //if ( ! class_exists( 'WP_Importer' ) )
-                //require ( ABSPATH . 'wp-admin/includes/class-wp-importer.php' );
-        
-        ?>
-        <div class="wrap">
-            <h2><?php _e('Pinterest Importer','pinterest-importer');?></h2>
-            <p><?php _e("Howdy! Wanna backup your Pinterest.com profile ?  Here's how to do.",'pinterest-importer');?></p>
-            <h3><?php _e('Save and upload your Pinterest.com pins page','pinterest-importer');?></h3>
-            <p>
-                <ol>
-                    <li><?php printf(__("Login to %1s and head to your pins page, which url should be %2s.", 'pinterest-importer' ),'<a href="http://www.pinterest.com" target="_blank">Pinterest.com</a>','<code>http://www.pinterest.com/YOURLOGIN/pins/</code>');?></li>
-                    <li><?php _e('Scroll down the page and be sure all your collection is loaded.', 'pinterest-importer' );?></li>
-                    <li><?php _e('Save this file to your computer as an HTML file, then upload it here.', 'pinterest-importer' );?></li>
-                </ol>
-            </p>
-            <?php wp_import_upload_form( 'tools.php?page=pinterest-importer&amp;step=1' );?>
-        </div>
-        <?php
     }
 
 }
@@ -183,3 +173,4 @@ function pinterest_importer() {
 }
 
 pinterest_importer();
+?>

@@ -66,6 +66,54 @@ function pai_url_extract_source_slug($url){
 }
 
 /**
+ * Checks if a pin ID already has been importer
+ * @param type $pin_id
+ * @return boolean
+ */
+
+function pai_pin_exists($pin_id){
+    $query_args = array(
+        'post_status'   => array('publish','pending','draft','future','private'),
+        'meta_query'        => array(
+            array(
+                'key'     => '_pinterest-pin_id',
+                'value'   => $pin_id,
+                'compare' => '='
+            )
+        ),
+        'posts_per_page' => 1
+    );
+    $query = new WP_Query($query_args);
+    if (!$query->have_posts()) return false;
+    return $query->posts[0]->ID;
+}
+
+/**
+ * Checks if a featured pin image already has been imported (eg. If we have two pins with the same image)
+ * @param type $img_url
+ * @return boolean
+ */
+
+function pai_image_exists($img_url){
+    $query_args = array(
+        'post_type'         => 'attachment',
+        'post_status'       => 'inherit',
+        'meta_query'        => array(
+            array(
+                'key'     => '_pinterest-image-url',
+                'value'   => $img_url,
+                'compare' => '='
+            )
+        ),
+        'posts_per_page'    => 1
+    );
+
+    $query = new WP_Query($query_args);
+    if (!$query->have_posts()) return false;
+    return $query->posts[0]->ID;
+}
+
+/**
 * Get term ID for an existing term (with its name),
 * Or create the term and return its ID
 * @param string $term_name
@@ -90,6 +138,11 @@ function pai_get_term_id($term_name,$term_tax,$term_args=array()){
     }
 
     return false;
+}
+
+function pai_get_pin_url($pin_id){
+    $pin_url = sprintf('http://www.pinterest.com/pin/%s',$pin_id);
+    return $pin_url;
 }
 
 
