@@ -10,10 +10,7 @@ if ( !class_exists( 'WP_Importer' ) ) return false;
 
 
 class Pinterest_Importer extends WP_Importer {
-	var $max_html_version = 1.2; // max. supported HTML version
-
 	var $id; // HTML attachment ID
-        var $cookie_id; //cookie attachment ID
 
 	// information to import from HTML file
 
@@ -240,7 +237,6 @@ class Pinterest_Importer extends WP_Importer {
 			return false;
 		}
 
-                $this->cookie_id = (int) $cookie['id'];
 		$this->id = (int) $file['id'];
 		$import_data = $this->parse( $file['file'] );
 
@@ -595,7 +591,7 @@ class Pinterest_Importer extends WP_Importer {
 			if ( ! empty( $post['terms'] ) ) {
 				$terms_to_set = array();
 				foreach ( $post['terms'] as $term ) {
-                                    $term_id = PinterestImporter::get_term_id($term['term_name'],$term['term_taxonomy'],$term['term_args']);
+                                    $term_id = pai_get_term_id($term['term_name'],$term['term_taxonomy'],$term['term_args']);
 
                                     if ( ! $term_id ) {
                                         //feedback
