@@ -175,7 +175,6 @@ class PinIm {
     function pinim_metabox_content( $post ) {
         
         $metas = pai_get_pin_meta();
-        
         ?>
         <table id="pinterest-list-table">
                 <thead>
@@ -196,8 +195,18 @@ class PinIm {
                             break;
                             case 'pin_id':
                                 $meta_key = __('Pin URL','pinim');
-                                $pin_url = pai_get_pin_url($meta);
-                                $meta = '<a href="'.$pin_url.'" target="_blank">'.$pin_url.'</a>';
+                                
+                                $links = array();
+                                $links_str = null;
+                                
+                                foreach((array)$meta as $pin_id){
+                                    $pin_url = pai_get_pin_url($pin_id);
+                                    $links[] = '<a href="'.$pin_url.'" target="_blank">'.$pin_url.'</a>';
+                                }
+                                
+                                $meta = implode('<br/>',$links);
+                                
+
                             break;
                             case 'board_slug':
                                 $meta_key = __('Board URL','pinim');

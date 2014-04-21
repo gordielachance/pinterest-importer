@@ -219,7 +219,7 @@ function pai_add_source_text($content,$post){
  * @return type
  */
 
-function pai_get_pin_meta($key = false, $post_id = false){
+function pai_get_pin_meta($key = false, $post_id = false, $single = false){
     $pin_metas = array();
     $prefix = '_pinterest-';
     $metas = get_post_custom($post_id);
@@ -227,12 +227,7 @@ function pai_get_pin_meta($key = false, $post_id = false){
         $splitkey = explode($prefix,$meta_key);
         if (!isset($splitkey[1])) continue;
         $pin_key = $splitkey[1];
-        
-        //single
-        if (count($meta) == 1){
-            $meta = $meta[0];
-        }
-        
+
         if ($key){
             if ($pin_key == $key) return $meta;
         }else{

@@ -515,7 +515,7 @@ class Pinterest_Importer extends WP_Importer {
         
         function set_post_content($post,$pin_html){
             $post_format = get_post_format( $post->ID );
-            $source = pai_get_pin_meta('source', $post->ID);
+            $source = pai_get_pin_meta('source', $post->ID, true);
             $content = null;
 
             switch($post_format){
