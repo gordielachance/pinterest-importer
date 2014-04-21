@@ -11,7 +11,7 @@ License: GPL2
 
 
 
-class PinterestImporter {
+class PinIm {
 
     /** Version ***************************************************************/
 
@@ -47,7 +47,7 @@ class PinterestImporter {
 
     public static function instance() {
             if ( ! isset( self::$instance ) ) {
-                    self::$instance = new PinterestImporter;
+                    self::$instance = new PinIm;
                     self::$instance->setup_globals();
                     self::$instance->includes();
                     self::$instance->setup_actions();
@@ -85,7 +85,7 @@ class PinterestImporter {
         // Load Importer API
         require_once ABSPATH . 'wp-admin/includes/import.php';
         
-        require $this->plugin_dir . '/pinterest-importer-templates.php';
+        require $this->plugin_dir . '/pinim-templates.php';
 
         if ( ! class_exists( 'WP_Importer' ) ) {
                 $class_wp_importer = ABSPATH . 'wp-admin/includes/class-wp-importer.php';
@@ -97,16 +97,14 @@ class PinterestImporter {
         if (!class_exists('phpQuery'))
             require_once($this->plugin_dir . '_inc/lib/phpQuery/phpQuery.php');
         
-        require $this->plugin_dir . '/pinterest-importer-class.php';
-        //require $this->plugin_dir . '/pinterest-importer-parsers.php';
-        
+        require $this->plugin_dir . '/pinim-class.php';
     }
 
     function setup_actions(){  
         
         //upgrade
         add_action( 'plugins_loaded', array($this, 'upgrade'));        
-        add_action( 'add_meta_boxes', array($this, 'pinterest_metabox'));
+        add_action( 'add_meta_boxes', array($this, 'pinim_metabox'));
 
         if ( ! defined( 'WP_LOAD_IMPORTERS' ) ) return;
 
@@ -125,7 +123,7 @@ class PinterestImporter {
     }
     
     function load_textdomain() {
-        load_plugin_textdomain( 'pinterest-importer', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+        load_plugin_textdomain( 'pinim', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
     }
     
     function register_importer() {
@@ -134,7 +132,7 @@ class PinterestImporter {
             * @global WP_Import $wp_import
             */
             $GLOBALS['pinterest_wp_import'] = new Pinterest_Importer();
-            register_importer( 'pinterest-pins', 'Pinterest', sprintf(__('Import pins from your %s account to Wordpress.', 'pinterest-importer'),'<a href="http://www.pinterest.com" target="_blank">Pinterest.com</a>'), array( $GLOBALS['pinterest_wp_import'], 'dispatch' ) );
+            register_importer( 'pinterest-pins', 'Pinterest', sprintf(__('Import pins from your %s account to Wordpress.', 'pinim'),'<a href="http://www.pinterest.com" target="_blank">Pinterest.com</a>'), array( $GLOBALS['pinterest_wp_import'], 'dispatch' ) );
     }
 
     function upgrade(){
@@ -161,20 +159,20 @@ class PinterestImporter {
      * @return type
      */
     
-    function pinterest_metabox(){
+    function pinim_metabox(){
         $metas = pai_get_pin_meta();
         
         if (empty($metas)) return;
         
         add_meta_box(
                 'pinterest_datas',
-                __( 'Pinterest', 'pinterest-importer' ),
-                array(&$this,'pinterest_metabox_content'),
+                __( 'Pinterest', 'pinim' ),
+                array(&$this,'pinim_metabox_content'),
                 'post'
         );
     }
     
-    function pinterest_metabox_content( $post ) {
+    function pinim_metabox_content( $post ) {
         
         $metas = pai_get_pin_meta();
         
@@ -192,22 +190,22 @@ class PinterestImporter {
                         
                          switch ($meta_key){
                             case 'pinner':
-                                $meta_key = __('Pinner URL','pinterest-importer');
+                                $meta_key = __('Pinner URL','pinim');
                                 $pinner_url = pai_get_user_url($meta);
                                 $meta = '<a href="'.$pinner_url.'" target="_blank">'.$pinner_url.'</a>';
                             break;
                             case 'pin_id':
-                                $meta_key = __('Pin URL','pinterest-importer');
+                                $meta_key = __('Pin URL','pinim');
                                 $pin_url = pai_get_pin_url($meta);
                                 $meta = '<a href="'.$pin_url.'" target="_blank">'.$pin_url.'</a>';
                             break;
                             case 'board_slug':
-                                $meta_key = __('Board URL','pinterest-importer');
+                                $meta_key = __('Board URL','pinim');
                                 $board_url = pai_get_board_url($metas['pinner'],$meta);
                                 $meta = '<a href="'.$board_url.'" target="_blank">'.$board_url.'</a>';
                             break;
                             case 'source':
-                                $meta_key = __('Source URL','pinterest-importer');
+                                $meta_key = __('Source URL','pinim');
                                 $meta = '<a href="'.$meta.'" target="_blank">'.$meta.'</a>';
                             break;
                         }
@@ -242,12 +240,12 @@ class PinterestImporter {
  *
  */
 
-function pinterest_importer() {
-	return PinterestImporter::instance();
+function pinim() {
+	return PinIm::instance();
 }
 
 if (is_admin()){
-    pinterest_importer();
+    pinim();
 }
 
 ?>

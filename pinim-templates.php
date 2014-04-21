@@ -193,7 +193,7 @@ function pai_get_source_text($post_id = false){
     $source = get_post_meta($post_id,'_pinterest-source',true);
     if(!$source) return false;
     
-    $block = '<p class="pinterest-importer-source"><a href="'.$source.'" target="_blank">'.__('Source','pinterest-importer').'</a></p>';
+    $block = '<p class="pinterest-importer-source"><a href="'.$source.'" target="_blank">'.__('Source','pinim').'</a></p>';
     return apply_filters('pai_get_source_text',$block,$post_id);
 }
 
@@ -250,7 +250,7 @@ function pai_get_blank_post(){
         'post_author'       => get_current_user_id(),
         'post_type'         => 'post',
         'post_status'       =>'publish',
-        'post_category'     => array(pinterest_importer()->root_category_id),
+        'post_category'     => array(pinim()->root_category_id),
     );
 
     return apply_filters('pai_blank_post',$blank_post);
