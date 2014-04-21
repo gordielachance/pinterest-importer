@@ -54,6 +54,8 @@ You can set the content you want by using the filter "pai_get_post_content", see
 == Changelog ==
 
 = TODO =
+* Wait for script to have stopped before be allowed to run it again
+* allow multiple pin IDs per post
 * detect hashtags and assign them as tags (slugs)
 * Feedback message for terms (categories and tags)
 * 2 step screen with author / category default

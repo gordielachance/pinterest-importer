@@ -192,8 +192,10 @@ class Pinterest_Importer extends WP_Importer {
             //set featured image
             if ($featured_image_id = $this->process_image($new_post, $data['featured_url'])){
                     set_post_thumbnail($new_post, $featured_image_id);
+                    $hd_file = wp_get_attachment_image_src($featured_image_id, 'full');
+                    $hd_url = $hd_file[0];
                     //feedback
-                    $message =  sprintf(__('Set post thumbnail: %1s','pinim'),'<a href="'.$data['featured_url'].'" target="_blank">'.$data['featured_url'].'</a>');
+                    $message =  sprintf(__('Set post thumbnail: %1s','pinim'),'<a href="'.$hd_url.'" target="_blank">'.$featured_image_id.'</a>');
                     $this->feedback($message);
             }else{
                 $error_msg =  sprintf(__('Error while setting post thumbnail: %1s','pinim'),'<a href="'.$data['featured_url'].'" target="_blank">'.$data['featured_url'].'</a>');
@@ -519,15 +521,18 @@ class Pinterest_Importer extends WP_Importer {
             switch($post_format){
 
                 case 'image':
-                    $content.='<a href="' . $source . '" title="' . the_title_attribute('echo=0') . '" >';
-                    $content.=get_the_post_thumbnail($post->ID,'full');
-                    $content.='</a>';
+                    $content = get_the_post_thumbnail($post->ID,'full');
+                    
+                    if ($source){
+                        $content ='<a href="' . $source . '" title="' . the_title_attribute('echo=0') . '" >'.$content.'</a>';
+                    }
+                    
                 break;
             
                 case 'video':
                     
                     //https://codex.wordpress.org/Embeds
-                    $content.=$source;
+                    $content = $source;
                     
                 break;
             }
