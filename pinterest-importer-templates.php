@@ -66,7 +66,7 @@ function pai_url_extract_source_slug($url){
 }
 
 /**
- * Checks if a pin ID already has been importer
+ * Checks if a pin ID already has been imported
  * @param type $pin_id
  * @return boolean
  */
@@ -122,8 +122,14 @@ function pai_image_exists($img_url){
 * @return boolean 
 */
 function pai_get_term_id($term_name,$term_tax,$term_args=array()){
+    
+    $parent = false;
 
-    $term_exists = term_exists($term_name,$term_tax,$term_args['parent']);
+    if (isset($term_args['parent'])){
+        $parent = $term_args['parent'];
+    }
+    
+    $term_exists = term_exists($term_name,$term_tax,$parent);
     $term_id = is_array( $term_exists ) ? $term_exists['term_id'] : $term_exists;
 
     //it exists, return ID
@@ -140,9 +146,114 @@ function pai_get_term_id($term_name,$term_tax,$term_args=array()){
     return false;
 }
 
+/**
+ * Get a Pinterest pin url from its ID
+ * @param type $pin_id
+ * @return type
+ */
+
 function pai_get_pin_url($pin_id){
     $pin_url = sprintf('http://www.pinterest.com/pin/%s',$pin_id);
     return $pin_url;
+}
+
+/**
+ * Get a Pinterest user url from its username
+ * @param type $username
+ * @return type
+ */
+
+function pai_get_user_url($username){
+    $user_url = sprintf('http://www.pinterest.com/%s',$username);
+    return $user_url;
+}
+
+/**
+ * Get a Pinterest board url from its username & board slug
+ * @param type $username
+ * @param type $board_slug
+ * @return type
+ */
+
+function pai_get_board_url($username,$board_slug){
+    $board_url = sprintf('http://www.pinterest.com/%1s/%2s',$username,$board_slug);
+    return $board_url;
+}
+
+/**
+ * Generates the source text block for a pin
+ * @param type $post_id
+ * @return boolean
+ */
+
+function pai_get_source_text($post_id = false){
+    
+    if(!$post_id) $post_id = get_the_ID();
+    
+    $source = get_post_meta($post_id,'_pinterest-source',true);
+    if(!$source) return false;
+    
+    $block = '<p class="pinterest-importer-source"><a href="'.$source.'" target="_blank">'.__('Source','pinterest-importer').'</a></p>';
+    return apply_filters('pai_get_source_text',$block,$post_id);
+}
+
+/**
+ * Filter the content to add the source text block
+ * @param type $content
+ * @param type $post
+ * @return type
+ */
+
+function pai_add_source_text($content,$post){
+    $post_id = $post->ID;
+    if ($text_block = pai_get_source_text($post_id)){
+        $content.= $text_block;
+    }
+    return $content;   
+}
+
+/**
+ * Get a single pinterest meta (if key is defined) or all the pinterest metas for a post ID
+ * @param type $key (optional)
+ * @param type $post_id
+ * @return type
+ */
+
+function pai_get_pin_meta($key = false, $post_id = false){
+    $pin_metas = array();
+    $prefix = '_pinterest-';
+    $metas = get_post_custom($post_id);
+    foreach((array)$metas as $meta_key=>$meta){
+        $splitkey = explode($prefix,$meta_key);
+        if (!isset($splitkey[1])) continue;
+        $pin_key = $splitkey[1];
+        
+        //single
+        if (count($meta) == 1){
+            $meta = $meta[0];
+        }
+        
+        if ($key){
+            if ($pin_key == $key) return $meta;
+        }else{
+            $pin_metas[$pin_key] = $meta;
+        }
+
+    }
+
+    return $pin_metas;
+}
+
+
+function pai_get_blank_post(){
+    $blank_post = array(
+        'post_author'       => get_current_user_id(),
+        'post_type'         => 'post',
+        'post_status'       =>'publish',
+        'post_category'     => array(pinterest_importer()->root_category_id),
+    );
+
+    return apply_filters('pai_blank_post',$blank_post);
 }
 
 

@@ -31,16 +31,18 @@ class Pinterest_Importer extends WP_Importer {
 	var $auth = false;
 
 	function Pinterest_Importer() {
-		//add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
+            if (isset($_GET['import']) && $_GET['import'] == 'pinterest-pins'){
+                add_action('admin_print_scripts', array(&$this, 'queue_scripts'));
+                add_action('admin_print_styles', array(&$this, 'queue_style'));
+            }
 	}
 	
 	function WP_Import() { /* nothing */ }
 	
-	function admin_enqueue_scripts($hook) {
-		if( 'admin.php' != $hook )
-			return;
-		
-		wp_enqueue_script( 'jquery' );
+	function queue_scripts($hook) {
+	}
+        
+        function queue_style() {
 	}
 
 	/**
@@ -58,42 +60,307 @@ class Pinterest_Importer extends WP_Importer {
 				break;
 			case 1:
 				check_admin_referer( 'import-upload' );
-				if ( $this->handle_upload() ){
-                                    $file = get_attached_file( $this->id );
-                                    set_time_limit(0);
-                                    $this->import( $file );
-                                }
+
+                                set_time_limit(0);
+                                $result = $this->import();
+				if ( is_wp_error( $result ) )
+					echo $result->get_error_message();
 				break;
 		}
 
 		$this->footer();
 	}
 
+        function feedback($message){
+            echo $message.'<br/>';
+        }
 
 	/**
 	 * The main controller for the actual import stage.
 	 *
 	 * @param string $file Path to the HTML file for importing
 	 */
-	function import( $file ) {
-            
-                $bid = get_current_blog_id();
+	function import() {
+
+		$file = wp_import_handle_upload();
+
+		if ( isset($file['error']) ) {
+			echo $file['error'];
+			return;
+		}
+                
+                $bid = get_current_blog_id(); //blog ID
             
 		add_filter( 'import_post_meta_key', array( $this, 'is_valid_meta_key' ) );
 		add_filter( 'http_request_timeout', array( &$this, 'bump_request_timeout' ) );
  
-		$this->attachments = $this->get_imported_attachments( 'pinterest' );
-		$this->processed_posts = $this->get_imported_posts( 'pinterest', $bid ); 
+		//$this->attachments = $this->get_imported_attachments( 'pinterest' );
+		//$this->processed_posts = $this->get_imported_posts( 'pinterest', $bid ); 
 		
-		$this->import_start( $file );
-
-                $this->author_mapping = array(); //no author mapping
-
-		wp_suspend_cache_invalidation( true );
-		$this->process_posts();
-		wp_suspend_cache_invalidation( false );
+                $this->import_start( $file );
+		$this->process_raw_posts($this->raw_posts);
 		$this->import_end();
 	}
+        
+        function process_raw_posts($raw_posts){
+            
+            $pin_count = 0;
+            $total_pins = count($raw_posts);
+            
+            foreach ((array)$raw_posts as $pin_id=>$raw_post){
+                
+                $pin_count++;
+                
+                //feedback
+                $message = "<br/><br/>".sprintf(__('%1s/%2s - Importing pin #%3s...','pinterest-importer'),$pin_count,$total_pins,'<a href="'.pai_get_pin_url($pin_id).'" target="_blank">'.$pin_id.'</a>');
+                $this->feedback($message);
+                
+                
+                if ( $existing_post_id = pai_pin_exists($pin_id) ) {
+                    $existing_post = get_post($existing_post_id);
+                    $error_msg = sprintf(__('Pin already exists as post#%1s : %2s','pinterest-importer'),$existing_post_id,'<a href="'.get_permalink($existing_post_id).'" target="_blank">'.$existing_post->post_title.'</a>');
+                    $error = new WP_Error('existing_pin', $error_msg);
+                    $this->feedback($error->get_error_message());
+                    continue;
+                }
+
+                //populate pin HTML
+                $message =  __('Loading pin HTML...','pinterest-importer');
+                $this->feedback($message);
+                $pin_html = self::get_single_pin_html($pin_id);
+                if ( is_wp_error($pin_html) ){
+                    $this->feedback($pin_html->get_error_message());
+                    continue;
+                }
+
+                //create post
+                $post_id = self::process_single_raw_post($pin_id,$raw_post,$pin_html);
+                if ( is_wp_error($post_id) ){
+                    $this->feedback($post_id->get_error_message());
+                    $error_code = $post_id->get_error_code();
+                    $bad_post_id = $post_id->get_error_data($error_code);
+
+                    if ($bad_post_id){ // this post has been created but should be deleted
+                        $message =  sprintf(__('Deleting post #%1s', 'pinterest-importer'),$bad_post_id);
+                        $this->feedback($message);
+                        wp_delete_post($bad_post_id, true );
+                        continue;
+                    }
+                }
+
+                $new_post = get_post($post_id);
+                
+                //feedback
+                $message =  sprintf(__('Created post#%1s : %2s','pinterest-importer'),$new_post->ID,'<a href="'.get_permalink($new_post->ID).'" target="_blank">'.$new_post->post_title.'</a>');
+                $this->feedback($message);
+
+                
+            }
+        }
+        
+        function process_single_raw_post($pin_id,$raw_post,$pin_html){
+            $error = false;
+            $data = $raw_post['data'];
+
+            //sanitize post
+            $sanitized_post = self::sanitize_single_post($raw_post);
+            if ( is_wp_error($sanitized_post) ) return $sanitized_post; //ABORD
+
+            //insert post
+            $post_id = wp_insert_post( $sanitized_post, true );
+            if ( is_wp_error($post_id) ) return $post_id; //ABORD
+            
+            $new_post = get_post($post_id);
+
+            $data['featured_url'] = $this->get_featured_image_url($pin_html);//thumbnail
+            $data['source'] = $this->get_source_url($pin_html);//source
+            $data['pinner'] = self::get_pinner($pin_html); //pinner
+
+            //set post format
+            if($data['format']){
+                if (set_post_format( $post_id , $data['format'])){
+                    //feedback
+                    $message =  sprintf(__('Set post format : %2s','pinterest-importer'),$data['format']);
+                    $this->feedback($message);
+                }
+            }
+
+            //set featured image
+            if ($featured_image_id = $this->process_image($new_post, $data['featured_url'])){
+                    set_post_thumbnail($new_post, $featured_image_id);
+                    //feedback
+                    $message =  sprintf(__('Set post thumbnail: %1s','pinterest-importer'),'<a href="'.$data['featured_url'].'" target="_blank">'.$data['featured_url'].'</a>');
+                    $this->feedback($message);
+            }else{
+                $error_msg =  sprintf(__('Error while setting post thumbnail: %1s','pinterest-importer'),'<a href="'.$data['featured_url'].'" target="_blank">'.$data['featured_url'].'</a>');
+                $error = new WP_Error('post_thumbnail_error', $error_msg, $post_id);
+                return $error;
+            }
+            
+            //set post metas
+            $post_metas = self::sanitize_single_post_metas($data);
+
+            foreach ( $post_metas as $key=>$value ) {
+                $key = '_pinterest-'.$key;
+                add_post_meta( $post_id, $key, $value );
+                do_action( 'import_post_meta', $post_id, $key, $value );
+            }
+            
+            //set post content
+            if (!$this->set_post_content($new_post,$pin_html)){
+                //feedback
+                $error_msg =  __('Error while updating post content', 'pinterest-importer');
+                $error = new WP_Error('post_content_error', $error_msg, $post_id);
+                return $error;
+            }
+
+            return $post_id;
+        }
+        
+
+        
+        function get_pins_html($file){
+                $html = file_get_contents($file);
+                $pins_page = phpQuery::newDocumentHTML($html);
+                
+                if(!isset($pins_page)){
+                    return new WP_Error( 'phpQuery_parse_error', __( 'There was an error when reading this HTML file', 'wordpress-importer' ));
+                }
+                
+                //check is a correct pins page
+                
+                return $pins_page;
+                
+        }
+        
+        function is_pins_page($pins_page){
+            
+            //TO FIX TO CHECK : find a way to be sure this is a /pins page
+            return true;
+            
+            phpQuery::selectDocument($pins_page);
+        } 
+        
+        function get_raw_posts($pins_page){
+
+                $pins = $this->parse_pins($pins_page);
+
+                if (!$pins){
+                    return new WP_Error( 'phpQuery_parse_error', __( 'No pins were found', 'pinterest-importer' ));
+                }
+
+                $posts = array();
+
+		foreach ($pins as $pin_id=>$pin ) {
+                    
+                        //title
+                        if (isset($pin['description'])){
+                            $title = $pin['description'];
+                            unset($pin['description']);
+                        }else{
+                            $title = 'pin #'.$pin['pin_id'];
+                        }
+                        
+                        $post['post_title'] = $title;
+                        
+                        //sub category
+                        if ($pin['board_name']){
+                            if ($sub_category = pai_get_term_id($pin['board_name'],'category',array('parent'=>pinterest_importer()->root_category_id))){
+                                $post['post_category'] = array($sub_category);
+                            }
+                        }
+ 
+                        //other data
+                        $post['data'] = $pin;
+
+                        $posts[$pin_id] = apply_filters('pai_post',$post,$pin_id,$pin);
+		}
+                
+                return $posts;
+                
+	}
+        
+        function parse_pins($pins_page){
+
+            phpQuery::selectDocument($pins_page);
+
+            $pins = array();
+
+            //get pins
+            foreach (pq('.pinWrapper') as $key=>$pin) {
+
+                $pin_attr = array();
+
+                //pin ID
+                $pin_url = pq($pin)->find('.pinImageWrapper')->attr('href');
+                if ($pin_id = pai_url_extract_pin_id($pin_url)){
+                    $pin_attr['pin_id'] = $pin_id;
+                }
+
+                //CREDITS
+                $credits_el = pq($pin)->find('.pinCredits');
+                if ($has_credits = $credits_el->length){
+
+                    $credit_title = pq($pin)->find('.creditTitle')->htmlOuter();
+                    $credit_title = trim(strip_tags($credit_title));
+
+                    $credits_link = pq($credits_el)->find('a.creditItem')->attr('href');
+
+                    if ($credits_link){
+                        
+                        //board
+                        if ($board_slug = pai_url_extract_board_slug($credits_link)){
+                            $pin_attr['board_slug'] = $board_slug;
+                            $pin_attr['board_name'] = $credit_title;
+                        }
+
+                        //source
+                        if ($source_slug = pai_url_extract_source_slug($credits_link)){
+                            $pin_attr['source_slug'] = $source_slug;
+                            $pin_attr['source_name'] = $credit_title;
+                        }
+                        
+                    }
+
+                }
+
+                //ATTRIBUTION
+                $attribution_link_el = pq($pin)->find('.pinAttribution a');
+                if ($attribution_link_el->length){
+                    $attribution_text = $attribution_link_el->htmlOuter();
+                    $attribution_link = $attribution_link_el->attr('href');
+                    $pin_attr['attribution_link'] = $attribution_link;
+                }
+
+                //DESCRIPTION
+                $description_el = pq($pin)->find('.pinDescription');
+                if ($description_el->length){
+                    $pin_attr['description'] = trim(strip_tags(pq($description_el)->htmlOuter()));
+                }
+                
+                //DOMAIN
+                $domain_el = pq($pin)->find('.pinDomain');
+                if ($domain_el->length){
+                    $pin_attr['domain'] = trim(strip_tags(pq($domain_el)->htmlOuter()));
+                }
+
+                //format
+                $format = 'image';
+                
+                $videtype_el = pq($pin)->find('.videoType');
+
+                if ($videtype_el->length){
+                    $format = 'video';
+                }
+                
+                $pin_attr['format'] = $format;
+                $pins[$pin_id] = array_filter($pin_attr);
+
+            }
+
+            return $pins;
+        }
+        
 
 	
 	/**
@@ -131,28 +398,31 @@ class Pinterest_Importer extends WP_Importer {
 	 * @param string $file Path to the HTML file for importing
 	 */
 	function import_start( $file ) {
+            
+                $this->id = $file['id']; //uploaded html file ID
+                
+		$file = $file['file'];
+
 		if ( ! is_file($file) ) {
 			echo '<p><strong>' . __( 'Sorry, there has been an error.', 'wordpress-importer' ) . '</strong><br />';
 			echo __( 'The file does not exist, please try again.', 'wordpress-importer' ) . '</p>';
 			$this->footer();
 			die();
 		}
-
-		$import_data = $this->parse( $file );
-
-		if ( is_wp_error( $import_data ) ) {
-			echo '<p><strong>' . __( 'Sorry, there has been an error.', 'wordpress-importer' ) . '</strong><br />';
-			echo esc_html( $import_data->get_error_message() ) . '</p>';
-			$this->footer();
-			die();
-		}
                 
-		$this->get_authors_from_import( $import_data );
-		$this->posts = $import_data['posts'];
-		$this->terms = $import_data['terms'];
+                $pins_page = self::get_pins_html($file);
+                
+                if ((is_wp_error($pins_page)) || (!self::is_pins_page($pins_page))){
+                    echo '<p><strong>' . __( 'Sorry, there has been an error.', 'wordpress-importer' ) . '</strong><br />';
+                    echo esc_html( $import_data->get_error_message() ) . '</p>';
+                    $this->footer();
+                    die();
+                }
+
+                $this->raw_posts = self::get_raw_posts($pins_page);
 
 		wp_defer_term_counting( true );
-
+                wp_suspend_cache_invalidation( true );
 		do_action( 'import_start' );
 	}
 
@@ -160,6 +430,8 @@ class Pinterest_Importer extends WP_Importer {
 	 * Performs post-import cleanup of files and the cache
 	 */
 	function import_end() {
+                wp_suspend_cache_invalidation( false );
+
 		wp_import_cleanup( $this->id );
 
 		wp_cache_flush();
@@ -173,41 +445,6 @@ class Pinterest_Importer extends WP_Importer {
 		echo '<p>' . __( 'All done.', 'wordpress-importer' ) . ' <a href="' . admin_url() . '">' . __( 'Have fun!', 'wordpress-importer' ) . '</a>' . '</p>';
 
 		do_action( 'import_end' );
-	}
-
-	/**
-	 * Handles the HTML upload and initial parsing of the file to prepare for
-	 * displaying author import options
-	 *
-	 * @return bool False if error uploading or invalid file, true otherwise
-	 */
-	function handle_upload() {
-            
-		$file = wp_import_handle_upload();
-
-		if ( isset( $file['error'] ) ) {
-			echo '<p><strong>' . __( 'Sorry, there has been an error uploading the html file.', 'pinterest-importer' ) . '</strong><br />';
-			echo esc_html( $file['error'] ) . '</p>';
-			return false;
-		} else if ( ! file_exists( $file['file'] ) ) {
-			echo '<p><strong>' . __( 'Sorry, there has been an error.', 'wordpress-importer' ) . '</strong><br />';
-			printf( __( 'The export file could not be found at <code>%s</code>. It is likely that this was caused by a permissions problem.', 'wordpress-importer' ), esc_html( $file['file'] ) );
-			echo '</p>';
-			return false;
-		}
-
-		$this->id = (int) $file['id'];
-		$import_data = $this->parse( $file['file'] );
-
-		if ( is_wp_error( $import_data ) ) {
-			echo '<p><strong>' . __( 'Sorry, there has been an error.', 'wordpress-importer' ) . '</strong><br />';
-			echo esc_html( $import_data->get_error_message() ) . '</p>';
-			return false;
-		}
-
-		$this->get_authors_from_import( $import_data );
-
-		return true;
 	}
 
 	/**
@@ -252,205 +489,59 @@ class Pinterest_Importer extends WP_Importer {
 
 	}
 
-
-	/**
-	 * Create new posts based on import information
-	 *
-	 * Posts marked as having a parent which doesn't exist will become top level items.
-	 * Doesn't create a new post if: the post type doesn't exist, the given post ID
-	 * is already noted as imported or a post with the same title and date already exists.
-	 * Note that new/updated terms, comments and meta are imported for the last of the above.
-	 */
-	function process_posts() {
-                
-                $i=0;
-            
-		foreach ( $this->posts as $import_id=>$post ) {
-                    $i++;
-
-                    $postmetas = array();
-
-			if ( ! post_type_exists( $post['post_type'] ) ) {
-                                //feedback
-				printf( __( 'Invalid post type %s', 'wordpress-importer' ),esc_html($post['post_type']) );
-				echo '<br />';
-				continue;
-			}
-
-			if ( isset( $this->processed_posts[$import_id] )) continue;
-
- 
-			$post_type_object = get_post_type_object( $post['post_type'] );
-			
-			$post['post_date'] = date('Y-m-d H:i:s', strtotime($post['post_date']));
-			$post['post_date_gmt'] = gmdate('Y-m-d H:i:s', strtotime($post['post_date']));
-
-			$post_exists = pai_pin_exists($import_id);
-                        $pin_url = pai_get_pin_url($import_id);
-                        
-                        $pin_title = (strlen($post['post_title']) > 60) ? substr($post['post_title'],0,60).'...' : $post['post_title'];
-
-			if ( $post_exists && get_post_type( $post_exists ) == $post['post_type'] ) {
-                                
-                                //feedback
-                                
-                                echo '<span class="pinterest-feedback" style="color:#B6B6B4"><br/>#'.$i.'  <em>'.$pin_title.'</em> (pin id#'.$import_id.') ';
-                                _e('already exists','pinterest-importer');
-                                echo '</span>';
-                                
-                                continue;
-                                
-				$post_id = $post_exists;
-				$new_post = get_post($post_id);
-			} else {
-                            
-                                //feedback
-                                echo '<span class="pinterest-feedback"><br/><br/><strong>#'.$i.'  <em>'.$pin_title.'</em> (pin id#<a href="'.$pin_url.'" target="_blank">'.$import_id.'</a>)</strong></span><br/>';
-
-				$postdata = array(
-					'import_id' => $import_id,
-                                        'post_author' => $post['post_author'],
-                                        'post_date' => $post['post_date'],
-					'post_date_gmt' => $post['post_date_gmt'],
-                                        //'post_content' => $post['post_content'],
-					//'post_excerpt' => $post['post_excerpt'],
-                                        'post_title' => $post['post_title'],
-					//'post_status' => $post['post_status'],
-                                        //'post_name' => $post['post_name'],
-					//'comment_status' => $post['comment_status'],
-                                        //'ping_status' => $post['ping_status'],
-					//'guid' => $post['guid'],
-                                        //'post_parent' => $post_parent,
-                                        //'menu_order' => $post['menu_order'],
-					//'post_type' => $post['post_type'],
-                                        //'post_password' => $post['post_password']
-				);
-
-				$post_id = wp_insert_post( $postdata, true );
-
-				if ( is_wp_error( $post_id ) ) {
-                                    
-                                        //feedback
-                                        echo'<span class="pinterest-feedback" style="color:red">';
-                                        _e('Error while creating the post', 'pinterest-importer');
-					if ( defined('IMPORT_DEBUG') && IMPORT_DEBUG )
-						echo ': ' . $post_id->get_error_message();
-                                        echo '<br />';
-                                        echo'</span>';
- 
-					continue;
-				}
-					
-				$new_post = get_post($post_id);
-                                
-                                
-                                ///OPEN THE PIN///
-  
-                                //post format
-                                $post_format = $post['pinterest_data']['data-media_type'];
-
-                                /*
-                                switch ($post_format) {
-                                    case 'video':
-                                        $post_format = 'video';
-                                        $subtype = $post['pinterest_data']['data-media_subtype'];
-
-                                        switch ($subtype) {
-                                            case 'vimeo_video':
-                                            break;
-                                            case 'youtube_video':
-                                            break;
-                                        }
-                                      
-                                    break;
-
-                                }
-                                */
-                                
-                                if($post_format){
-                                    set_post_format( $post_id , $post_format);
-                                }
-
-
-				
-				// Now get the attachments
-                                
-                                //feedback
-                                echo'<span class="pinterest-feedback">';
-                                    _e('...Importing pin thumbnail...', 'pinterest-importer');
-                                echo'</span>';
-                                echo '<br />';
-                                
-				$image_url = $this->get_featured_image_url($import_id, $post['post_id']);
-                                
-				if ($featured_image_id = $this->process_image($new_post, $image_url)){
-                                        set_post_thumbnail($new_post, $featured_image_id); 
-                                }else{
-                                    
-                                    //feedback
-                                    echo'<span class="pinterest-feedback" style="color:red">';
-                                        _e('Error importing pin thumbnail, delete this post', 'pinterest-importer');
-                                    echo'</span>';
-                                    echo '<br />';
-                                    
-                                    wp_delete_post($post_id, true );
-                                    continue;
-                                }
-			}
-
-			// map pre-import ID to local ID
-			$this->processed_posts[$import_id] = (int) $post_id;
-
-			// add categories, tags and other terms
-			if ( ! empty( $post['terms'] ) ) {
-				$terms_to_set = array();
-				foreach ( $post['terms'] as $term ) {
-                                    $term_id = pai_get_term_id($term['term_name'],$term['term_taxonomy'],$term['term_args']);
-
-                                    if ( ! $term_id ) {
-                                        //feedback
-                                        echo'<span class="pinterest-feedback" style="color:red">';
-                                        printf( __( 'Failed to import %s %s', 'wordpress-importer' ), esc_html($taxonomy), esc_html($term['name']) );
-                                        echo '<br />';
-                                        echo'</span>';
-                                        continue;
-                                    }
-
-                                    $terms_to_set[$term['term_taxonomy']][] = intval( $term_id );
-				}
-
-				foreach ( (array)$terms_to_set as $tax => $ids ) {
-					$tt_ids = wp_set_post_terms( $post_id, $ids, $tax );
-				}
-				unset( $post['terms'], $terms_to_set );
-			}
-
-			// add/update post meta
-                        
-			if ( isset( $post['postmeta'] ) ) {
-				foreach ( $post['postmeta'] as $key=>$value ) {
-                                    add_post_meta( $post_id, $key, $value );
-                                    do_action( 'import_post_meta', $post_id, $key, $value );
-				}
-			}
-                        $this->process_post_content($new_post);
-                        
-                        //feedback
-                        echo'<span class="pinterest-feedback" style="color:green">';
-                            _e('Post created !', 'pinterest-importer');
-                            echo '<br />';
-                        echo'</span>';
-                        
-		}
-		unset( $this->posts );
-	}
         
-        function process_post_content($post){
-            $media_type = get_post_meta($post->ID,'_pinterest-media_type',true);
-            $source = get_post_meta($post->ID,'_pinterest-pin_target',true);
+        function sanitize_single_post($raw){
+
+            $default = pai_get_blank_post();
+
+            $post = wp_parse_args($raw,$default);
+
+            //WRONG POST TYPE
+            if ( ! post_type_exists( $post['post_type'] ) ) {
+                $message = sprintf( __( 'Invalid post type %s', 'wordpress-importer' ),esc_html($post['post_type']) );
+                return new WP_Error('invalid_post_type', $message);
+            }
+
+            //sanitize title TO FIX TO MOVE
+            //$post['post_title'] = (strlen($post['post_title']) > 60) ? substr($post['post_title'],0,60).'...' : $post['post_title'];
+            return apply_filters('pai_sanitize_single_post',$post,$raw);
+        }
+        
+        /**
+         * Filter the meta keys we want to keep in the DB.
+         * @param type $data
+         * @return type
+         */
+        
+        function sanitize_single_post_metas($data){
+
+            $save_keys = array(
+                'pinner',
+                'pin_id',
+                'board_slug',
+                'source'
+            );
             
-            switch($media_type){
-                
+            $metas = array();
+            
+            foreach ($save_keys as $key){
+                if (isset($data[$key])){
+                    $metas[$key] = $data[$key];
+                }
+            }
+
+            return apply_filters('pai_sanitize_single_post_metas',$metas,$data);
+            
+        }
+
+        
+        function set_post_content($post,$pin_html){
+            $post_format = get_post_format( $post->ID );
+            $source = pai_get_pin_meta('source', $post->ID);
+            $content = null;
+
+            switch($post_format){
+
                 case 'image':
                     $content.='<a href="' . $source . '" title="' . the_title_attribute('echo=0') . '" >';
                     $content.=get_the_post_thumbnail($post->ID,'full');
@@ -459,54 +550,24 @@ class Pinterest_Importer extends WP_Importer {
             
                 case 'video':
                     
-                $subtype = get_post_meta($post->ID,'_pinterest-media_subtype',true);
-                $video_id = get_post_meta($post->ID,'_pinterest-media_external_id',true);
-                    
-                switch($subtype){
-                    case 'vimeo_video':
-                        $content='[vimeo '.$video_id.']';
-                    break;
-                    case 'youtube_video':
-                        $content='[youtube '.$video_id.']';
-                    break;
-                    case 'dailymotion_video':
-                        $content='[dailymotion id='.$video_id.']';
-                    break;
-                }
+                    //https://codex.wordpress.org/Embeds
+                    $content.=$source;
                     
                 break;
             }
             
+            $content .= "\n";//line break (avoid problems with embeds)
+            
             //allow to filter
-            $content = apply_filters('pinterest_importer_post_format_content',$content,$post);
-            
-            
-            //add extra infos
-            $list=array();
-            $list['source']='<a href="'.$source.'" target="_blank">'.__('Source','pinterest-importer').'</a>';
-            
-            if($list){
-                
-                foreach((array)$list as $list_item){
-                    $li_str[]='<li>'.$list_item.'</li>';
-                }
-                
-                $li_str=implode("\r\n",$list);
-                $extra_content='<ul class="pinterest-pin">'.$li_str.'</ul>';
-                $extra_content = apply_filters('pinterest_importer_post_extra_content',$extra_content,$post);
-            }
-            
-            $content = $content."\r\n".$extra_content;
+            $content = apply_filters('pai_get_post_content',$content,$post,$pin_html);
+
+            //print_r("<xmp>".$content."</xmp>");exit;
             
             $my_post = array();
             $my_post['ID'] = $post->ID;
             $my_post['post_content'] = $content;
+            
             if (!wp_update_post( $my_post )){
-                //feedback
-                echo'<span class="pinterest-feedback" style="color:red">';
-                    _e('Error while updateing post content', 'pinterest-importer');
-                    echo '<br />';
-                echo'</span>';
                 return false;
             }
             return true;
@@ -605,15 +666,8 @@ class Pinterest_Importer extends WP_Importer {
                 
                 return $attachment_id;
 	}
-	
-	/**
-	 * Return array of images from the post
-	 *
-	 * @param string $post_content
-	 * @return array
-	 */
-	function get_featured_image_url( $pin_id, $post_id ) {
-
+        
+        function get_single_pin_html($pin_id){
                 //populate pin HTML
                 $pin_url = pai_get_pin_url($pin_id);
                 $pin_doc = self::get_page($pin_url);
@@ -626,8 +680,13 @@ class Pinterest_Importer extends WP_Importer {
                     return new WP_Error( 'phpQuery_parse_error', __( 'There was an error when reading this HTML file', 'wordpress-importer' ));
                 }
                 
-                phpQuery::selectDocument($pin_html);
-                
+                return $pin_html;
+        }
+	
+
+	function get_featured_image_url( $pin_html ) {
+                 phpQuery::selectDocument($pin_html);
+
                 //default thumbnail url, from the document metas.
                 $featured_image = pq($pin_html)->find('meta[property=og:image]')->attr('content');
                 
@@ -644,6 +703,22 @@ class Pinterest_Importer extends WP_Importer {
                 }
 
 		return $featured_image;
+	}
+        
+	function get_source_url( $pin_html ) {
+                 phpQuery::selectDocument($pin_html);
+
+                $source = pq($pin_html)->find('meta[property=og:see_also]')->attr('content');
+
+
+		return $source;
+	}
+        
+	function get_pinner( $pin_html ) {
+            phpQuery::selectDocument($pin_html);
+            $url = pq($pin_html)->find('meta[name=pinterestapp:pinner]')->attr('content');
+            $user = pai_url_extract_user($url);
+            return $user;
 	}
 
 	/**
@@ -711,7 +786,7 @@ class Pinterest_Importer extends WP_Importer {
 	function header() {
 		echo '<div class="wrap">';
 		screen_icon();
-		echo '<h2>' . __( 'Import Pinterest "Pins" HTML', 'wordpress-importer' ) . '</h2>';
+		echo '<h2>' . __( 'Pinterest Importer', 'wordpress-importer' ) . '</h2>';
 		
 		echo '<div class="pinterest-wrap">';
 		$updates = get_plugin_updates();
@@ -734,12 +809,13 @@ class Pinterest_Importer extends WP_Importer {
 	 */
 	function greet() {
 		echo '<div class="narrow">';
-                echo '<p>'.__("Howdy! Wanna backup your Pinterest.com profile ?  Here's how to do.",'pinterest-importer').'</p>';
-                echo '<h2>1. '.__('Save and upload your Pinterest.com page','pinterest-importer').'</h2>';
+                echo '<p>'.__("Howdy! Wanna backup your Pinterest profile ?  Here's how to do.",'pinterest-importer').'<br/>';
+                echo __("You can run this plugin several time as it won't save twice the same pin.",'pinterest-importer').'</p>';
+                echo '<h3>'.__('Save and upload your pins page','pinterest-importer').'</h3>';
 		echo '<p><ol><li>'.sprintf(__("Login to %1s and head to your pins page, which url should be %2s.", 'pinterest-importer' ),'<a href="http://www.pinterest.com" target="_blank">Pinterest.com</a>','<code>http://www.pinterest.com/YOURLOGIN/pins/</code>').'</li>';
 		echo '<li>'.__( 'Scroll down the page and be sure all your collection is loaded.', 'pinterest-importer' ).'</li>';
                 echo '<li>'.__( 'Save this file to your computer as an HTML file, then upload it here.', 'pinterest-importer' ).'</li></ol></p>';
-		wp_import_upload_form( 'admin.php?import=pinterest-html&amp;step=1' );
+		wp_import_upload_form( 'admin.php?import=pinterest-pins&amp;step=1' );
 		echo '</div>';
 	}
 

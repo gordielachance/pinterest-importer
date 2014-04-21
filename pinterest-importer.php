@@ -2,7 +2,7 @@
 /*
 Plugin Name: Pinterest Importer
 Description: Import images & videos from a Pinterest account.
-Version: 0.1.1
+Version: 0.1.0
 Author: G.Breant
 Author URI: http://sandbox.pencil2d.org
 Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
@@ -18,7 +18,7 @@ class PinterestImporter {
     /**
     * @public string plugin version
     */
-    public $version = '0.1.1';
+    public $version = '0.1.0';
 
     /**
     * @public string plugin DB version
@@ -54,8 +54,7 @@ class PinterestImporter {
             }
             return self::$instance;
     }
-    
-    public $import_allow_create_users;
+
     public $import_attachment_size_limit;
 
     /**
@@ -74,8 +73,7 @@ class PinterestImporter {
             $this->basename   = plugin_basename( $this->file );
             $this->plugin_dir = plugin_dir_path( $this->file );
             $this->plugin_url = plugin_dir_url ( $this->file );
-            
-            $this->import_allow_create_users = true;
+
             $this->import_attachment_size_limit = 0; //0 = unlimited
 
     }
@@ -83,9 +81,7 @@ class PinterestImporter {
     
     
     function includes(){
-        
-        if(!is_admin())return false;
-        
+
         // Load Importer API
         require_once ABSPATH . 'wp-admin/includes/import.php';
         
@@ -95,33 +91,36 @@ class PinterestImporter {
                 $class_wp_importer = ABSPATH . 'wp-admin/includes/class-wp-importer.php';
                 if ( file_exists( $class_wp_importer ) ) {
                     require $class_wp_importer;
-                    require $this->plugin_dir . '/pinterest-importer-class.php';
                 }
-        }
-
-        if ( ! class_exists( 'PinterestGridParser' ) ) {
-            require $this->plugin_dir . '/pinterest-importer-parsers.php';
         }
         
         if (!class_exists('phpQuery'))
             require_once($this->plugin_dir . '_inc/lib/phpQuery/phpQuery.php');
         
+        require $this->plugin_dir . '/pinterest-importer-class.php';
+        //require $this->plugin_dir . '/pinterest-importer-parsers.php';
+        
     }
 
-    function setup_actions(){   
+    function setup_actions(){  
         
+        //upgrade
+        add_action( 'plugins_loaded', array($this, 'upgrade'));        
+        add_action( 'add_meta_boxes', array($this, 'pinterest_metabox'));
+
         if ( ! defined( 'WP_LOAD_IMPORTERS' ) ) return;
 
         /** Display verbose errors */
         if (!defined('IMPORT_DEBUG')) define( 'IMPORT_DEBUG', false );
-        
-        
+
         add_action( 'admin_init', array(&$this,'load_textdomain'));
         add_action( 'admin_init', array(&$this,'register_importer'));
+        
+        $root_category_id = pai_get_term_id('Pinterest.com','category'); // create or get the root category
+        $this->root_category_id = apply_filters('pai_get_root_category_id',$root_category_id);
 
+        add_filter('pai_get_post_content','pai_add_source_text',10,2);
 
-        //upgrade
-        add_action( 'plugins_loaded', array($this, 'upgrade'));
 
     }
     
@@ -135,13 +134,13 @@ class PinterestImporter {
             * @global WP_Import $wp_import
             */
             $GLOBALS['pinterest_wp_import'] = new Pinterest_Importer();
-            register_importer( 'pinterest-html', 'Pinterest', sprintf(__('Import <strong>images and videos</strong> from your %s account to Wordpress', 'pinterest-importer'),'<a href="http://www.pinterest.com" target="_blank">Pinterest.com</a>'), array( $GLOBALS['pinterest_wp_import'], 'dispatch' ) );
+            register_importer( 'pinterest-pins', 'Pinterest', sprintf(__('Import pins from your %s account to Wordpress.', 'pinterest-importer'),'<a href="http://www.pinterest.com" target="_blank">Pinterest.com</a>'), array( $GLOBALS['pinterest_wp_import'], 'dispatch' ) );
     }
 
     function upgrade(){
         global $wpdb;
 
-        $current_version = get_option("_lovit-importer-db_version");
+        $current_version = get_option("_pinterest-importer-db_version");
 
         if ($current_version==$this->db_version) return false;
 
@@ -153,8 +152,83 @@ class PinterestImporter {
         }
 
         //update DB version
-        update_option("_lovit-importer-db_version", $this->db_version );
+        update_option("_pinterest-importer-db_version", $this->db_version );
 
+    }
+    
+    /**
+     * Display a metabox for posts having imported with this plugin
+     * @return type
+     */
+    
+    function pinterest_metabox(){
+        $metas = pai_get_pin_meta();
+        
+        if (empty($metas)) return;
+        
+        add_meta_box(
+                'pinterest_datas',
+                __( 'Pinterest', 'pinterest-importer' ),
+                array(&$this,'pinterest_metabox_content'),
+                'post'
+        );
+    }
+    
+    function pinterest_metabox_content( $post ) {
+        
+        $metas = pai_get_pin_meta();
+        
+        ?>
+        <table id="pinterest-list-table">
+                <thead>
+                <tr>
+                        <th class="left"><?php _ex( 'Name', 'meta name' ) ?></th>
+                        <th><?php _e( 'Value' ) ?></th>
+                </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    foreach ( $metas as $meta_key => $meta ) {
+                        
+                         switch ($meta_key){
+                            case 'pinner':
+                                $meta_key = __('Pinner URL','pinterest-importer');
+                                $pinner_url = pai_get_user_url($meta);
+                                $meta = '<a href="'.$pinner_url.'" target="_blank">'.$pinner_url.'</a>';
+                            break;
+                            case 'pin_id':
+                                $meta_key = __('Pin URL','pinterest-importer');
+                                $pin_url = pai_get_pin_url($meta);
+                                $meta = '<a href="'.$pin_url.'" target="_blank">'.$pin_url.'</a>';
+                            break;
+                            case 'board_slug':
+                                $meta_key = __('Board URL','pinterest-importer');
+                                $board_url = pai_get_board_url($metas['pinner'],$meta);
+                                $meta = '<a href="'.$board_url.'" target="_blank">'.$board_url.'</a>';
+                            break;
+                            case 'source':
+                                $meta_key = __('Source URL','pinterest-importer');
+                                $meta = '<a href="'.$meta.'" target="_blank">'.$meta.'</a>';
+                            break;
+                        }
+                        
+                        
+                            ?>
+                            <tr class="alternate">
+                                <td class="left">
+                                    <?php echo $meta_key;?>
+                                </td>
+                                <td>
+                                    <?php echo $meta;?>
+                                </td>
+                            </tr>
+                            <?php
+                    }
+
+                    ?>
+                </tbody>
+        </table>
+        <?php
     }
 
 }
@@ -172,5 +246,8 @@ function pinterest_importer() {
 	return PinterestImporter::instance();
 }
 
-pinterest_importer();
+if (is_admin()){
+    pinterest_importer();
+}
+
 ?>
