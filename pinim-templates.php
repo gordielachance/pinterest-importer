@@ -6,7 +6,7 @@
  * @return type
  */
 
-function pai_url_extract_parts($url){
+function pinim_url_extract_parts($url){
     $parts = parse_url($url);
     $path = trim($parts['path'], '/');
     return (array)explode('/',$path);
@@ -18,8 +18,8 @@ function pai_url_extract_parts($url){
  * @return string (or false if this is not a valid user url).
  */
 
-function pai_url_extract_user($url){
-    $parts = pai_url_extract_parts($url);
+function pinim_url_extract_user($url){
+    $parts = pinim_url_extract_parts($url);
     $not_allowed = array('pin','source');
     $user = $parts[0];
     if (in_array($user,$not_allowed)) return false;
@@ -33,8 +33,8 @@ function pai_url_extract_user($url){
  * @return int (or false if this is not a valid pin ID).
  */
 
-function pai_url_extract_pin_id($url){
-    $parts = pai_url_extract_parts($url);
+function pinim_url_extract_pin_id($url){
+    $parts = pinim_url_extract_parts($url);
     if($parts[0]!='pin') return false;
         
     return (int)$parts[1];
@@ -46,9 +46,9 @@ function pai_url_extract_pin_id($url){
  * @return string (or false if this is not a valid board url).
  */
 
-function pai_url_extract_board_slug($url){
-    if (!pai_url_extract_user($url)) return false;
-    $parts = pai_url_extract_parts($url);
+function pinim_url_extract_board_slug($url){
+    if (!pinim_url_extract_user($url)) return false;
+    $parts = pinim_url_extract_parts($url);
     return (string)$parts[1];
 }
 
@@ -58,8 +58,8 @@ function pai_url_extract_board_slug($url){
  * @return string (or false if this is not a valid pin source).
  */
 
-function pai_url_extract_source_slug($url){
-    $parts = pai_url_extract_parts($url);
+function pinim_url_extract_source_slug($url){
+    $parts = pinim_url_extract_parts($url);
     if($parts[0]!='source') return false;
     
     return $parts[1];
@@ -71,7 +71,7 @@ function pai_url_extract_source_slug($url){
  * @return boolean
  */
 
-function pai_pin_exists($pin_id){
+function pinim_pin_exists($pin_id){
     $query_args = array(
         'post_status'   => array('publish','pending','draft','future','private'),
         'meta_query'        => array(
@@ -94,7 +94,7 @@ function pai_pin_exists($pin_id){
  * @return boolean
  */
 
-function pai_image_exists($img_url){
+function pinim_image_exists($img_url){
     $query_args = array(
         'post_type'         => 'attachment',
         'post_status'       => 'inherit',
@@ -121,7 +121,7 @@ function pai_image_exists($img_url){
 * @param type $term_args
 * @return boolean 
 */
-function pai_get_term_id($term_name,$term_tax,$term_args=array()){
+function pinim_get_term_id($term_name,$term_tax,$term_args=array()){
     
     $parent = false;
 
@@ -152,7 +152,7 @@ function pai_get_term_id($term_name,$term_tax,$term_args=array()){
  * @return type
  */
 
-function pai_get_pin_url($pin_id){
+function pinim_get_pin_url($pin_id){
     $pin_url = sprintf('http://www.pinterest.com/pin/%s',$pin_id);
     return $pin_url;
 }
@@ -163,7 +163,7 @@ function pai_get_pin_url($pin_id){
  * @return type
  */
 
-function pai_get_user_url($username){
+function pinim_get_user_url($username){
     $user_url = sprintf('http://www.pinterest.com/%s',$username);
     return $user_url;
 }
@@ -175,7 +175,7 @@ function pai_get_user_url($username){
  * @return type
  */
 
-function pai_get_board_url($username,$board_slug){
+function pinim_get_board_url($username,$board_slug){
     $board_url = sprintf('http://www.pinterest.com/%1s/%2s',$username,$board_slug);
     return $board_url;
 }
@@ -186,7 +186,7 @@ function pai_get_board_url($username,$board_slug){
  * @return boolean
  */
 
-function pai_get_source_text($post_id = false){
+function pinim_get_source_text($post_id = false){
     
     if(!$post_id) $post_id = get_the_ID();
     
@@ -194,7 +194,7 @@ function pai_get_source_text($post_id = false){
     if(!$source) return false;
     
     $block = '<p class="pinterest-importer-source"><a href="'.$source.'" target="_blank">'.__('Source','pinim').'</a></p>';
-    return apply_filters('pai_get_source_text',$block,$post_id);
+    return apply_filters('pinim_get_source_text',$block,$post_id);
 }
 
 /**
@@ -204,9 +204,9 @@ function pai_get_source_text($post_id = false){
  * @return type
  */
 
-function pai_add_source_text($content,$post){
+function pinim_add_source_text($content,$post){
     $post_id = $post->ID;
-    if ($text_block = pai_get_source_text($post_id)){
+    if ($text_block = pinim_get_source_text($post_id)){
         $content.= $text_block;
     }
     return $content;   
@@ -219,36 +219,43 @@ function pai_add_source_text($content,$post){
  * @return type
  */
 
-function pai_get_pin_meta($key = false, $post_id = false, $single = false){
+function pinim_get_pin_meta($key = false, $post_id = false, $single = false){
     $pin_metas = array();
     $prefix = '_pinterest-';
     $metas = get_post_custom($post_id);
+
     foreach((array)$metas as $meta_key=>$meta){
         $splitkey = explode($prefix,$meta_key);
         if (!isset($splitkey[1])) continue;
         $pin_key = $splitkey[1];
-
-        if ($key){
-            if ($pin_key == $key) return $meta;
-        }else{
-            $pin_metas[$pin_key] = $meta;
-        }
+        $pin_metas[$pin_key] = $meta;
 
     }
+    
+    if ($key){
+        $pin_metas = $pin_metas[$key];
+    }
 
-    return $pin_metas;
+    if($single){
+        return $pin_metas[0];
+    }else{
+        return $pin_metas;
+    }
+
+
 }
 
 
-function pai_get_blank_post(){
+function pinim_get_blank_post(){
     $blank_post = array(
         'post_author'       => get_current_user_id(),
         'post_type'         => 'post',
         'post_status'       =>'publish',
         'post_category'     => array(pinim()->root_category_id),
+        'tags_input'        => array()
     );
 
-    return apply_filters('pai_blank_post',$blank_post);
+    return apply_filters('pinim_get_blank_post',$blank_post);
 }
 
 

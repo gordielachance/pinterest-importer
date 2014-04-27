@@ -2,7 +2,7 @@
 /*
 Plugin Name: Pinterest Importer
 Description: Import images & videos from a Pinterest account.
-Version: 0.1.0
+Version: 0.1.1
 Author: G.Breant
 Author URI: http://sandbox.pencil2d.org
 Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
@@ -18,7 +18,7 @@ class PinIm {
     /**
     * @public string plugin version
     */
-    public $version = '0.1.0';
+    public $version = '0.1.1';
 
     /**
     * @public string plugin DB version
@@ -114,10 +114,10 @@ class PinIm {
         add_action( 'admin_init', array(&$this,'load_textdomain'));
         add_action( 'admin_init', array(&$this,'register_importer'));
         
-        $root_category_id = pai_get_term_id('Pinterest.com','category'); // create or get the root category
-        $this->root_category_id = apply_filters('pai_get_root_category_id',$root_category_id);
+        $root_category_id = pinim_get_term_id('Pinterest.com','category'); // create or get the root category
+        $this->root_category_id = apply_filters('pinim_get_root_category_id',$root_category_id);
 
-        add_filter('pai_get_post_content','pai_add_source_text',10,2);
+        add_filter('pinim_get_post_content','pinim_add_source_text',10,2);
 
 
     }
@@ -160,7 +160,7 @@ class PinIm {
      */
     
     function pinim_metabox(){
-        $metas = pai_get_pin_meta();
+        $metas = pinim_get_pin_meta();
         
         if (empty($metas)) return;
         
@@ -174,7 +174,9 @@ class PinIm {
     
     function pinim_metabox_content( $post ) {
         
-        $metas = pai_get_pin_meta();
+        $metas = pinim_get_pin_meta();
+
+        
         ?>
         <table id="pinterest-list-table">
                 <thead>
@@ -187,11 +189,13 @@ class PinIm {
                     <?php
                     foreach ( $metas as $meta_key => $meta ) {
                         
+                        $content = null;
+                        
                          switch ($meta_key){
                             case 'pinner':
                                 $meta_key = __('Pinner URL','pinim');
-                                $pinner_url = pai_get_user_url($meta);
-                                $meta = '<a href="'.$pinner_url.'" target="_blank">'.$pinner_url.'</a>';
+                                $pinner_url = pinim_get_user_url($meta[0]);
+                                $content = '<a href="'.$pinner_url.'" target="_blank">'.$pinner_url.'</a>';
                             break;
                             case 'pin_id':
                                 $meta_key = __('Pin URL','pinim');
@@ -200,22 +204,25 @@ class PinIm {
                                 $links_str = null;
                                 
                                 foreach((array)$meta as $pin_id){
-                                    $pin_url = pai_get_pin_url($pin_id);
+                                    $pin_url = pinim_get_pin_url($pin_id);
                                     $links[] = '<a href="'.$pin_url.'" target="_blank">'.$pin_url.'</a>';
                                 }
                                 
-                                $meta = implode('<br/>',$links);
+                                $content = implode('<br/>',$links);
                                 
 
                             break;
                             case 'board_slug':
                                 $meta_key = __('Board URL','pinim');
-                                $board_url = pai_get_board_url($metas['pinner'],$meta);
-                                $meta = '<a href="'.$board_url.'" target="_blank">'.$board_url.'</a>';
+                                $board_url = pinim_get_board_url($metas['pinner'],$meta[0]);
+                                $content = '<a href="'.$board_url.'" target="_blank">'.$board_url.'</a>';
                             break;
                             case 'source':
                                 $meta_key = __('Source URL','pinim');
-                                $meta = '<a href="'.$meta.'" target="_blank">'.$meta.'</a>';
+                                $content = '<a href="'.$meta[0].'" target="_blank">'.$meta[0].'</a>';
+                            break;
+                            default:
+                                $content = $meta[0];
                             break;
                         }
                         
@@ -226,7 +233,7 @@ class PinIm {
                                     <?php echo $meta_key;?>
                                 </td>
                                 <td>
-                                    <?php echo $meta;?>
+                                    <?php echo $content;?>
                                 </td>
                             </tr>
                             <?php

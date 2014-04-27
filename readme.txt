@@ -15,11 +15,11 @@ Import pins from a Pinterest.com account !
 Useful to backup your whole Pinterest account and convert pins to Wordpress posts.
 You can run it multiple time as it won't save twice the same pin.
 
-* Supports both image & video pins
-* Uses posts formats
+* Supports both image & video pins (uses post formats)
 * Supports featured images
-* Boards are saved as categories under the main category "Pinterest.com".
-* Keeps the Pinterest informations (pin ID, source, etc) as post metas (with prefix _pinterest-)
+* Boards are saved as categories under the main category "Pinterest.com"
+* Handles hashtags,which are converted to post tags
+* Saves the Pinterest informations (pin ID, source, etc) as post metas (with prefix _pinterest-)
 
 It is not able (yet) to get the time the item was pinned.
 
@@ -46,7 +46,7 @@ If you are a plugin developer, [we would like to hear from you](https://github.c
 == Frequently Asked Questions ==
 
 = I'm not happy with the content created for posts imported.  How can I change that ? =
-You can set the content you want by using the filter "pai_get_post_content", see function set_post_content().
+You can set the content you want by using the filter "pinim_get_post_content", see function Pinterest_Importer::set_post_content().
 
 == Screenshots ==
 
@@ -55,13 +55,14 @@ You can set the content you want by using the filter "pai_get_post_content", see
 
 = TODO =
 * Wait for script to have stopped before be allowed to run it again
-* allow multiple pin IDs per post
-* detect hashtags and assign them as tags (slugs)
 * Feedback message for terms (categories and tags)
 * 2 step screen with author / category default
 * login with username and password to allow to fetch private pins
 
-= 0.1 =
+= 0.1.1 =
+* Improved code (splitted into classes)
+* Hashtags are now saved as post tags
+= 0.1 ==
 * First release
 
 
