@@ -73,7 +73,6 @@ class Pinim_Pin {
         }
         $title = trim($title);
 
-            
         return $title;
         
     }
@@ -185,6 +184,8 @@ class PinIm_List {
             }
 
             $html = file_get_contents($file);
+            $html = quoted_printable_decode($html); //mhtml fix (http://stackoverflow.com/questions/12147992/issue-parsing-mhtml)
+
             $pins_list = phpQuery::newDocumentHTML($html);
 
             if(!isset($pins_list)){
@@ -215,7 +216,7 @@ class PinIm_List {
 
         //get pins
         foreach (pq('.pinWrapper') as $pin_html) {
-            
+
             $pin_id = self::get_pin_id($pin_html);
             if (!$pin_id) continue;
             
@@ -237,10 +238,11 @@ class PinIm_List {
             }            
 
             $pins[] = $pin;
+
         }
 
         if (empty($pins)){
-            return new WP_Error( 'phpQuery_parse_error', __( 'No pins were found', 'pinim' ));
+            return new WP_Error( 'phpQuery_parse_error', __( 'No pins were found...', 'pinim' ));
         }
 
         return $pins;
@@ -267,8 +269,8 @@ class PinIm_List {
 
         $credit_title = pq($pin_html)->find('.creditTitle')->htmlOuter();
         $credit_title = trim(strip_tags($credit_title));
-        $credits_link = pq($credits_el)->find('a.creditItem')->attr('href');
-        
+        $credits_link = pq($credits_el)->find('.creditItem a')->attr('href');
+
         if (!$credits_link) return false;
 
         if ($board_slug = pinim_url_extract_board_slug($credits_link)){
@@ -296,7 +298,7 @@ class PinIm_List {
 
         $credit_title = pq($pin_html)->find('.creditTitle')->htmlOuter();
         $credit_title = trim(strip_tags($credit_title));
-        $credits_link = pq($credits_el)->find('a.creditItem')->attr('href');
+        $credits_link = pq($credits_el)->find('.creditItem a')->attr('href');
         
         if (!$credits_link) return false;
 
@@ -394,8 +396,24 @@ class Pinterest_Importer extends WP_Importer {
 		$this->footer();
 	}
 
-        function feedback($message){
-            echo $message.'<br/>';
+        function feedback($feedback, $error = false){
+            
+            $classes = array('pinim-feedback');
+            
+            if( is_wp_error( $feedback ) ) {
+                $message = $feedback->get_error_message();
+                $error = true;
+            }elseif( is_array($feedback)){
+                $message = implode('<br/>', $feedback);
+            }else{
+                $message = $feedback;
+            }
+            
+            if ($error){
+                $classes[] = 'pinim-feedback-error';
+            }
+            
+            echo '<p class="'.implode(' ',$classes).'">'.$message.'</p>';
         }
 
 	/**
@@ -423,26 +441,38 @@ class Pinterest_Importer extends WP_Importer {
                 $this->import_start( $file );
                 
                 $pins = $this->raw_posts;
-                $found_count = count($pins);
-                $duplicates = $this->find_duplicates($pins);
                 
+                if (is_wp_error( $pins )){
+
+                    $this->feedback($pins);
                 
-                if (!empty($duplicates)){
-                    $dupli_count = count($duplicates);
-                    $pins = array_udiff($pins, $duplicates,
-                      function ($obj_a, $obj_b) {
-                        return $obj_a->pin_id - $obj_b->pin_id;
-                      }
-                    );
+                }else{
                     
-                    $waiting_count = $found_count - $dupli_count;
+                    $found_count = count($pins);
+
+                    $duplicates = $this->find_duplicates($pins);
+
+
+                    if (!empty($duplicates)){
+                        $dupli_count = count($duplicates);
+                        $pins = array_udiff($pins, $duplicates,
+                          function ($obj_a, $obj_b) {
+                            return $obj_a->pin_id - $obj_b->pin_id;
+                          }
+                        );
+
+                        $waiting_count = $found_count - $dupli_count;
+
+                        $message = sprintf(__('%1s pins found, %2s already have been imported. Trying to import %3s pins...','pinim'),$found_count,$dupli_count,$waiting_count);
+                        $this->feedback($message);
+                    }
+
+                    $pins = array_values($pins);//reset keys
+
+                    $this->process_pins($pins);
                     
-                    $message = sprintf(__('%1s pins found, %2s already have been imported. Trying to import %3s pins...','pinim'),$found_count,$dupli_count,$waiting_count);
-                    $this->feedback($message);
                 }
-                
-                $pins = array_values($pins);//reset keys
-		$this->process_pins($pins);
+
 		$this->import_end();
 	}
         
@@ -899,7 +929,7 @@ class Pinterest_Importer extends WP_Importer {
                 echo '<h3>'.__('Save and upload your pins page','pinim').'</h3>';
 		echo '<p><ol><li>'.sprintf(__("Login to %1s and head to your pins page, which url should be %2s.", 'pinim' ),'<a href="http://www.pinterest.com" target="_blank">Pinterest.com</a>','<code>http://www.pinterest.com/YOURLOGIN/pins/</code>').'</li>';
 		echo '<li>'.__( 'Scroll down the page and be sure all your collection is loaded.', 'pinim' ).'</li>';
-                echo '<li>'.__( 'Save this file to your computer as an HTML file, then upload it here.', 'pinim' ).'</li></ol></p>';
+                echo '<li>'.sprintf(__( 'Save this file to your computer as an %1s file, then upload it here.', 'pinim' ),'<a href="http://en.wikipedia.org/wiki/MHTML#Browser_support" target="_blank">MHTML</a>').'</li></ol></p>';
                 echo '<p>'.__("<strong>Be careful</strong>, reloading this page <u>when the import is not finished</u> may create each pin several times.  Use at your own risks.",'pinim').'</p>';
                 
 		wp_import_upload_form( 'admin.php?import=pinterest-pins&amp;step=1' );

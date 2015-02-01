@@ -13,6 +13,11 @@ Import pins from a Pinterest.com account.
 
 Import pins from a Pinterest.com account !
 Useful to backup your whole Pinterest account and convert pins to Wordpress posts.
+
+The difference with other Pinterest plugins is that this one allows you to make a FULL backup of your pins, not only the last x pins from Pinterest's RSS feed.
+This will need you to save a [MHTML file](http://en.wikipedia.org/wiki/MHTML) of your pins page and upload it to your blog with this importer.
+You'll quickly learn to handle this.
+
 You can run it multiple time as it won't save twice the same pin.
 
 * Supports both image & video pins (uses post formats)
@@ -59,6 +64,14 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 * 2 step screen with author / category default
 * login with username and password to allow to fetch private pins
 
+
+//TO FIX : MHTML stuff
+= 0.1.2 =
+* Updated plugin's readme.txt
+* quoted_printable_decode() to decode MHTML
+* Uploaded file needs to be MHTML to allow parsing
+* Improved feedback
+* Updated "a.creditItem" selector to ".creditItem a" in get_pin_board() and get_pin_source()
 = 0.1.1 =
 * Improved code (splitted into classes)
 * Hashtags are now saved as post tags
