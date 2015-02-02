@@ -426,7 +426,7 @@ class Pinterest_Importer extends WP_Importer {
 		$file = wp_import_handle_upload();
 
 		if ( isset($file['error']) ) {
-			echo $file['error'];
+			$this->feedback($file['error'],true);
 			return;
 		}
                 
@@ -642,22 +642,22 @@ class Pinterest_Importer extends WP_Importer {
 	 */
 	function import_start( $file ) {
             
-                $this->id = $file['id']; //uploaded html file ID
+        $this->id = $file['id']; //uploaded html file ID
                 
 		$file = $file['file'];
                 
-                $pins_list = new PinIm_List($file);
+		$pins_list = new PinIm_List($file);
                 
-                if (is_wp_error($pins_list)){
-                    echo esc_html( $pins_list->get_error_message() ) . '</p>';
-                    $this->footer();
-                    die();
-                }
+		if (is_wp_error($pins_list)){
+			echo esc_html( $pins_list->get_error_message() ) . '</p>';
+			$this->footer();
+			die();
+		}
 
-                $this->raw_posts = $pins_list->fetch_pins();
+		$this->raw_posts = $pins_list->fetch_pins();
 
 		wp_defer_term_counting( true );
-                wp_suspend_cache_invalidation( true );
+		wp_suspend_cache_invalidation( true );
 		do_action( 'import_start' );
 	}
 
@@ -665,7 +665,7 @@ class Pinterest_Importer extends WP_Importer {
 	 * Performs post-import cleanup of files and the cache
 	 */
 	function import_end() {
-                wp_suspend_cache_invalidation( false );
+ 		wp_suspend_cache_invalidation( false );
 
 		wp_import_cleanup( $this->id );
 
@@ -771,12 +771,8 @@ class Pinterest_Importer extends WP_Importer {
 
                     } else {
                             //feedback
-                            echo'<span class="pinterest-feedback">';
-                            echo"<em>";
-                            printf(__("Image size: %s",'pinim'), size_format( filesize( $upload['file'] ) ) );
-                            echo"</em>";
-                            echo"</span>";
-                            echo"<br/>";
+                            $feedback = sprintf(__("Image size: %s",'pinim'), size_format( filesize( $upload['file'] ) ) );
+                            $this->feedback($feedback);
                     }
 
 
@@ -818,12 +814,8 @@ class Pinterest_Importer extends WP_Importer {
                     add_post_meta($attachment_id, '_pinterest-image-url',$image_url);
                 }else{
                     //feedback
-                    echo'<span class="pinterest-feedback">';
-                    echo"<em>";
-                    printf(__("Image already exists, link attachment #%s",'pinim'),$attachment_id);
-                    echo"</em>";
-                    echo"</span>";
-                    echo"<br/>";
+                    $feedback = sprintf(__("Image already exists, link attachment #%s",'pinim'),$attachment_id);
+                    $this->feedback($feedback);
                 }
                 
                 return $attachment_id;
@@ -924,15 +916,17 @@ class Pinterest_Importer extends WP_Importer {
 	 */
 	function greet() {
 		echo '<div class="narrow">';
-                echo '<p>'.__("Howdy! Wanna backup your Pinterest profile ?  Here's how to do.",'pinim').'<br/>';
-                echo __("You can run this plugin several time as it won't save twice the same pin.",'pinim').'</p>';
-                echo '<h3>'.__('Save and upload your pins page','pinim').'</h3>';
+		echo '<p>'.__("Howdy! Wanna backup your Pinterest profile ?  Here's how to do.",'pinim').'<br/>';
+		echo __("You can run this plugin several time as it won't save twice the same pin.",'pinim').'</p>';
+		echo '<h3>'.__('Save and upload your pins page','pinim').'</h3>';
 		echo '<p><ol><li>'.sprintf(__("Login to %1s and head to your pins page, which url should be %2s.", 'pinim' ),'<a href="http://www.pinterest.com" target="_blank">Pinterest.com</a>','<code>http://www.pinterest.com/YOURLOGIN/pins/</code>').'</li>';
 		echo '<li>'.__( 'Scroll down the page and be sure all your collection is loaded.', 'pinim' ).'</li>';
-                echo '<li>'.sprintf(__( 'Save this file to your computer as an %1s file, then upload it here.', 'pinim' ),'<a href="http://en.wikipedia.org/wiki/MHTML#Browser_support" target="_blank">MHTML</a>').'</li></ol></p>';
-                echo '<p>'.__("<strong>Be careful</strong>, reloading this page <u>when the import is not finished</u> may create each pin several times.  Use at your own risks.",'pinim').'</p>';
-                
+		echo '<li>'.sprintf(__( 'Save this file to your computer as an %1s file, then upload it here.', 'pinim' ),'<a href="http://en.wikipedia.org/wiki/MHTML#Browser_support" target="_blank">MHTML</a>').'</li></ol></p>';
+		echo '<p>'.__("<strong>Be careful</strong>, reloading this page <u>when the import is not finished</u> may create each pin several times.  Use at your own risks.",'pinim').'</p>';
+
 		wp_import_upload_form( 'admin.php?import=pinterest-pins&amp;step=1' );
+
+
 		echo '</div>';
 	}
 

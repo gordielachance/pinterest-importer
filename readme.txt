@@ -65,7 +65,6 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 * login with username and password to allow to fetch private pins
 
 
-//TO FIX : MHTML stuff
 = 0.1.2 =
 * Updated plugin's readme.txt
 * quoted_printable_decode() to decode MHTML
