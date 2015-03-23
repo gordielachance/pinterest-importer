@@ -153,7 +153,7 @@ function pinim_get_term_id($term_name,$term_tax,$term_args=array()){
  */
 
 function pinim_get_pin_url($pin_id){
-    $pin_url = sprintf('http://www.pinterest.com/pin/%s',$pin_id);
+    $pin_url = sprintf('https://www.pinterest.com/pin/%s',$pin_id);
     return $pin_url;
 }
 
@@ -164,7 +164,7 @@ function pinim_get_pin_url($pin_id){
  */
 
 function pinim_get_user_url($username){
-    $user_url = sprintf('http://www.pinterest.com/%s',$username);
+    $user_url = sprintf('https://www.pinterest.com/%s',$username);
     return $user_url;
 }
 
@@ -176,7 +176,7 @@ function pinim_get_user_url($username){
  */
 
 function pinim_get_board_url($username,$board_slug){
-    $board_url = sprintf('http://www.pinterest.com/%1s/%2s',$username,$board_slug);
+    $board_url = sprintf('https://www.pinterest.com/%1s/%2s',$username,$board_slug);
     return $board_url;
 }
 

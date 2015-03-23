@@ -33,17 +33,17 @@ class Pinim_Pin {
             $pin_url = pinim_get_pin_url($this->pin_id);
             $pin_doc = wp_remote_get( $pin_url );
 
-            if(isset($pin_doc['body'])){
+            if(!empty($pin_doc['body'])){
                 $pin_html = phpQuery::newDocumentHTML($pin_doc['body']);
             }
 
             if(!isset($pin_html)){
-                return new WP_Error( 'phpQuery_parse_error', __( 'There was an error when reading this HTML file', 'wordpress-importer' ));
+                return new WP_Error( 'phpQuery_parse_error', __( 'There was an error while loading the single pin HTML', 'wordpress-importer' ));
             }
             
             //TO FIX TO CHECK
             //if 404, abord
-            
+
             $data = array(
                 'thumb'     => $this->get_featured_image_url($pin_html),//thumbnail
                 'source'    => $this->get_source_url($pin_html),//source
@@ -53,6 +53,7 @@ class Pinim_Pin {
             $data = array_filter($data); //remove empty values
             
             foreach((array)$data as $prop=>$value){
+                if (is_wp_error($value))return $value;
                 $this->$prop = $value;
             }
             
@@ -111,8 +112,12 @@ class Pinim_Pin {
             }
 
             //404 ERROR ? TO FIX TO CHECK
-            if ($featured_image=='http://passets-ec.pinterest.com/images/about/logos/Pinterest_Favicon.png'){
-                return false;
+            if (strpos($featured_image,'Pinterest_Favicon.png') !== false) {
+                $featured_image = false;
+            }
+            
+            if ( !$featured_image ) {
+                return new WP_Error( 'no_thumb', __( 'Unable to get thumbnbail URL', 'pinim' ));
             }
 
             return $featured_image;
@@ -122,6 +127,10 @@ class Pinim_Pin {
              phpQuery::selectDocument($pin_html);
 
             $source = pq($pin_html)->find('meta[property=og:see_also]')->attr('content');
+            
+            if (!$source) return new WP_Error( 'no_source_url', __( 'Unable to get source URL', 'pinim' ));
+            
+            
             return $source;
     }
 
@@ -129,6 +138,9 @@ class Pinim_Pin {
         phpQuery::selectDocument($pin_html);
         $url = pq($pin_html)->find('meta[name=pinterestapp:pinner]')->attr('content');
         $user = pinim_url_extract_user($url);
+        
+        if (!$user) return new WP_Error( 'no_pinner', __( 'Unable to get pinner name', 'pinim' ));
+        
         return $user;
     }
 
@@ -515,6 +527,8 @@ class Pinterest_Importer extends WP_Importer {
                     $this->feedback($pin_html->get_error_message());
                     continue;
                 }
+                
+                
 
                 //create post
                 $post_id = $this->save_pin($pin);

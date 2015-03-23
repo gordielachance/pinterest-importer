@@ -65,6 +65,8 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 * login with username and password to allow to fetch private pins
 
 
+= 0.1.3 =
+* Replaced http:// by https:// in pinim_get_pin_url(); pinim_get_user_url(); pinim_get_board_url(); because wp_remote_get() was returning 301.
 = 0.1.2 =
 * Updated plugin's readme.txt
 * quoted_printable_decode() to decode MHTML

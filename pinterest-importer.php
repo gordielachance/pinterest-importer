@@ -2,7 +2,7 @@
 /*
 Plugin Name: Pinterest Importer
 Description: Import images & videos from a Pinterest account.
-Version: 0.1.2
+Version: 0.1.3
 Author: G.Breant
 Author URI: http://sandbox.pencil2d.org
 Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
@@ -18,7 +18,7 @@ class PinIm {
     /**
     * @public string plugin version
     */
-    public $version = '0.1.2';
+    public $version = '0.1.3';
 
     /**
     * @public string plugin DB version
