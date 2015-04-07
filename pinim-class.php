@@ -34,7 +34,7 @@ class Pinim_Pin {
             $pin_doc = wp_remote_get( $pin_url );
 
             if(!empty($pin_doc['body'])){
-                $pin_html = phpQuery::newDocumentHTML($pin_doc['body']);
+                die("toto");
             }
 
             if(!isset($pin_html)){
@@ -924,11 +924,33 @@ class Pinterest_Importer extends WP_Importer {
 	function footer() {
 		echo '</div></div>';
 	}
+        
+        function greet(){
+
+        // Set class property
+        
+            ?>
+            <div class="wrap">
+                <?php screen_icon(); ?>
+                <h2><?php _e('Pinterest Importer','pinim');?></h2>  
+
+                <form method="post" action="options.php">
+                <?php
+                    // This prints out all hidden setting fields
+                    settings_fields( 'pinim_user_settings' );   
+                    do_settings_sections( 'pinim-settings-admin' );
+                    submit_button(__('Login'),'pinim'); 
+                ?>
+                </form>
+            </div>
+            <?php
+        }
+        
 
 	/**
 	 * Display introductory text and file upload form
 	 */
-	function greet() {
+	function greet2() {
 		echo '<div class="narrow">';
 		echo '<p>'.__("Howdy! Wanna backup your Pinterest profile ?  Here's how to do.",'pinim').'<br/>';
 		echo __("You can run this plugin several time as it won't save twice the same pin.",'pinim').'</p>';
@@ -940,6 +962,37 @@ class Pinterest_Importer extends WP_Importer {
 
 		wp_import_upload_form( 'admin.php?import=pinterest-pins&amp;step=1' );
 
+                if ($pinterest_login && $pinterest_password){
+                    require pinim()->plugin_dir . '_inc/lib/pinterest-pinner/PinterestPinner.php';
+                    $pinterest = new PinterestPinner($pinterest_login, $pinterest_password);
+                    if ($user_resources = $pinterest->getUserResources()){
+                        
+                        $boards = $pinterest->getUserBoards();
+
+                        foreach ((array)$boards as $board){
+                            $pins = $pinterest->getBoardPins($board);
+                            foreach($pins as $key=>$pin){
+                                printf('pin #:%1$d : %2$s<br/>',$key+1,$pin['description']);
+                            }
+                            die();
+                        }
+                        
+                        echo"<br>TOTO</br>";
+                        
+                        
+                        
+                        print_r($boards[0]);
+                        
+                        echo"<br>TOTO</br>";
+                        
+                        die("did login");
+                    }else{
+                        die("did NOT login");
+                    }
+                    die();
+                }
+                
+                
 
 		echo '</div>';
 	}
