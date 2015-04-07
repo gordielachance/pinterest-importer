@@ -39,8 +39,10 @@ class PinIm {
     */
     public $plugin_dir = '';
     
-    private $meta_name_options = 'pinim_options';
-    private $usermeta_name_options = 'pinim_options';
+    public $meta_name_options = 'pinim_options';
+    public $usermeta_name_options = 'pinim_options';
+    
+    public $root_category_id = null;
 
 
     /**
@@ -115,7 +117,7 @@ class PinIm {
         add_action( 'admin_init', array(&$this,'load_textdomain'));
         add_action( 'admin_init', array(&$this,'register_importer'));
         add_action( 'admin_init', array( $this, 'settings_page_init' ) );
-        add_action( 'admin_menu',array(&$this,'admin_menu'),10,2);
+        //add_action( 'admin_menu',array(&$this,'admin_menu'),10,2);
 
         if ( ! defined( 'WP_LOAD_IMPORTERS' ) ) return;
 
@@ -176,37 +178,55 @@ class PinIm {
         load_plugin_textdomain( 'pinim', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
     }
     
-    function get_user_option($key = false){
-
-        $default = array(
-            'login'     => null,
-            'password'  => null,
-        );
-
-        if ($user_id = get_current_user_id()){
-            $user_options = get_user_meta( $user_id, $this->usermeta_name_options, true);
-            $user_options = wp_parse_args($user_options, $default);
-        };
+    function sanitize_board_settings( $board_id, $input ){
+        $new_input = array();
         
-        if ($key && isset($user_options[$key])){
-            return $user_options[$key];
-        }else{
-            return $user_options;
+        //included
+        if( isset( $input['included'] )  ){
+            $new_input['included'] = $input['included']; 
         }
         
+        //category
+        if ( isset($input['category']) ){
+            if ( ($input['category']=='custom') && isset($input['category_custom']) && (is_tax('cat', $input['category_custom'] )) ){ //custom cat
+                $new_input['category'] = $input['category_custom'];
+            }else{ // auto cat
+              
+            }
+        }
+
+        //privacy
+        if( isset( $input['private'] )  ){
+            $new_input['private'] = $input['private']; 
+        }
+            
+        return $new_input;
     }
-    
+
     function sanitize_user_settings( $input ){
-        
+
         $user_id = get_current_user_id();
         $new_input = array();
 
+        //login
         if( isset( $input['login'] )  ){
             $new_input['login'] = $input['login']; 
         }
+        
+        //pwd
         if( isset( $input['password'] )  ){
             $new_input['password'] = $input['password']; 
         }
+        
+        //boards
+        if ( isset($input['boards'])){
+            foreach ( (array)$input['boards'] as $board_id=>$board_settings ){
+                $new_input['boards'][$board_id] = $this->sanitize_board_settings( $board_id, $board_settings );
+            }
+        }
+        
+        print_r($new_input);
+        
 
         update_user_meta( $user_id, $this->usermeta_name_options, $new_input );
         
@@ -244,8 +264,8 @@ class PinIm {
             'settings_general'
         );
         
-        $login = $this->get_user_option('login');
-        $password = $this->get_user_option('password');
+        $login = pinim_get_user_option('login');
+        $password = pinim_get_user_option('password');
 
         if ($login && $password){
             
@@ -299,7 +319,7 @@ class PinIm {
     }
     
     function login_field_callback(){
-        $option = $this->get_user_option('login');
+        $option = pinim_get_user_option('login');
         printf(
             '<input type="text" name="%1$s[login]" value="%2$s"/>',
             $this->usermeta_name_options,
@@ -308,7 +328,7 @@ class PinIm {
     }
     
     function password_field_callback(){
-        $option = $this->get_user_option('login');
+        $option = pinim_get_user_option('login');
         printf(
             '<input type="password" name="%1$s[password]" value="%2$s"/>',
             $this->usermeta_name_options,
@@ -330,42 +350,91 @@ class PinIm {
     function section_boards_desc(){
         
     }
-    
+
     function boards_field_callback(){
 
         $board = $this->user_boards[$this->current_user_board];
+        
         $this->current_user_board++;
         
-        $boards_checked = $this->get_user_option('include_boards');
-        if (isset($boards_checked[$board['id']])){
-            $checked = $boards_checked[$board['id']];
+        //include
+        
+        $board_checked = pinim_get_userboard_option($board['id'],'included');
+        
+        $include_checked = true;
+        if ($board_checked){
+            $include_checked_str = checked($board_checked, 'on', false );
         }else{
-            $checked = ($board['privacy']=='public');
+            $include_checked_str = checked(true, true, false );
         }
-        
-        $checked_str = checked($checked, true, false );
-        
+
         printf(
-            '<input type="checkbox" name="%1$s[include_boards][%2$s]" value="on" %3$s/> %4$s',
+            '<p><input type="checkbox" name="%1$s[boards][%2$s][included]" value="on" %3$s/> %4$s</p>',
             $this->usermeta_name_options,
             $board['id'],
-            $checked_str,
+            $include_checked_str,
             __('Include this board','pinim')
         );
         
-        $cat_args = array(
-            'hide_empty' => false,
-            'depth' => 20,
-            'hierarchical'  => 1
+        //category
+        if ($board_category = pinim_get_userboard_option($board['id'],'category')){
+            $selected_cat = $board_category;
+        }else{
+            $selected_cat = $this->root_category_id;
+        }
+
+        $checked_auto_str = checked(true, true, false );
+        
+        $category_auto = sprintf(
+            '<input type="radio" name="%1$s[boards][%2$s][category]" value="auto" %3$s/>%4$s',
+            $this->usermeta_name_options,
+            $board['id'],
+            $checked_auto_str,
+            __('auto','pinim')
         );
         
-        wp_dropdown_categories( $cat_args );
+        $cat_args = array(
+            'hide_empty'    => false,
+            'depth'         => 20, //TO FIX better value here ?
+            'hierarchical'  => 1,
+            'echo'          => false,
+            'selected'      => $selected_cat,
+            'name'          => sprintf('%1$s[boards][%2$s][category_custom]',$this->usermeta_name_options,$board['id'])
+        );
         
-        ?>
+        $checked_custom_str = checked(false, true, false );
+        $custom_cats = wp_dropdown_categories( $cat_args );
+        
+        $category_custom = sprintf(
+            '<input type="radio" name="%1$s[boards][%2$s][category]" value="custom" %3$s/>%4$s %5$s',
+            $this->usermeta_name_options,
+            $board['id'],
+            $checked_custom_str,
+            __('custom','pinim'),
+            $custom_cats
+        );
+        
+        echo "<p><strong>".__('Category:','pinim')."</strong> <span>".$category_auto."</span><span>".$category_custom."</span></p>";
+        
+        //privacy
+        
+        $is_secret_board = ($board['privacy']=='secret');
+        
+        if ($is_secret_board){
+            $secret_checked_str = checked($is_secret_board, true, false );
 
-        <?php
+            printf(
+                '<p><input type="checkbox" name="%1$s[boards][%2$s][private]" value="on" %3$s/> %4$s</p>',
+                $this->usermeta_name_options,
+                $board['id'],
+                $secret_checked_str,
+                __('Set new posts visibility to <em>private</em>','pinim')
+            );
+        }
         
+
         
+
     }
     
     function register_importer() {

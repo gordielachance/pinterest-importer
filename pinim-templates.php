@@ -245,6 +245,42 @@ function pinim_get_pin_meta($key = false, $post_id = false, $single = false){
 
 }
 
+function pinim_get_user_option($key = false, $user_id = false){
+
+    if (!$user_id) $user_id = get_current_user_id();
+    if (!$user_id) return false;
+
+    $default = array(
+        'login'     => null,
+        'password'  => null,
+    );
+
+    $user_options = get_user_meta( $user_id, pinim()->usermeta_name_options, true);
+    $user_options = wp_parse_args($user_options, $default);
+
+    if ($key && isset($user_options[$key])){
+        return $user_options[$key];
+    }else{
+        return $user_options;
+    }
+
+}
+
+function pinim_get_userboard_option($board_id,$key = false, $user_id = false){
+
+    $boards_options = get_user_option('boards', $user_id);
+    if (!isset($boards_options[$board_id])) return false;
+
+    $options = $boards_options[$board_id];
+
+    if ($key && isset($options[$key])){
+        return $options[$key];
+    }else{
+        return $options;
+    }
+
+}
+
 
 function pinim_get_blank_post(){
     $blank_post = array(
