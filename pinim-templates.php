@@ -211,20 +211,6 @@ function pinim_get_boards_data(){
             return new WP_Error( 'pinim', __( "Error while trying to populate user boards datas", 'pinim' ));
         }
     }
-    /*
-    //sanitize data
-    foreach($user_boards as $key => $board){
-
-        $board = array(
-            'ID'    => $board['id'],
-            'title'  => $board['name'],
-        );
-
-        unset($board['id'],$board['name']);
-
-        $user_boards[$key] = $board;
-    }
-    */
 
     return $user_boards;
 }

@@ -619,15 +619,120 @@ class Pinim_Pins_Table extends WP_List_Table {
         ?>
         <div class="alignleft actions">
         <?php
+        
+        $requested_status = pinim_get_screen_pins_import_status();
+        
         if ( 'top' == $which && !is_singular() ) {
-                submit_button( __( 'Import all pins','pinim' ), 'button', 'filter_action', false );
-                submit_button( __( 'Update all pins','pinim' ), 'button', 'filter_action', false );
+            
+                if ($requested_status == 'pending'){
+                    submit_button( __( 'Import all pins','pinim' ), 'button', 'filter_action', false );
+                }elseif ($requested_status == 'processed'){
+                    submit_button( __( 'Update all pins','pinim' ), 'button', 'filter_action', false );
+                }
         }
 
         ?>
         </div>
         <?php
     }
+    
+
+    
+	/**
+	 * Get an associative array ( id => link ) with the list
+	 * of views available on this table.
+	 *
+	 * @since 3.1.0
+	 * @access protected
+	 *
+	 * @return array
+	 */
+	protected function get_views() {
+            
+            $link_args = array(
+                'step'          => 2,   
+                'board_ids'     => implode(',',(array)pinim_get_requested_boards_ids())
+            );
+            
+            $link_processed_args = $link_args;
+            $link_processed_args['pin_status'] = 'processed';
+            
+            $link_pending_args = $link_args;
+            $link_pending_args['pin_status'] = 'pending';
+            
+            
+            
+            $link_processed_classes = array();
+            $link_pending_classes = array();
+            
+            $processed_count = 0;
+            $pending_count = 0;
+            
+            $bulk_pins = pinim_get_requested_pins();
+
+            foreach((array)$bulk_pins as $bulk_pin){
+                if (!$post_id = pinim_get_post_by_pin_id($bulk_pin->pin_id)) continue;
+                $processed_count++;
+            }
+            
+            
+            $pending_count = count($bulk_pins) - $processed_count;
+            
+            //
+            
+            $requested_status = pinim_get_screen_pins_import_status();
+            
+            if ( $requested_status=='processed' ){
+                $link_processed_classes[] = 'current';
+            }
+            if ( $requested_status=='pending' ){
+                $link_pending_classes[] = 'current';
+            }
+
+            $link_processed = sprintf(
+                __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+                pinim_get_tool_page_url($link_processed_args),
+                pinim_get_classes($link_processed_classes),
+                __('Processed','pinim'),
+                $processed_count
+            );
+            
+            $link_pending = sprintf(
+                __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+                pinim_get_tool_page_url($link_pending_args),
+                pinim_get_classes($link_pending_classes),
+                __('Pending','pinim'),
+                $pending_count
+            );
+
+
+		return array(
+                    'pending'       => $link_pending,
+                    'processed'   => $link_processed
+                    
+                    
+                );
+	}
+
+	/**
+	 * Display the list of views available on this table.
+	 *
+	 * @since 3.1.0
+	 * @access public
+	 */
+	public function views() {
+		$views = $this->get_views();
+
+		if ( empty( $views ) )
+			return;
+
+		echo "<ul class='subsubsub'>\n";
+		foreach ( $views as $class => $view ) {
+			$views[ $class ] = "\t<li class='$class'>$view";
+		}
+		echo implode( " |</li>\n", $views ) . "</li>\n";
+		echo "</ul>";
+	}
 
 
     /** ************************************************************************

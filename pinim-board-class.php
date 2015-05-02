@@ -559,15 +559,117 @@ class Pinim_Boards_Table extends WP_List_Table {
         <div class="alignleft actions">
         <?php
         if ( 'top' == $which && !is_singular() ) {
-                submit_button( __( 'Update all boards settings','pinim' ), 'button', 'filter_action', false );
-                submit_button( __( 'Cache all boards pins','pinim' ), 'button', 'filter_action', false );
-                submit_button( __( 'Import all boards pins','pinim' ), 'button', 'filter_action', false );
+            
+            $requested_status = pinim_get_screen_boards_import_status();
+            
+                //submit_button( __( 'Update all boards settings','pinim' ), 'button', 'filter_action', false );
+                
+                if ($requested_status=='cached'){
+                    submit_button( __( 'Import all boards pins','pinim' ), 'button', 'filter_action', false );
+                }elseif ($requested_status=='pending'){
+                    submit_button( __( 'Cache all boards pins','pinim' ), 'button', 'filter_action', false );
+                }
+
         }
 
         ?>
         </div>
         <?php
     }
+    
+	/**
+	 * Get an associative array ( id => link ) with the list
+	 * of views available on this table.
+	 *
+	 * @since 3.1.0
+	 * @access protected
+	 *
+	 * @return array
+	 */
+	protected function get_views() {
+            
+            $link_args = array(
+                'step'          => 1,   
+            );
+            
+            $link_cached_args = $link_args;
+            $link_cached_args['board_status'] = 'cached';
+            
+            $link_pending_args = $link_args;
+            $link_pending_args['board_status'] = 'pending';
+
+            $link_cached_classes = array();
+            $link_pending_classes = array();
+            
+            $cached_count = 0;
+            $pending_count = 0;
+            
+            $boards_data = pinim_get_boards_data();
+
+            foreach((array)$boards_data as $board_data){
+                $board = new Pinim_Board($board_data['id']);
+                if (!$queue = $board->get_pins_queue()) continue;
+                $cached_count++;
+            }
+            
+            
+            $pending_count = count($boards_data) - $cached_count;
+            
+            //
+            
+            $requested_status = pinim_get_screen_boards_import_status();
+            
+            if ( $requested_status=='cached' ){
+                $link_cached_classes[] = 'current';
+            }
+            if ( $requested_status=='pending' ){
+                $link_pending_classes[] = 'current';
+            }
+
+            $link_cached = sprintf(
+                __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+                pinim_get_tool_page_url($link_cached_args),
+                pinim_get_classes($link_cached_classes),
+                __('Ready','pinim'),
+                $cached_count
+            );
+            
+            $link_pending = sprintf(
+                __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+                pinim_get_tool_page_url($link_pending_args),
+                pinim_get_classes($link_pending_classes),
+                __('Needs cache refresh','pinim'),
+                $pending_count
+            );
+
+
+		return array(
+                    'pending'       => $link_pending,
+                    'caches'   => $link_cached
+                    
+                    
+                );
+	}
+
+	/**
+	 * Display the list of views available on this table.
+	 *
+	 * @since 3.1.0
+	 * @access public
+	 */
+	public function views() {
+		$views = $this->get_views();
+
+		if ( empty( $views ) )
+			return;
+
+		echo "<ul class='subsubsub'>\n";
+		foreach ( $views as $class => $view ) {
+			$views[ $class ] = "\t<li class='$class'>$view";
+		}
+		echo implode( " |</li>\n", $views ) . "</li>\n";
+		echo "</ul>";
+	}
 
 
     /** ************************************************************************

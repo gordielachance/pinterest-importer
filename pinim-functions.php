@@ -293,8 +293,7 @@ function pinim_get_boards_filter_action(){
     return $action;
 }
 
-function pinim_get_requested_boards(){
-    
+function pinim_get_requested_boards_ids(){
     $bulk_boards_ids = array();
     $bulk_boards = array();
     
@@ -314,6 +313,14 @@ function pinim_get_requested_boards(){
     }elseif ( isset($_REQUEST['board_ids']) ) {
         $bulk_boards_ids = explode(',',$_REQUEST['board_ids']);
     }
+
+    return $bulk_boards_ids;
+}
+
+function pinim_get_requested_boards(){
+    
+    $bulk_boards_ids = pinim_get_requested_boards_ids();
+    $bulk_boards = array();
 
     foreach ((array)$bulk_boards_ids as $bulk_board_id){
         $bulk_boards[] = new Pinim_Board($bulk_board_id);
@@ -371,10 +378,26 @@ function pinim_get_requested_pins(){
         }
 
     }
-
-    foreach ((array)$bulk_pins_ids as $bulk_pin_id){
-        $pins[] = new Pinim_Pin($bulk_pin_id);
-    }
     
     return $pins;
+}
+
+function pinim_get_screen_pins_import_status(){
+    $status = 'pending';
+
+    if (isset($_REQUEST['pin_status'])){
+        $status = $_REQUEST['pin_status'];
+    }
+
+    return $status;
+}
+
+function pinim_get_screen_boards_import_status(){
+    $status = 'pending';
+
+    if (isset($_REQUEST['board_status'])){
+        $status = $_REQUEST['board_status'];
+    }
+
+    return $status;
 }
