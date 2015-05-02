@@ -2,14 +2,14 @@
 /*
 Plugin Name: Pinterest Importer
 Description: Import images & videos from a Pinterest account.
-Version: 0.1.3
+Version: 0.2.0
 Author: G.Breant
 Author URI: http://sandbox.pencil2d.org
 Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
 License: GPL2
 */
 
-
+//ini_set('display_errors','Off'); //FIX for sessions (headers already sent...) - TO IMPROVE !
 
 class PinIm {
 
@@ -18,7 +18,7 @@ class PinIm {
     /**
     * @public string plugin version
     */
-    public $version = '0.1.3';
+    public $version = '0.2.0';
 
     /**
     * @public string plugin DB version
@@ -40,9 +40,9 @@ class PinIm {
     public $plugin_dir = '';
     
     public $meta_name_options = 'pinim_options';
-    public $usermeta_name_options = 'pinim_options';
-    
-    public $root_category_id = null;
+
+    var $Pinterest = null;
+    var $user_boards_options = null;
 
 
     /**
@@ -60,7 +60,10 @@ class PinIm {
             return self::$instance;
     }
 
-    public $import_attachment_size_limit;
+    var $pinterest_url = 'https://www.pinterest.com';
+    var $root_term_name = 'Pinterest.com';
+    var $likes_term_name = 'Likes';
+        
 
     /**
         * A dummy constructor to prevent bbPress from being loaded more than once.
@@ -79,12 +82,12 @@ class PinIm {
             $this->plugin_dir = plugin_dir_path( $this->file );
             $this->plugin_url = plugin_dir_url ( $this->file );
 
-            $this->import_attachment_size_limit = 0; //0 = unlimited
-            
             $this->options_default = array(
-
+                'boards_per_page'   => 20,
+                'pins_per_page'     => 50,
+                'category_root_id'  => null,
+                'category_likes_id' => null,
             );
-            
             $this->options = wp_parse_args(get_option( $this->meta_name_options), $this->options_default);
 
     }
@@ -92,12 +95,27 @@ class PinIm {
     
     
     function includes(){
-
-        // Load Importer API
-        require_once ABSPATH . 'wp-admin/includes/import.php';
         
-        require $this->plugin_dir . '/pinim-templates.php';
+        // Composer Libs
+        require $this->plugin_dir . '/_inc/php/pinterest-pinner/PinterestPinner/PinnerException.php';
+        require $this->plugin_dir . '/_inc/php/pinterest-pinner/PinterestPinner/Pinner.php';
+        require $this->plugin_dir . '/_inc/php/vendor/autoload.php';
+        
+        // Custom Pinterest Pinner
 
+        require $this->plugin_dir . '/pinim-class-pinner.php';
+        
+        
+        //require $this->plugin_dir . '_inc/lib/pinterest-pinner/PinterestPinner.php';
+        require $this->plugin_dir . '/pinim-functions.php';
+        require $this->plugin_dir . '/pinim-templates.php';
+        require $this->plugin_dir . '/pinim-pin-class.php';
+        require $this->plugin_dir . '/pinim-board-class.php';
+        require $this->plugin_dir . '/pinim-dummy-importer.php';
+        require $this->plugin_dir . '/pinim-tool-page.php';
+        require $this->plugin_dir . '/pinim-ajax.php';
+
+        /*
         if ( ! class_exists( 'WP_Importer' ) ) {
                 $class_wp_importer = ABSPATH . 'wp-admin/includes/class-wp-importer.php';
                 if ( file_exists( $class_wp_importer ) ) {
@@ -106,6 +124,8 @@ class PinIm {
         }
 
         require $this->plugin_dir . '/pinim-class.php';
+         * 
+         */
     }
 
     function setup_actions(){  
@@ -114,356 +134,158 @@ class PinIm {
         add_action( 'plugins_loaded', array($this, 'upgrade'));        
         add_action( 'add_meta_boxes', array($this, 'pinim_metabox'));
         
+        add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts_styles' ) );
+        
         add_action( 'admin_init', array(&$this,'load_textdomain'));
-        add_action( 'admin_init', array(&$this,'register_importer'));
-        add_action( 'admin_init', array( $this, 'settings_page_init' ) );
-        //add_action( 'admin_menu',array(&$this,'admin_menu'),10,2);
-
-        if ( ! defined( 'WP_LOAD_IMPORTERS' ) ) return;
-
-        /** Display verbose errors */
-        if (!defined('IMPORT_DEBUG')) define( 'IMPORT_DEBUG', false );
-
-
+        //add_action( 'admin_init', array(&$this,'register_importer'));
+        add_action( 'admin_init', array( $this, 'register_session' ), 1);
         
-        $root_category_id = pinim_get_term_id('Pinterest.com','category'); // create or get the root category
-        $this->root_category_id = apply_filters('pinim_get_root_category_id',$root_category_id);
-
-        add_filter('pinim_get_post_content','pinim_add_source_text',10,2);
+        //pin raw data
+        //add_filter( 'pin_sanitize_raw_datas','pin_raw_data_board_reduce');
         
-        // Must run after wp's `option_update_filter()`, so priority > 10
-        add_action( 'whitelist_options', array( $this, 'whitelist_custom_options_page' ),11 );
-        
-
+        add_filter( 'pin_sanitize_raw_datas','pin_raw_data_remove_unecessary_keys');
+        add_filter( 'pin_sanitize_raw_datas','pin_raw_data_date_to_timestamp');
+        add_filter( 'pin_sanitize_before_insert','pin_raw_data_images_reduce');
+        add_filter( 'pin_sanitize_before_insert','pin_raw_data_remove_self_pinner');
 
     }
-    
-    function admin_menu(){
-        
-        // This page will be under "Settings"
-        
-        $this->options_page = add_management_page(
-                __('Pinterest Importer','pinim'),
-                __('Pinterest Importer','pinim'),
-                'manage_options',
-                'pinim-import',
-                array( $this, 'importer_page' )
-        );
-        
-        //add_submenu_page('edit.php?post_type='.celiogame()->round_post_type, __('Export Entries','celiogame'), __('Export Entries','celiogame'), 'manage_options', 'contest-export', array($this, 'admin_page_export'));
-    }
-    
-    function importer_page(){
-        // Set class property
-            ?>
-            <div class="wrap">
-                <?php screen_icon(); ?>
-                <h2><?php _e('Pinterest Importer','pinim');?></h2>  
-
-                <form method="post" action="options.php">
-                <?php
-                    // This prints out all hidden setting fields
-                    settings_fields( 'pinim_user_settings' );   
-                    do_settings_sections( 'pinim-settings-admin' );
-                    submit_button(__('Login'),'pinim'); 
-                ?>
-                </form>
-            </div>
-            <?php
-    }
-    
-    
     
     function load_textdomain() {
-        load_plugin_textdomain( 'pinim', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+        load_plugin_textdomain( 'pinim', false, $this->plugin_dir . '/languages' );
     }
     
-    function sanitize_board_settings( $board_id, $input ){
-        $new_input = array();
-        
-        //included
-        if( isset( $input['included'] )  ){
-            $new_input['included'] = $input['included']; 
-        }
-        
-        //category
-        if ( isset($input['category']) ){
-            if ( ($input['category']=='custom') && isset($input['category_custom']) && (is_tax('cat', $input['category_custom'] )) ){ //custom cat
-                $new_input['category'] = $input['category_custom'];
-            }else{ // auto cat
-              
-            }
-        }
-
-        //privacy
-        if( isset( $input['private'] )  ){
-            $new_input['private'] = $input['private']; 
-        }
-            
-        return $new_input;
-    }
-
-    function sanitize_user_settings( $input ){
-
-        $user_id = get_current_user_id();
-        $new_input = array();
-
-        //login
-        if( isset( $input['login'] )  ){
-            $new_input['login'] = $input['login']; 
-        }
-        
-        //pwd
-        if( isset( $input['password'] )  ){
-            $new_input['password'] = $input['password']; 
-        }
-        
-        //boards
-        if ( isset($input['boards'])){
-            foreach ( (array)$input['boards'] as $board_id=>$board_settings ){
-                $new_input['boards'][$board_id] = $this->sanitize_board_settings( $board_id, $board_settings );
-            }
-        }
-        
-        print_r($new_input);
-        
-
-        update_user_meta( $user_id, $this->usermeta_name_options, $new_input );
-        
-        //We do not save this as a site option
-        return false;
-    }
-    
-    function settings_page_init(){
-        register_setting(
-            'pinim_user_settings', // Option group
-            pinim()->usermeta_name_options, // Option name
-            array( $this, 'sanitize_user_settings' ) // Sanitize
-        );
-
-        add_settings_section(
-            'settings_general', // ID
-            __('Pinterest credentials','pinim'), // Title
-            array( $this, 'section_general_desc' ), // Callback
-            'pinim-settings-admin' // Page
-        );  
-        
-        add_settings_field(
-            'login', 
-            __('Login','pinim'), 
-            array( $this, 'login_field_callback' ), 
-            'pinim-settings-admin', 
-            'settings_general'
-        );
-        
-        add_settings_field(
-            'password', 
-            __('Password','pinim'), 
-            array( $this, 'password_field_callback' ), 
-            'pinim-settings-admin', 
-            'settings_general'
-        );
-        
-        $login = pinim_get_user_option('login');
-        $password = pinim_get_user_option('password');
-
-        if ($login && $password){
-            
-            require pinim()->plugin_dir . '_inc/lib/pinterest-pinner/PinterestPinner.php';
-            $this->PinterestPinner = new PinterestPinner($login,$password);
-            
-            add_settings_field(
-                'status', 
-                __('Status','pinim'), 
-                array( $this, 'status_field_callback' ), 
-                'pinim-settings-admin', 
-                'settings_general'
-            );
-            
-            if($this->PinterestPinner->isLoggedIn()){
-
-                $this->user_boards = $this->PinterestPinner->getUserBoards();
-                $this->current_user_board = 0;
-
-                add_settings_section(
-                    'settings_boards', // ID
-                    __('Boards','pinim'), // Title
-                    array( $this, 'section_boards_desc' ), // Callback
-                    'pinim-settings-admin' // Page
-                );  
-                
-                foreach((array)$this->user_boards as $board){
-                    $boardname = $board['name'];
-                    if ($board['privacy']=='secret'){
-                        $boardname.=' <em>('.__('Secret','pinim').')</em>';
-                    }
-                    add_settings_field(
-                        'user_board_'.$board['id'], 
-                        $boardname, 
-                        array( $this, 'boards_field_callback' ), 
-                        'pinim-settings-admin', 
-                        'settings_boards'
-                    );
-                }
-
-
-                
-            }
-
-        }
-
-    }
-    
-    function section_general_desc(){
-        
-    }
-    
-    function login_field_callback(){
-        $option = pinim_get_user_option('login');
-        printf(
-            '<input type="text" name="%1$s[login]" value="%2$s"/>',
-            $this->usermeta_name_options,
-            $option
-        );
-    }
-    
-    function password_field_callback(){
-        $option = pinim_get_user_option('login');
-        printf(
-            '<input type="password" name="%1$s[password]" value="%2$s"/>',
-            $this->usermeta_name_options,
-            $option
-        );
-    }
-    
-    function status_field_callback(){
-       
-        try {
-            $user_resources = $this->PinterestPinner->getUserResources();
-            print_r($user_resources);
-        } catch (Exception $e) {
-            echo $e->getMessage();
-        }
-
-    }
-    
-    function section_boards_desc(){
-        
-    }
-
-    function boards_field_callback(){
-
-        $board = $this->user_boards[$this->current_user_board];
-        
-        $this->current_user_board++;
-        
-        //include
-        
-        $board_checked = pinim_get_userboard_option($board['id'],'included');
-        
-        $include_checked = true;
-        if ($board_checked){
-            $include_checked_str = checked($board_checked, 'on', false );
-        }else{
-            $include_checked_str = checked(true, true, false );
-        }
-
-        printf(
-            '<p><input type="checkbox" name="%1$s[boards][%2$s][included]" value="on" %3$s/> %4$s</p>',
-            $this->usermeta_name_options,
-            $board['id'],
-            $include_checked_str,
-            __('Include this board','pinim')
-        );
-        
-        //category
-        if ($board_category = pinim_get_userboard_option($board['id'],'category')){
-            $selected_cat = $board_category;
-        }else{
-            $selected_cat = $this->root_category_id;
-        }
-
-        $checked_auto_str = checked(true, true, false );
-        
-        $category_auto = sprintf(
-            '<input type="radio" name="%1$s[boards][%2$s][category]" value="auto" %3$s/>%4$s',
-            $this->usermeta_name_options,
-            $board['id'],
-            $checked_auto_str,
-            __('auto','pinim')
-        );
-        
-        $cat_args = array(
-            'hide_empty'    => false,
-            'depth'         => 20, //TO FIX better value here ?
-            'hierarchical'  => 1,
-            'echo'          => false,
-            'selected'      => $selected_cat,
-            'name'          => sprintf('%1$s[boards][%2$s][category_custom]',$this->usermeta_name_options,$board['id'])
-        );
-        
-        $checked_custom_str = checked(false, true, false );
-        $custom_cats = wp_dropdown_categories( $cat_args );
-        
-        $category_custom = sprintf(
-            '<input type="radio" name="%1$s[boards][%2$s][category]" value="custom" %3$s/>%4$s %5$s',
-            $this->usermeta_name_options,
-            $board['id'],
-            $checked_custom_str,
-            __('custom','pinim'),
-            $custom_cats
-        );
-        
-        echo "<p><strong>".__('Category:','pinim')."</strong> <span>".$category_auto."</span><span>".$category_custom."</span></p>";
-        
-        //privacy
-        
-        $is_secret_board = ($board['privacy']=='secret');
-        
-        if ($is_secret_board){
-            $secret_checked_str = checked($is_secret_board, true, false );
-
-            printf(
-                '<p><input type="checkbox" name="%1$s[boards][%2$s][private]" value="on" %3$s/> %4$s</p>',
-                $this->usermeta_name_options,
-                $board['id'],
-                $secret_checked_str,
-                __('Set new posts visibility to <em>private</em>','pinim')
-            );
-        }
-        
-
-        
-
-    }
-    
-    function register_importer() {
-            /**
-            * WordPress Importer object for registering the import callback
-            * @global WP_Import $wp_import
-            */
-            $GLOBALS['pinterest_wp_import'] = new Pinterest_Importer();
-            register_importer( 'pinterest-pins', 'Pinterest', sprintf(__('Import pins from your %s account to Wordpress.', 'pinim'),'<a href="http://www.pinterest.com" target="_blank">Pinterest.com</a>'), array( $GLOBALS['pinterest_wp_import'], 'dispatch' ) );
-    }
-
     function upgrade(){
         global $wpdb;
 
         $current_version = get_option("_pinterest-importer-db_version");
 
         if ($current_version==$this->db_version) return false;
+        
+        if($current_version < '1.0.3') $current_version = null; //force re-install
 
-        if(!$current_version){
+        if(!$current_version){ //not installed
             /*
             require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
             dbDelta($sql);
              */
+            /*
+            if (!$root_term = term_exists($this->root_term_name,'category')){
+                $root_term = wp_insert_term($this->root_term_name,'category');
+            }
+            if ( !is_wp_errort($root_term) && ($root_term_id = $root_term->term_id) ){
+                $likes_term = wp_insert_term($this->likes_term_name,'category',array('parent' => $root_term_id));
+            }
+            */
+            
         }
+
+
+
 
         //update DB version
         update_option("_pinterest-importer-db_version", $this->db_version );
 
     }
+
+    function enqueue_scripts_styles($hook){
+        $screen = get_current_screen();
+        if ($screen->id != pinim_tool_page()->options_page) return;
+        wp_enqueue_script('pinim', $this->plugin_url.'_inc/js/pinim.js', array('jquery'),$this->version);
+        wp_enqueue_style('font-awesome', '//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css',false,'4.3.0');
+        wp_enqueue_style('pinim', $this->plugin_url . '_inc/css/pinim.css',false,$this->version);
+        
+    }
+    
+    function get_options($key = null){
+        $options = $this->options;
+        if (!$key) return $options;
+        if (!isset($options[$key])) return false;
+        return $options[$key];
+    }
+
+
+    /**
+     * Register a session so we can store the temporary.
+     */
+    function register_session(){
+        if (!pinim_is_tool_page()) return;
+        $this->start_session();
+    }
+    
+    function start_session(){
+        if( !session_id() ) session_start();
+    }
+    
+    function save_session_data($key,$data){
+        $_SESSION['pinim'][$key] = $data;
+        return true;
+    }
+    
+    function delete_session_data($key = null){
+        if ($key){
+            if (!isset($_SESSION['pinim'][$key])) return false;
+            unset($_SESSION['pinim'][$key]);
+        }
+        unset($_SESSION['pinim']);
+    }
+    
+    function get_session_data($key = null){
+        
+        $this->start_session();
+        
+        if (!isset($_SESSION['pinim'])) return null;
+        
+        $data = $_SESSION['pinim'];
+        
+        if ($key){
+            if (!isset($data[$key])) return null;
+            return $data[$key];
+        }
+        
+        return $data;
+    }
+    
+    function pinterest_is_logged(){
+        if (isset($this->Pinterest) && $this->Pinterest->is_logged_in) return true;
+        return false;
+    }
+        
+    function pinterest_do_login($login = null,$password = null){
+        
+        if ( $this->pinterest_is_logged() ) return true;
+        
+        if (!$login) $login = $this->get_session_data('login');
+        if (!$password) $password = $this->get_session_data('password');
+        if (!$login || !$password ) {
+            return new WP_Error( 'pinim', __( "Missing login and/or password", 'pinim' ));
+        }
+
+        try {
+            $this->Pinterest = new PinIm_Pinner;
+            $this->Pinterest->setLogin($login)->setPassword($password);
+            $this->Pinterest->getUserData();
+        } catch (\Exception $e) {
+            return new WP_Error( 'pinim', $e->getMessage());
+        }
+
+        if ($this->Pinterest->is_logged_in){
+            $this->save_session_data('login',$login);
+            $this->save_session_data('password',$password);
+            $this->save_session_data('user_datas',$this->Pinterest->user_data);
+            return true;
+        }
+
+        return new WP_Error( 'pinim', __( "Error while trying to login", 'pinim' ));
+    }
+    
+    
+
+    
+
+
+
+ 
+
     
     /**
      * Display a metabox for posts having imported with this plugin
@@ -554,6 +376,20 @@ class PinIm {
                 </tbody>
         </table>
         <?php
+    }
+    
+    public function debug_log($message,$title = null) {
+
+        if (WP_DEBUG_LOG !== true) return false;
+
+        $prefix = '[pinim] ';
+        if($title) $prefix.=$title.': ';
+
+        if (is_array($message) || is_object($message)) {
+            error_log($prefix.print_r($message, true));
+        } else {
+            error_log($prefix.$message);
+        }
     }
 
 }
