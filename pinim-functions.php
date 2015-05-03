@@ -272,6 +272,8 @@ function pinim_get_pins_filter_action(){
     return $action;
 }
 
+
+
 function pinim_get_boards_filter_action(){
     $action = null;
     //filter buttons

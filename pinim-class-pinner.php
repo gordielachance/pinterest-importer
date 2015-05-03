@@ -9,53 +9,48 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
     
     public $user_boards = null;
     
-    public function hasUserBoards_NonApi(){
-        try {
-            $boards_count = $this->countUserBoards_NonApi();
-        } catch (\Exception $e) {
-            throw new PinterestPinner\PinnerException($e->getMessage(), null, $e);
-        }
-        return (bool)$boards_count;
-    }
-    
-    public function countUserBoards_NonApi(){
-        try {
-            $user_datas = $this->getUserData();
-        } catch (\Exception $e) {
-            throw new PinterestPinner\PinnerException($e->getMessage(), null, $e);
-        }
+    public function get_all_boards_custom(){
         
-        $count = 0;
+        if ( empty($this->user_boards) ) {
 
-        if ( isset($user_datas['board_count']) ) $count += $user_datas['board_count'];
-        if ( isset($user_datas['secret_board_count']) ) $count += $user_datas['secret_board_count'];
+            $bookmark = null;
+            $board_page = 0;
+            $boards = array();
 
-        return $count;
-    }
-    
-    //this function may / should be improved;
-    //or replaced by some API thing.
-    protected function getBoardUrl($board_id){
-        
-    }
-    
-    /*
-     * 
-     */
-    
-    public function getUserBoards_NonApi(){
-        
-        if ( !empty($this->user_boards) ) {
-                return $this->user_boards;
-        }
+            while ($bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
 
-        try {
-            $has_boards = $this->hasUserBoards_NonApi();
-        } catch (\Exception $e) {
-            throw new PinterestPinner\PinnerException($e->getMessage(), null, $e);
+                try {
+                    $query = $this->get_boards_page_custom($bookmark);
+                }catch (\Exception $e) {
+                    throw new PinterestPinner\PinnerException($e->getMessage(), null, $e);
+                }
+
+                $bookmark = $query['bookmark'];
+
+                if (isset($query['boards'])){
+
+                    $page_boards = $query['boards'];
+
+                    $boards = array_merge($boards,$page_boards);
+
+                }
+
+                $board_page++;
+
+            }
+
+            $this->user_boards = $boards;
+            
         }
         
-        if (!$has_boards) return $this->user_boards;
+        return $this->user_boards;
+        
+    }
+
+
+    public function get_boards_page_custom($bookmark = null){
+        
+        $page_boards = array();
 
         try {
             $user_datas = $this->getUserData();
@@ -63,12 +58,19 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
             throw new PinterestPinner\PinnerException($e->getMessage(), null, $e);
         }
 
+        $post_data_options = array(
+            'field_set_key'     => 'grid_item',
+            'username'          => $user_datas['username'],
+            'sort'              => 'profile'
+        );
+        
+        if ($bookmark){ //used for pagination. Bookmark is defined when it is not the first page.
+            $post_data_options['bookmarks'] = $bookmark;
+        }
+        
         $post_data = array(
             'data' => json_encode(array(
-                'options' => array(
-                    'field_set_key' => 'grid_item',
-                    'username' => $user_datas['username'],
-                ),
+                'options' => $post_data_options,
                 'context' => new \stdClass,
             )),
             'source_url' => '/'.$user_datas['username'].'/',
@@ -76,26 +78,40 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
         );
 
         try {
-            $this->_loadContent('/resource/ProfileBoardsResource/get/', $post_data, '/'.$user_datas['username'].'/');
+            $this->_loadContent('/resource/BoardsResource/get/', $post_data, '/'.$user_datas['username'].'/');
         } catch (\Exception $e) {
             throw new PinterestPinner\PinnerException($e->getMessage(), null, $e);
         }
         
         if (isset($this->_response_content['resource_data_cache'][0]['data'])){
             
-            $boards = $this->_response_content['resource_data_cache'][0]['data'];
-
-            //remove items that have not the "board" type (like module items)
-            $boards = array_filter(
-                $boards,
-                function ($e) {
-                    return $e['type'] == 'board';
-                }
-            );  
-            $boards = array_values($boards); //reset keys
+            $response = $this->_response_content;
             
-            $this->user_boards = $boards;
-            return $this->user_boards;
+            //boards
+            if (isset($response['resource_data_cache'][0]['data'])){
+
+                $page_boards = $response['resource_data_cache'][0]['data'];
+
+                //remove items that have not the "pin" type (like module items)
+                $page_boards = array_filter(
+                    $page_boards,
+                    function ($e) {
+                        return $e['type'] == 'board';
+                    }
+                );  
+                $page_boards = array_values($page_boards); //reset keys
+
+            }
+
+            //bookmark (pagination)
+            if (!isset($response['resource']['options']['bookmarks'][0])){
+                throw new PinterestPinner\PinnerException( 'get_boards_page_custom(): Missing bookmark' );
+            }else{
+                $bookmark = $response['resource']['options']['bookmarks'][0];
+            }
+
+            return array('boards'=>$page_boards,'bookmark'=>$bookmark);
+
         }
 
         throw new PinterestPinner\PinnerException( 'Error getting user boards.' );
@@ -110,7 +126,7 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
      * @return \Exception
      */
 
-    public function getBoardPins_NonApi($board_id,$max=0,$stop_at_pin_id=null){
+    public function get_all_board_pins_custom($board_id,$max=0,$stop_at_pin_id=null){
         $bookmark = null;
         $board_page = 0;
         $board_pins = array();
@@ -118,7 +134,7 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
         while ($bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
             
             try {
-                $query = $this->getPageBoardPins_NonApi($board_id,$bookmark);
+                $query = $this->get_board_pins_page_custom($board_id,$bookmark);
             }catch (\Exception $e) {
                 throw new PinterestPinner\PinnerException($e->getMessage(), null, $e);
             }
@@ -167,7 +183,7 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
      * @throws PinnerException
      */
 
-    private function getPageBoardPins_NonApi($board_id, $bookmark = null){
+    private function get_board_pins_page_custom($board_id, $bookmark = null){
 
         $page_pins = array();
         
@@ -186,11 +202,10 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
             'prepend'       => true,
             'page_size'     => null,
             'access'        => array('write','delete'),
-            'bookmarks'     => (array)$bookmark
         );
 
         if ($bookmark){ //used for pagination. Bookmark is defined when it is not the first page.
-            $post_data_options['data']['options']['bookmarks'] = $bookmark;
+            $post_data_options['bookmarks'] = $bookmark;
         }
         
         $post_data = array(
@@ -235,7 +250,7 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
                 //bookmark (pagination)
                 if (!isset($response['resource']['options']['bookmarks'][0])){
 
-                    throw new PinterestPinner\PinnerException( 'getPageBoardPins(): Missing bookmark' );
+                    throw new PinterestPinner\PinnerException( 'get_board_pins_page_custom(): Missing bookmark' );
                 }else{
                     $bookmark = $response['resource']['options']['bookmarks'][0];
                 }
@@ -244,7 +259,7 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
             
         }
 
-        throw new PinterestPinner\PinnerException( 'Error getting user boards.' );
+        throw new PinterestPinner\PinnerException( 'Error getting user pins.' );
 
     }
     

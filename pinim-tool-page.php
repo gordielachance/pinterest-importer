@@ -297,9 +297,15 @@ class Pinim_Tool_Page {
                 $login = pinim()->pinterest_do_login($new_input['login'],$new_input['password']);
 
                 if (!is_wp_error($login) ){
-                    $url = pinim_get_tool_page_url(array('step'=>$this->current_step+1));
-                    wp_redirect( $url );
-                    die();
+                    $boards_data = pinim_get_boards_data(); //do populate boards
+                    if (!is_wp_error($boards_data)){
+                        $url = pinim_get_tool_page_url(array('step'=>1));
+                        wp_redirect( $url );
+                        die();
+                    }else{
+                        add_settings_error('pinim', 'get_boards_data', sprintf(__('Error while trying to get boards data : %1$s.','pinim'),$boards_data->get_error_message()));
+                    }
+
                     
                 }else{
                     add_settings_error('pinim', 'do_login', sprintf(__('Error while trying to login : %1$s.','pinim'),$login->get_error_message()));
@@ -318,17 +324,12 @@ class Pinim_Tool_Page {
         
         //redirect to login page
         if ($this->current_step){
-            $boards_data = pinim_get_boards_data();
-            if (!$boards_data){
+            if (!$user_boards = pinim()->get_session_data('user_boards')){ //not populated
                 $url = pinim_get_tool_page_url();
                 wp_redirect( $url );
                 die();
             }
         }
-        
-
-        
-        
 
         switch ($this->current_step){
             case 2: //pins settings
@@ -366,8 +367,10 @@ class Pinim_Tool_Page {
             case 1: //boards settings
                 
                 $boards = array();
+                
+                $boards_data = pinim()->get_session_data('user_boards');
 
-                if ( !is_wp_error($boards_data) ){
+                if ( $boards_data ){
                     foreach((array)$boards_data as $board_data){
                         $boards[] = new Pinim_Board($board_data['id']);
                     }
@@ -570,7 +573,8 @@ class Pinim_Tool_Page {
     
     function section_general_desc(){
         $session_cache = session_cache_expire();
-        printf(__('Your login, password and datas retrieved from Pinterest will be stored for %1$s minutes in a PHP session. It is not stored in the database.','pinim'),$session_cache);
+        echo "<p>".sprintf(__('Your login, password and datas retrieved from Pinterest will be stored for %1$s minutes in a PHP session. It is not stored in the database.','pinim'),$session_cache)."</p>";
+        echo "<p>".__("If you get a HTTP error, please try again; sometimes it does not work at the first time.  Eventually, reset your internet connection.",'pinim')."</p>";
     }
     
     function login_field_callback(){

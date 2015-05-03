@@ -104,7 +104,7 @@ class Pinim_Pin{
             'action'    => 'pins_import_pins',
             'pin_ids'  => $this->pin_id,
             'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
-            'boards_ids'    => ( isset($_REQUEST['board_ids']) ? $_REQUEST['board_ids'] : null)
+            //'boards_ids'    => ( isset($_REQUEST['board_ids']) ? $_REQUEST['board_ids'] : null)
         );
 
         $link = sprintf(

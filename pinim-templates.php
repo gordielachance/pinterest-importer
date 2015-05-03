@@ -204,7 +204,7 @@ function pinim_get_boards_data(){
         if (is_wp_error($login) ) return $login;
 
         try {
-            $user_boards = pinim()->Pinterest->getUserBoards_NonApi();
+            $user_boards = pinim()->Pinterest->get_all_boards_custom();
             pinim()->save_session_data('user_boards',$user_boards);
 
         } catch (\Exception $e) {

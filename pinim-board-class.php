@@ -194,7 +194,7 @@ class Pinim_Board{
                 if (is_wp_error($login) ) return $login;
 
                 try {
-                    $board_pins = pinim()->Pinterest->getBoardPins_NonApi($this->board_id);
+                    $board_pins = pinim()->Pinterest->get_all_board_pins_custom($this->board_id);
 
                 } catch (\Exception $e) {
                     return new WP_Error( 'pinim', $e->getMessage());
