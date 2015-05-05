@@ -274,7 +274,7 @@ class Pinim_Board{
         $link = sprintf(
             '<a href="%1$s">%2$s</a>',
             pinim_get_tool_page_url($link_args),
-            __('Refresh pins cache','pinim')
+            __('Cache Pins','pinim')
 
         );
 
@@ -295,7 +295,7 @@ class Pinim_Board{
         $link = sprintf(
             '<a href="%1$s">%2$s</a>',
             pinim_get_tool_page_url($link_args),
-            __('Import pins','pinim')
+            __('Import Pins','pinim')
 
         );
 
@@ -642,10 +642,10 @@ class Pinim_Boards_Table extends WP_List_Table {
 
             switch (pinim_tool_page()->get_screen_boards_filter()){
                 case 'pending':
-                    submit_button( __( 'Import all boards pins','pinim' ), 'button', 'filter_action', false );
+                    submit_button( __( 'Import All Pins','pinim' ), 'button', 'filter_action', false );
                 break;
                 case 'waiting':
-                    submit_button( __( 'Cache all boards pins','pinim' ), 'button', 'filter_action', false );
+                    submit_button( __( 'Cache all pins','pinim' ), 'button', 'filter_action', false );
                 break;
             }
             
@@ -777,7 +777,7 @@ class Pinim_Boards_Table extends WP_List_Table {
      **************************************************************************/
     function get_bulk_actions() {
         $actions = array(
-            'boards_update_settings'    => __('Update Board Settings','pinim'),
+            'boards_update_settings'    => __('Update Settings','pinim'),
             'boards_cache_pins'    => __('Cache Pins','pinim'),
             'boards_import_pins'    => __('Import Pins','pinim')
         );

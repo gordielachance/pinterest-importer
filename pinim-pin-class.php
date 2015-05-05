@@ -626,10 +626,10 @@ class Pinim_Pins_Table extends WP_List_Table {
             
                 switch (pinim_tool_page()->get_screen_pins_filter()){
                     case 'pending':
-                        submit_button( __( 'Import all pins','pinim' ), 'button', 'filter_action', false );
+                        submit_button( __( 'Import All Pins','pinim' ), 'button', 'filter_action', false );
                     break;
                     case 'processed':
-                        submit_button( __( 'Update all pins','pinim' ), 'button', 'filter_action', false );
+                        submit_button( __( 'Update All Pins','pinim' ), 'button', 'filter_action', false );
                     break;
                 }
         }

@@ -395,7 +395,7 @@ class Pinim_Tool_Page {
                     //redirect to next step
                     $args = array(
                         'step'=>1,
-                        'filter_action'=>__( 'Cache all boards pins','pinim' )
+                        'filter_action'=>__( 'Cache all pins','pinim' )
                     );
                     
                     $url = pinim_get_tool_page_url($args);
@@ -592,7 +592,7 @@ class Pinim_Tool_Page {
             <h2><?php _e('Pinterest Importer','pinim');?></h2>  
             <?php settings_errors();?>
             <h2 class="nav-tab-wrapper">
-                <?php $this->importer_page_tabs( __( 'Components', 'buddypress' ) ); ?>
+                <?php $this->importer_page_tabs($this->current_step); ?>
             </h2>
                     <?php
 
@@ -652,11 +652,11 @@ class Pinim_Tool_Page {
             $tabs_html    = '';
             $idle_class   = 'nav-tab';
             $active_class = 'nav-tab nav-tab-active';
-            $tabs         = apply_filters( 'bp_core_admin_tabs', $this->importer_page_get_tabs( $active_tab ) );
+            $tabs         = $this->importer_page_get_tabs( $active_tab );
 
             // Loop through tabs and build navigation
-            foreach ( array_values( $tabs ) as $tab_data ) {
-                    $is_current = (bool) ( $tab_data['name'] == $active_tab );
+            foreach ( array_values( $tabs ) as $key=>$tab_data ) {
+                    $is_current = (bool) ( $key == $active_tab );
                     $tab_class  = $is_current ? $active_class : $idle_class;
                     $tabs_html .= '<a href="' . esc_url( $tab_data['href'] ) . '" class="' . esc_attr( $tab_class ) . '">' . esc_html( $tab_data['name'] ) . '</a>';
             }
@@ -803,10 +803,10 @@ class Pinim_Tool_Page {
         if (isset($_REQUEST['filter_action'])){
             switch ($_REQUEST['filter_action']){
                 //step 2
-                case __( 'Import all pins','pinim' ):
+                case __( 'Import All Pins','pinim' ):
                     $action = 'pins_import_pins';
                 break;
-                case __( 'Update all pins','pinim' ):
+                case __( 'Update All Pins','pinim' ):
                     $action = 'pins_update_pins';
                 break;
 
@@ -827,10 +827,10 @@ class Pinim_Tool_Page {
                 case __( 'Update all boards settings','pinim' ):
                     $action = 'boards_update_settings';
                 break;
-                case __( 'Cache all boards pins','pinim' ):
+                case __( 'Cache all pins','pinim' ):
                     $action = 'boards_cache_pins';
                 break;
-                case __( 'Import all boards pins','pinim' ):
+                case __( 'Import All Pins','pinim' ):
                     $action = 'boards_import_pins';
                 break;
 
