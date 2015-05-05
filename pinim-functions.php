@@ -356,7 +356,7 @@ function pinim_get_requested_pins(){
         $bulk_pins_ids = explode(',',$_REQUEST['pin_ids']);
 
     }
-        
+ 
     if ( (!$bulk_pins_ids) && ( $requested_boards = pinim_get_requested_boards() ) ) {
         //get board queues
         foreach ((array)$requested_boards as $board){
@@ -382,34 +382,14 @@ function pinim_get_requested_pins(){
         }
 
     }
-    
+
+
     foreach ((array)$raw_pins as $key=>$raw_pin){
         $pin = new Pinim_Pin($raw_pin['id']);
         $pins[] = $pin;
     }
 
     return $pins;
-}
-
-
-function pinim_get_screen_pins_import_status(){
-    $status = 'pending';
-
-    if (isset($_REQUEST['pin_status'])){
-        $status = $_REQUEST['pin_status'];
-    }
-
-    return $status;
-}
-
-function pinim_get_screen_boards_import_status(){
-    $status = 'pending';
-
-    if (isset($_REQUEST['board_status'])){
-        $status = $_REQUEST['board_status'];
-    }
-
-    return $status;
 }
 
 function get_all_cached_pins($board_id = null){

@@ -407,7 +407,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         );
         
         //import link
-        if (pinim_get_screen_boards_import_status()=='completed'){
+        if ( pinim_tool_page()->get_screen_boards_filter()=='completed' ){
             $actions['single_board_update_pins']    = $board->get_link_action_update();
         }else{
             $actions['single_board_import_pins']    = $board->get_link_action_import();
@@ -635,16 +635,18 @@ class Pinim_Boards_Table extends WP_List_Table {
         <div class="alignleft actions">
         <?php
         if ( 'top' == $which && !is_singular() ) {
-            
-            $requested_status = pinim_get_screen_boards_import_status();
+
+            switch (pinim_tool_page()->get_screen_boards_filter()){
+                case 'pending':
+                    submit_button( __( 'Import all boards pins','pinim' ), 'button', 'filter_action', false );
+                break;
+                case 'waiting':
+                    submit_button( __( 'Cache all boards pins','pinim' ), 'button', 'filter_action', false );
+                break;
+            }
             
                 //submit_button( __( 'Update all boards settings','pinim' ), 'button', 'filter_action', false );
-                
-                if ($requested_status=='cached'){
-                    submit_button( __( 'Import all boards pins','pinim' ), 'button', 'filter_action', false );
-                }elseif ($requested_status=='pending'){
-                    submit_button( __( 'Cache all boards pins','pinim' ), 'button', 'filter_action', false );
-                }
+
 
         }
 
@@ -669,17 +671,17 @@ class Pinim_Boards_Table extends WP_List_Table {
             );
             
             $link_waiting_args = $link_args;
-            $link_waiting_args['board_status'] = 'waiting';
+            $link_waiting_args['boards_filter'] = 'waiting';
             $link_waiting_classes = array();
             $waiting_count = 0;
             
             $link_pending_args = $link_args;
-            $link_pending_args['board_status'] = 'pending';
+            $link_pending_args['boards_filter'] = 'pending';
             $link_pending_classes = array();
             $pending_count = 0;
             
             $link_completed_args = $link_args;
-            $link_completed_args['board_status'] = 'completed';
+            $link_completed_args['boards_filter'] = 'completed';
             $link_completed_classes = array();
             $completed_count = 0;
             
@@ -700,17 +702,17 @@ class Pinim_Boards_Table extends WP_List_Table {
             $waiting_count = count($boards_data) - $pending_count;
             $pending_count -= $completed_count;
             //
-            
-            $requested_status = pinim_get_screen_boards_import_status();
-            
-            if ( $requested_status=='pending' ){
-                $link_pending_classes[] = 'current';
-            }
-            if ( $requested_status=='waiting' ){
-                $link_waiting_classes[] = 'current';
-            }
-            if ( $requested_status=='completed' ){
-                $link_completed_classes[] = 'current';
+
+            switch (pinim_tool_page()->get_screen_boards_filter()){
+                case 'pending':
+                    $link_pending_classes[] = 'current';
+                break;
+                case 'waiting':
+                    $link_waiting_classes[] = 'current';
+                break;
+                case 'completed':
+                    $link_completed_classes[] = 'current';
+                break;
             }
             
             $link_waiting = sprintf(

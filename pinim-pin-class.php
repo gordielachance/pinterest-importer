@@ -119,7 +119,7 @@ class Pinim_Pin{
     
     function get_link_action_update(){
         
-        if (!$post_id = pinim_get_post_by_pin_id($this->pin_id)) return;
+        if (!in_array($this->pin_id,pinim_tool_page()->existing_pin_ids)) return;
 
         $link_args = array(
             'step'          => 2,
@@ -141,11 +141,13 @@ class Pinim_Pin{
     
     function get_link_action_edit(){
         
-        if (!$post_id = pinim_get_post_by_pin_id($this->pin_id)) return;
+        if (!in_array($this->pin_id,pinim_tool_page()->existing_pin_ids)) return;
+        
+        $post = $this->get_post();
 
         $link = sprintf(
             '<a href="%1$s">%2$s</a>',
-            get_edit_post_link( $post_id ),
+            get_edit_post_link( $post->ID ),
             __('Edit post','pinim')
 
         );
@@ -620,15 +622,16 @@ class Pinim_Pins_Table extends WP_List_Table {
         ?>
         <div class="alignleft actions">
         <?php
-        
-        $requested_status = pinim_get_screen_pins_import_status();
-        
+
         if ( 'top' == $which && !is_singular() ) {
             
-                if ($requested_status == 'pending'){
-                    submit_button( __( 'Import all pins','pinim' ), 'button', 'filter_action', false );
-                }elseif ($requested_status == 'processed'){
-                    submit_button( __( 'Update all pins','pinim' ), 'button', 'filter_action', false );
+                switch (pinim_tool_page()->get_screen_pins_filter()){
+                    case 'pending':
+                        submit_button( __( 'Import all pins','pinim' ), 'button', 'filter_action', false );
+                    break;
+                    case 'processed':
+                        submit_button( __( 'Update all pins','pinim' ), 'button', 'filter_action', false );
+                    break;
                 }
         }
 
@@ -680,14 +683,15 @@ class Pinim_Pins_Table extends WP_List_Table {
             
             //
             
-            $requested_status = pinim_get_screen_pins_import_status();
-            
-            if ( $requested_status=='processed' ){
-                $link_processed_classes[] = 'current';
+            switch (pinim_tool_page()->get_screen_pins_filter()){
+                case 'pending':
+                    $link_pending_classes[] = 'current';
+                break;
+                case 'processed':
+                    $link_processed_classes[] = 'current';
+                break;
             }
-            if ( $requested_status=='pending' ){
-                $link_pending_classes[] = 'current';
-            }
+
 
             $link_processed = sprintf(
                 __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),

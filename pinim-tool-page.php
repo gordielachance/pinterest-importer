@@ -8,6 +8,9 @@ class Pinim_Tool_Page {
     private $steps = array('login','board-settings','fetch-pins');
     var $existing_pin_ids = array();
     
+    var $screen_boards_filter = null;
+    var $screen_pins_filter = null;
+    
     /**
     * @var The one true Instance
     */
@@ -33,6 +36,8 @@ class Pinim_Tool_Page {
         if (!pinim_is_tool_page()) return false;
 
         $step = pinim_get_tool_page_step();
+        $this->screen_boards_filter = $this->get_screen_boards_filter();
+        $this->screen_pins_filter = $this->get_screen_pins_filter();
         
         if($step!==false){
             $this->current_step = $step;
@@ -49,6 +54,36 @@ class Pinim_Tool_Page {
         $this->save_step();
         $this->init_step();
 
+    }
+    
+    function get_screen_boards_filter(){
+        
+        if ($this->screen_boards_filter) return $this->screen_boards_filter;
+        
+        $status = 'pending';
+
+        if (isset($_REQUEST['boards_filter'])){
+            $status = $_REQUEST['boards_filter'];
+        }
+        
+        $this->screen_boards_filter = $status;
+
+        return $status;
+    }
+    
+    function get_screen_pins_filter(){
+        
+        if ($this->screen_pins_filter) return $this->screen_pins_filter;
+        
+        $status = 'pending';
+
+        if (isset($_REQUEST['boards_filter'])){
+            $status = $_REQUEST['boards_filter'];
+        }
+        
+        $this->screen_pins_filter = $status;
+
+        return $status;
     }
     
     function save_step(){
@@ -90,10 +125,12 @@ class Pinim_Tool_Page {
                 switch ($action) {
 
                     case 'pins_update_pins':
+                        
                         foreach((array)$bulk_pins as $key=>$pin){
 
                             //skip
-                            if (!$post_id = pinim_get_post_by_pin_id($pin->pin_id)){
+                            
+                            if (!in_array($pin->pin_id,$this->existing_pin_ids)){
                                 $skip_pin_import[] = $pin->pin_id;
                                 continue;
                             }
@@ -148,10 +185,11 @@ class Pinim_Tool_Page {
                         }
                     break;
                     case 'pins_import_pins':
+
                         foreach((array)$bulk_pins as $key=>$pin){
 
                             //skip
-                            if ($post_id = pinim_get_post_by_pin_id($pin->pin_id)){
+                            if (in_array($pin->pin_id,$this->existing_pin_ids)){
                                 $skip_pin_import[] = $pin->pin_id;
                                 continue;
                             }
@@ -163,6 +201,7 @@ class Pinim_Tool_Page {
                             }
                             
                         }
+                        
 
                         //errors
                         
@@ -346,16 +385,16 @@ class Pinim_Tool_Page {
             case 2: //pins settings
 
                 $pins = pinim_get_requested_pins();
-                
-                //filter by status
-                $requested_status = pinim_get_screen_pins_import_status();
 
                 foreach ((array)$pins as $key=>$pin){
-
-                    if ($requested_status=='pending'){
-                        if (in_array($pin->pin_id,$this->existing_pin_ids)) unset($pins[$key]);
-                    }elseif ($requested_status=='processed'){
-                        if (!in_array($pin->pin_id,$this->existing_pin_ids)) unset($pins[$key]);
+                    
+                    switch ( $this->get_screen_pins_filter() ){
+                        case 'pending':
+                            if (in_array($pin->pin_id,$this->existing_pin_ids)) unset($pins[$key]);
+                        break;
+                        case 'processed':
+                            if (!in_array($pin->pin_id,$this->existing_pin_ids)) unset($pins[$key]);
+                        break;
                     }
 
                 }
@@ -384,21 +423,22 @@ class Pinim_Tool_Page {
                     
                     add_settings_error('pinim', 'boards-cache', sprintf(__( 'No boards found.  Please <a href="%1$s">refresh user cache</a>.', 'pinim' ),$link_user_cache));
                 }
-                
-                //filter by status
-                $requested_status = pinim_get_screen_boards_import_status();
 
                 foreach ((array)$boards as $key=>$board){
 
                     $is_queue_complete = $board->is_queue_complete();
                     $is_fully_imported = $board->is_fully_imported();
-
-                    if ($requested_status=='pending'){
-                        if ($is_fully_imported) unset($boards[$key]);
-                    }elseif ($requested_status=='waiting'){
-                        if ($is_queue_complete) unset($boards[$key]);
-                    }elseif ($requested_status=='completed'){
-                        if (!$is_fully_imported) unset($boards[$key]);
+                    
+                    switch ($this->get_screen_boards_filter()){
+                        case 'pending':
+                            if ($is_fully_imported) unset($boards[$key]);
+                        break;
+                        case 'waiting':
+                            if ($is_queue_complete) unset($boards[$key]);
+                        break;
+                        case 'completed':
+                            if (!$is_fully_imported) unset($boards[$key]);
+                        break;
                     }
 
                 }
@@ -493,8 +533,7 @@ class Pinim_Tool_Page {
 
  
     }
-    
-    
+
     function importer_page(){
         // Set class property
         ?>
@@ -502,6 +541,9 @@ class Pinim_Tool_Page {
             <?php screen_icon(); ?>
             <h2><?php _e('Pinterest Importer','pinim');?></h2>  
             <?php settings_errors();?>
+            <h2 class="nav-tab-wrapper">
+                <?php $this->importer_page_tabs( __( 'Components', 'buddypress' ) ); ?>
+            </h2>
                     <?php
 
                     switch ($this->current_step){
@@ -519,20 +561,11 @@ class Pinim_Tool_Page {
                             ?>
                             <form id="pinim-form" method="post" action="">
                                 <?php
-                                
                                 $this->table_board->views();
                                 $this->table_board->display();
-
-                                    printf(
-                                        '<a href="%1$s" />%2$s</a>',
-                                        pinim_get_tool_page_url(array('step'=>2)),
-                                        __('Fetch Pins','pinim')
-                                    );
                                 ?>
                             </form>
                             <?php
-                            
-                            
                         break;
                         default: //login
                             ?>
@@ -546,16 +579,6 @@ class Pinim_Tool_Page {
                                 <?php
 
                                 do_settings_sections( 'pinim-user-auth' );
-
-                                if ( pinim()->get_session_data('user_datas') ){
-
-                                    printf(
-                                        '<a href="%1$s" />%2$s</a>',
-                                        pinim_get_tool_page_url(array('step'=>1)),
-                                        __('Go to Boards Settings','pinim')
-                                    );
-
-                                }
                                 submit_button(__('Login','pinim'));
 
 
@@ -573,6 +596,48 @@ class Pinim_Tool_Page {
             
         </div>
         <?php
+    }
+    
+    function importer_page_tabs( $active_tab = '' ) {
+            $tabs_html    = '';
+            $idle_class   = 'nav-tab';
+            $active_class = 'nav-tab nav-tab-active';
+            $tabs         = apply_filters( 'bp_core_admin_tabs', $this->importer_page_get_tabs( $active_tab ) );
+
+            // Loop through tabs and build navigation
+            foreach ( array_values( $tabs ) as $tab_data ) {
+                    $is_current = (bool) ( $tab_data['name'] == $active_tab );
+                    $tab_class  = $is_current ? $active_class : $idle_class;
+                    $tabs_html .= '<a href="' . esc_url( $tab_data['href'] ) . '" class="' . esc_attr( $tab_class ) . '">' . esc_html( $tab_data['name'] ) . '</a>';
+            }
+
+            echo $tabs_html;
+            do_action( 'bp_admin_tabs' );
+    }
+    
+    /**
+     * Get the data for the tabs in the admin area.
+     *
+     * @param string $active_tab Name of the tab that is active. Optional.
+     */
+    function importer_page_get_tabs( $active_tab = '' ) {
+            $tabs = array(
+                    '0' => array(
+                            'href' => pinim_get_tool_page_url(array('step'=>0)),
+                            'name' => __( 'Authentification', 'pinim' )
+                    )
+            );
+            
+            $tabs[1] = array(
+                    'href' => pinim_get_tool_page_url(array('step'=>1)),
+                    'name' => __( 'Boards Settings', 'pinim' )
+            );
+            $tabs[2] = array(
+                    'href' => pinim_get_tool_page_url(array('step'=>2)),
+                    'name' => __( 'Import Pins', 'pinim' )
+            );
+            
+            return $tabs;
     }
     
     function section_general_desc(){
@@ -619,6 +684,7 @@ class Pinim_Tool_Page {
                 __('Clear user boards cache & force regenerate','pinim')
             );
     }
+
 
 }
 
