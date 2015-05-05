@@ -96,11 +96,6 @@ class PinIm {
     
     function includes(){
         
-        // Composer Libs
-        require $this->plugin_dir . '/_inc/php/pinterest-pinner/PinterestPinner/PinnerException.php';
-        require $this->plugin_dir . '/_inc/php/pinterest-pinner/PinterestPinner/Pinner.php';
-        require $this->plugin_dir . '/_inc/php/vendor/autoload.php';
-        
         // Custom Pinterest Pinner
 
         require $this->plugin_dir . '/pinim-class-pinner.php';
@@ -259,13 +254,13 @@ class PinIm {
         if (!$login || !$password ) {
             return new WP_Error( 'pinim', __( "Missing login and/or password", 'pinim' ));
         }
+        
+        $this->Pinterest = new PinIm_Pinner;
+        $this->Pinterest->set_login($login)->set_password($password);
+        $user_datas = $this->Pinterest->get_user_datas();
 
-        try {
-            $this->Pinterest = new PinIm_Pinner;
-            $this->Pinterest->setLogin($login)->setPassword($password);
-            $this->Pinterest->getUserData();
-        } catch (\Exception $e) {
-            return new WP_Error( 'pinim', $e->getMessage());
+        if (is_wp_error($user_datas)){
+            return $user_datas;
         }
 
         if ($this->Pinterest->is_logged_in){
@@ -275,7 +270,6 @@ class PinIm {
             return true;
         }
 
-        return new WP_Error( 'pinim', __( "Error while trying to login", 'pinim' ));
     }
     
     

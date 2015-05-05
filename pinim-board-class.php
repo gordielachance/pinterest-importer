@@ -147,32 +147,62 @@ class Pinim_Board{
     }
     
     function get_pins_queue(){
-        $all_pins = (array)pinim()->get_session_data('pins');
-
-        //remove items that have not the "pin" type (like module items)
-        $board_pins = array_filter(
-            $all_pins,
-            function ($e) {
-                return $e['board']['id'] == $this->board_id;
-            }
-        );  
-        $board_pins = array_values($board_pins); //reset keys
-        
-        return $board_pins;
+        $all_queues = (array)pinim()->get_session_data('queues');
+        if (isset($all_queues[$this->board_id])){
+            return $all_queues[$this->board_id];
+        }
         
     }
     
-    function set_pins_queue($pins){
-        $all_pins = (array)pinim()->get_session_data('pins',$pins);
-        //remove items that have not the "pin" type (like module items)
-        $other_pins = array_filter(
-            $all_pins,
-            function ($e) {
-                return $e['board']['id'] != $this->board_id;
-            }
-        );  
-        $all_pins = array_merge($other_pins,$pins);
-        return pinim()->save_session_data('pins',$all_pins);
+    function is_queue_complete(){
+        $count = count( $this->get_cached_pins() );
+        if ($count  < $this->get_datas('pin_count')) return false;
+        return true;
+    }
+    
+    function is_fully_imported(){
+        $cached_pins = $this->get_cached_pins();
+        $imported_pins_ids = pinim_tool_page()->existing_pin_ids;
+        
+        foreach($cached_pins as $pin){
+            if (!in_array($pin['id'],$imported_pins_ids)) return false;
+        }
+        
+        return true;
+        
+    }
+    
+    /*
+     * Append new pins to the board.
+     */
+    
+    function set_pins_queue($queue){
+        $existing_pins = array();
+        
+        $all_queues = (array)pinim()->get_session_data('queues');
+        
+        if(isset($all_queues[$this->board_id]['pins'])){
+            $existing_pins = $all_queues[$this->board_id]['pins'];
+        }
+        
+        $queue = array(
+            'pins'      => array_merge($existing_pins,$queue['pins']),
+            'bookmark'  => $queue['bookmark']
+        );
+
+        $all_queues[$this->board_id] = $queue;
+        
+        return pinim()->save_session_data('queues',$all_queues);
+    }
+    
+    function reset_pins_queue(){
+        $all_queues = (array)pinim()->get_session_data('queues');
+        unset($all_queues[$this->board_id]);
+        return pinim()->save_session_data('queues',$all_queues);
+    }
+    
+    function get_cached_pins(){
+        return get_all_cached_pins($this->board_id);
     }
     
     /**
@@ -181,29 +211,44 @@ class Pinim_Board{
      * @return \WP_Error
      */
     
-    function get_pins($cache = 'auto'){
+    function get_pins($reset = false){
         
         if (!isset($this->pins)){
             $pins = array();
-            $board_pins = $this->get_pins_queue();
+            $board_queue = $this->get_pins_queue();
+            $bookmark = null;
             
-            if ( ($cache == 'disabled') || (($cache == 'auto') && (!$board_pins)) ){
+            if (isset($board_queue['bookmark'])){ //uncomplete queue
+                $bookmark = $board_queue['bookmark'];
+                $reset = false; //do not reset queue, it is not filled yet
+            }
+            
+
+            if ( $reset || !$board_queue || $bookmark ){
+                
+                if ($reset){
+                    $this->reset_pins_queue();
+                }
+                
                 $login = pinim()->pinterest_do_login();
-                $board_pins = array();
 
-                if (is_wp_error($login) ) return $login;
+                $board_url = $this->get_datas('url');
+                $board_queue = pinim()->Pinterest->get_all_board_pins_custom($this->board_id,$board_url,$bookmark);
 
-                try {
-                    $board_pins = pinim()->Pinterest->get_all_board_pins_custom($this->board_id);
-
-                } catch (\Exception $e) {
-                    return new WP_Error( 'pinim', $e->getMessage());
+                if (is_wp_error($board_queue)){
+                    
+                    $error = $board_queue;
+                    
+                    //check if we have an incomplete queue
+                    $error_code = $error->get_error_code();
+                    $board_queue = $error->get_error_data($error_code);
+                    $this->set_pins_queue($board_queue);
                 }
 
-                $this->set_pins_queue($board_pins);
+                $this->set_pins_queue($board_queue);
             }
 
-
+            $board_pins = $board_queue['pins'];
             foreach ((array)$board_pins as $pin_raw){
                 $this->pins[] = new Pinim_Pin($pin_raw['id']);
             }
@@ -239,6 +284,7 @@ class Pinim_Board{
             'step'      => 1,
             'action'    => 'boards_import_pins',
             'board_ids'  => $this->board_id,
+            'pin_status'    => 'pending',
             'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
         );
 
@@ -246,6 +292,26 @@ class Pinim_Board{
             '<a href="%1$s">%2$s</a>',
             pinim_get_tool_page_url($link_args),
             __('Import pins','pinim')
+
+        );
+
+        return $link;
+    }
+    
+    function get_link_action_update($board_id = null){
+        //Refresh cache
+        $link_args = array(
+            'step'          => 1,
+            'action'        => 'boards_import_pins',
+            'board_ids'     => $this->board_id,
+            'pin_status'    => 'processed',
+            'paged'         => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
+        );
+
+        $link = sprintf(
+            '<a href="%1$s">%2$s</a>',
+            pinim_get_tool_page_url($link_args),
+            __('Update pins','pinim')
 
         );
 
@@ -337,9 +403,17 @@ class Pinim_Boards_Table extends WP_List_Table {
         //Build row actions
         $actions = array(
             'single_board_cache_pins'     => $board->get_link_action_cache(),
-            'single_board_import_pins'    => $board->get_link_action_import(),
             'view'                        => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$board->get_remote_url(),__('View on Pinterest','pinim'),'view'),
         );
+        
+        //import link
+        if (pinim_get_screen_boards_import_status()=='completed'){
+            $actions['single_board_update_pins']    = $board->get_link_action_update();
+        }else{
+            $actions['single_board_import_pins']    = $board->get_link_action_import();
+        }
+        
+        
         
         //Return the title contents
         return sprintf('%1$s <span style="color:silver">(id:%2$s)</span>%3$s',
@@ -455,8 +529,8 @@ class Pinim_Boards_Table extends WP_List_Table {
     function column_pin_count_cached($board){
         
         $percent = 0;
-        
-        $count = count( $board->get_pins('only') ); //check queue, do not populate pins
+
+        $count = count( $board->get_cached_pins() ); //check queue, do not populate pins
         if ($total_pins  = $board->get_datas('pin_count')){
             $percent = $count / $total_pins * 100;
         }
@@ -477,22 +551,24 @@ class Pinim_Boards_Table extends WP_List_Table {
     function column_pin_count_imported($board){
         
         $percent = 0;
+        $imported = 0;
+        $cached_pins = $board->get_cached_pins();
         
-        $imported = pinim_get_posts_by_board_id($board->board_id);
-
-        
-        $count = count( $imported );
-        if ($total_pins  = $board->get_datas('pin_count')){
-            $percent = $count / $total_pins * 100;
+        foreach ((array)$cached_pins as $raw_pin){
+            if (in_array($raw_pin['id'],pinim_tool_page()->existing_pin_ids)) $imported++;
         }
-        $count_str = $count;
+        
+        if ($total_pins  = $board->get_datas('pin_count')){
+            $percent = $imported / $total_pins * 100;
+        }
+        $imported_str = $imported;
         if ($percent>=100){
-            $count_str = '<strong>'.$count_str.'</strong>';
+            $imported_str = '<strong>'.$imported_str.'</strong>';
         }
 
         return sprintf(
             '<span class="board-imported-count">%1$s</span> <span class="board-imported-pc" data-cached-pc="%2$s" style="color:silver">(%2$s%%)</span>',
-            $count_str,
+            $imported_str,
             round($percent)
                 
         );
@@ -592,60 +668,80 @@ class Pinim_Boards_Table extends WP_List_Table {
                 'step'          => 1,   
             );
             
-            $link_cached_args = $link_args;
-            $link_cached_args['board_status'] = 'cached';
+            $link_waiting_args = $link_args;
+            $link_waiting_args['board_status'] = 'waiting';
+            $link_waiting_classes = array();
+            $waiting_count = 0;
             
             $link_pending_args = $link_args;
             $link_pending_args['board_status'] = 'pending';
-
-            $link_cached_classes = array();
             $link_pending_classes = array();
-            
-            $cached_count = 0;
             $pending_count = 0;
+            
+            $link_completed_args = $link_args;
+            $link_completed_args['board_status'] = 'completed';
+            $link_completed_classes = array();
+            $completed_count = 0;
             
             $boards_data = pinim_get_boards_data();
 
             foreach((array)$boards_data as $board_data){
                 $board = new Pinim_Board($board_data['id']);
-                if (!$queue = $board->get_pins_queue()) continue;
-                $cached_count++;
+                if ($board->is_queue_complete()){
+                    $pending_count++;
+                }
+                if ($board->is_fully_imported()){
+                    $completed_count++;
+                }
+                
             }
             
             
-            $pending_count = count($boards_data) - $cached_count;
-            
+            $waiting_count = count($boards_data) - $pending_count;
+            $pending_count -= $completed_count;
             //
             
             $requested_status = pinim_get_screen_boards_import_status();
             
-            if ( $requested_status=='cached' ){
-                $link_cached_classes[] = 'current';
-            }
             if ( $requested_status=='pending' ){
                 $link_pending_classes[] = 'current';
             }
-
-            $link_cached = sprintf(
+            if ( $requested_status=='waiting' ){
+                $link_waiting_classes[] = 'current';
+            }
+            if ( $requested_status=='completed' ){
+                $link_completed_classes[] = 'current';
+            }
+            
+            $link_waiting = sprintf(
                 __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-                pinim_get_tool_page_url($link_cached_args),
-                pinim_get_classes($link_cached_classes),
-                __('Ready','pinim'),
-                $cached_count
+                pinim_get_tool_page_url($link_waiting_args),
+                pinim_get_classes($link_waiting_classes),
+                __('Needs cache refresh','pinim'),
+                $waiting_count
             );
             
             $link_pending = sprintf(
                 __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
                 pinim_get_tool_page_url($link_pending_args),
                 pinim_get_classes($link_pending_classes),
-                __('Needs cache refresh','pinim'),
+                __('Pending','pinim'),
                 $pending_count
+            );
+            
+            $link_completed = sprintf(
+                __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+                pinim_get_tool_page_url($link_completed_args),
+                pinim_get_classes($link_completed_classes),
+                __('Completed','pinim'),
+                $completed_count
             );
 
 
 		return array(
-                    'pending'       => $link_pending,
-                    'caches'   => $link_cached
+                    'waiting'       => $link_waiting,
+                    'pending'        => $link_pending,
+                    'completed'     => $link_completed
                     
                     
                 );

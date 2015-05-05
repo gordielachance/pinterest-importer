@@ -5,24 +5,289 @@
  * Based on https://github.com/dzafel/pinterest-pinner
  */
 
-class PinIm_Pinner extends \PinterestPinner\Pinner{
+class PinIm_Pinner{
     
-    public $user_boards = null;
+    /**
+     * Pinterest.com base URL
+     */
+    private $pinterest_url = 'https://www.pinterest.com';
+    private $pinterest_login_url = 'https://www.pinterest.com/login';
+    
+    /**
+     * @var Pinterest App version loaded from pinterest.com
+     */
+    private $_app_version = null;
+    
+    private $login = null;
+    private $password = null;
+    
+    /**
+     * @var CSRF token loaded from pinterest.com
+     */
+    private $_csrftoken = null;
+    
+    private $cookies = array();
+    
+    protected $headers = array();
+    
+    public $is_logged_in = false;
+    
+    public $user_data = null;
+
+    
+    public function __construct(){
+        // Default HTTP headers for requests
+
+    }
+    
+    /**
+     * Set Pinterest account login.
+     *
+     * @param string $login
+     */
+    public function set_login($login){
+        $this->login = $login;
+        return $this;
+    }
+    /**
+     * Set Pinterest account password.
+     *
+     * @param string $password
+     */
+    public function set_password($password){
+        $this->password = $password;
+        return $this;
+    }
+    
+    function get_headers($headers = array()){
+        $default = array(
+            'Host'              => str_replace('https://', '', $this->pinterest_url),
+            'Origin'            => $this->pinterest_url,
+            'Referer'           => $this->pinterest_url,
+            'Connection'        => 'keep-alive',
+            'Pragma'            => 'no-cache',
+            'Cache-Control'     => 'no-cache',
+            'Accept-Language'   => 'en-US,en;q=0.5',
+            'User-Agent'        => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML => like Gecko) Iron/31.0.1700.0 Chrome/31.0.1700.0' 
+        );
+        
+        return wp_parse_args($headers,$default);
+    }
+    
+    function get_logged_headers($headers = array()){
+        
+        $app_version = $this->_getAppVersion();
+        
+        if ( is_wp_error($app_version) ) return $app_version;
+        
+        $login_headers = array(
+                'X-NEW-APP'             => 1,
+                //'X-Requested-With'      => 'XMLHttpRequest',
+                'Accept'                => 'application/json, text/javascript, */*; q=0.01',
+                'X-APP-VERSION'         => $app_version,
+                'X-CSRFToken'           => $this->_csrftoken,
+                'X-Pinterest-AppState'  => 'active',
+                'X-Requested-With'  => 'XMLHttpRequest',
+        );
+        
+        $default = wp_parse_args(
+                $this->get_headers(),
+                $login_headers
+        );
+        
+        return wp_parse_args($headers,$default);
+        
+    }
+    
+    public function try_decode_response($response){
+        if (substr($response, 0, 1) === '{') {
+            $response = json_decode($response, true);
+        }
+        return $response;
+    }
+    
+    public function set_auth($response){
+        
+        if (is_wp_error($response)) return false;
+
+        $this->cookies = $response['cookies'];
+
+        foreach ((array)$this->cookies as $cookie){
+            if ($cookie->name !='csrftoken') continue;
+            $this->_csrftoken = $cookie->value;
+        }
+    }
+    
+    /**
+     * Try to log in to Pinterest.
+     *
+     * @throws PinnerException
+     */
+    public function do_login(){
+
+        //get first token
+        $response = wp_remote_get( 'https://www.pinterest.com/login/?next=https%3A%2F%2Fwww.pinterest.com%2F&prev=https%3A%2F%2Fwww.pinterest.com%2F' );
+        $this->set_auth($response); //udpate token & cookies for further requests
+        
+        if ($this->is_logged_in) return;
+
+        $data = array(
+            'data' => json_encode(array(
+                'options' => array(
+                    'username_or_email' => $this->login,
+                    'password' => $this->password,
+                ),
+                'context' => new \stdClass,
+            )),
+            'source_url' => '/login/',
+            'module_path' => 'App()>LoginPage()>Login()>Button(class_name=primary, text=Log In, type=submit, size=large)',
+        );
+        
+        $url = $this->pinterest_url.'/resource/UserSessionResource/create/';
+
+        $extra_headers = array(
+            'Referer'           => $this->pinterest_login_url,
+            'Content-Type'      => 'application/x-www-form-urlencoded; charset=UTF-8'
+        );
+
+        $headers = $this->get_logged_headers($extra_headers);
+        
+        if (is_wp_error($headers)) return $headers;
+        
+        $args = array(
+            'headers'       => $headers,
+            'body'          => http_build_query($data),
+            'cookies'       => $this->cookies
+        );
+
+        $response = wp_remote_post( $url, $args );
+        $this->set_auth($response); //udpate token & cookies for further requests
+
+        $body = wp_remote_retrieve_body($response);
+
+        if ( is_wp_error($body) ){
+            return $body;
+        }
+
+        $body = $this->try_decode_response($body);
+
+        if (isset($body['resource_response']['error']) and $body['resource_response']['error']) {
+            return new WP_Error('pinim',$body['resource_response']['error']);
+        } else {
+            if (!isset($body['resource_response']['data']) or !$body['resource_response']['data']) {
+                return new WP_Error('pinim',__('Unknown error while logging in.','pinim'));
+            }
+        }
+
+        $this->is_logged_in = true;
+        return $this->is_logged_in;
+    }
+
+    /**
+     * Get Pinterest App Version.
+     *
+     * @return string
+     * @throws PinnerException
+     */
+    private function _getAppVersion(){
+        
+        if ($this->_app_version) return $this->_app_version;
+        
+        $url = $this->pinterest_login_url;
+        
+        $args = array(
+            'headers'       => $this->get_headers()
+        );
+
+        $response = wp_remote_get( $url, $args );
+        $body = wp_remote_retrieve_body($response);
+        
+        if ( is_wp_error($body) ){
+            return $body;
+        }
+
+        if (is_string($body)){
+
+            preg_match('/P\.scout\.init\((\{.+\})\);/isU', $body, $match);
+
+            if (isset($match[1]) and $match[1]) {
+
+                $app_json = @json_decode($match[1], true);
+                
+                if (isset($app_json['context']['app_version'])){
+                    $this->_app_version = $app_json['context']['app_version'];
+                    return $this->_app_version;
+                }
+            }
+        }
+        
+        return new WP_Error('pinim',__('Error getting App Version from P.scout.init() JSON data','pinim'));
+    }
+    
+    /**
+     * Get logged in user data.
+     *
+     * @return mixed
+     * @throws PinnerException
+     */
+    public function get_user_datas(){
+        
+        if ($this->user_data) return $this->user_data;
+        
+        $login = $this->do_login();
+        
+        if (is_wp_error($login)) return $login;
+
+        $extra_headers = array(
+            //'Referer'   => '/'
+        );
+        
+        $headers = $this->get_logged_headers($extra_headers);
+        
+        if (is_wp_error($headers)) return $headers;
+
+        $args = array(
+            'headers'       => $headers,
+            'cookies'       => $this->cookies
+        );
+
+        $response = wp_remote_get( $this->pinterest_url.'/me/', $args );
+        $this->set_auth($response); //udpate token & cookies
+        
+        $body = wp_remote_retrieve_body($response);
+
+        if ( is_wp_error($body) ){
+            return $body;
+        }
+
+        $body = $this->try_decode_response($body);
+
+        if (isset($body['resource_data_cache'][0]['data'])) {
+            $data = $body['resource_data_cache'][0]['data'];
+            if (isset($data['repins_from'])) {
+                unset($data['repins_from']);
+            }
+            $this->user_data = array_filter($data);
+            return $this->user_data;
+        }
+
+        return new WP_Error('pinim',__('Unknown error while getting user data','pinim'));
+    }
     
     public function get_all_boards_custom(){
         
         if ( empty($this->user_boards) ) {
 
-            $bookmark = null;
+            $bookmark = array();
             $board_page = 0;
             $boards = array();
 
             while ($bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
 
-                try {
-                    $query = $this->get_boards_page_custom($bookmark);
-                }catch (\Exception $e) {
-                    throw new PinterestPinner\PinnerException($e->getMessage(), null, $e);
+                $query = $this->get_boards_page_custom($bookmark);
+
+                if ( is_wp_error($query) ){
+                    return new WP_Error( 'pinim', $query->get_error_message(), $boards ); //return already loaded boards with error
                 }
 
                 $bookmark = $query['bookmark'];
@@ -38,7 +303,7 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
                 $board_page++;
 
             }
-
+            
             $this->user_boards = $boards;
             
         }
@@ -51,70 +316,86 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
     public function get_boards_page_custom($bookmark = null){
         
         $page_boards = array();
-
-        try {
-            $user_datas = $this->getUserData();
-        } catch (\Exception $e) {
-            throw new PinterestPinner\PinnerException($e->getMessage(), null, $e);
+        
+        $user_datas = $this->get_user_datas();
+        
+        if (is_wp_error($user_datas)){
+            return $user_datas;
         }
 
-        $post_data_options = array(
+        $data_options = array(
             'field_set_key'     => 'grid_item',
             'username'          => $user_datas['username'],
             'sort'              => 'profile'
         );
         
         if ($bookmark){ //used for pagination. Bookmark is defined when it is not the first page.
-            $post_data_options['bookmarks'] = $bookmark;
+            $data_options['bookmarks'] = (array)$bookmark;
         }
         
-        $post_data = array(
+        $data = array(
             'data' => json_encode(array(
-                'options' => $post_data_options,
+                'options' => $data_options,
                 'context' => new \stdClass,
             )),
             'source_url' => '/'.$user_datas['username'].'/',
             '_' => time()*1000 //js timestamp
         );
-
-        try {
-            $this->_loadContent('/resource/BoardsResource/get/', $post_data, '/'.$user_datas['username'].'/');
-        } catch (\Exception $e) {
-            throw new PinterestPinner\PinnerException($e->getMessage(), null, $e);
-        }
         
-        if (isset($this->_response_content['resource_data_cache'][0]['data'])){
+        $extra_headers = array(
+            //'Referer'   => '/'
+        );
+        
+        $headers = $this->get_logged_headers($extra_headers);
+        
+        if (is_wp_error($headers)) return $headers;
+
+        $args = array(
+            'headers'       => $headers,
+            'cookies'       => $this->cookies,
+            'body'          => $data,
+        );
+
+        $response = wp_remote_post( $this->pinterest_url.'/resource/BoardsResource/get/', $args );
+        //$this->set_auth($response); //udpate token & cookies
+        
+        $body = wp_remote_retrieve_body($response);
+
+        if ( is_wp_error($body) ){
+            return $body;
+        }
+
+        $body = $this->try_decode_response($body);
+        
+        
+        
+        if (isset($body['resource_data_cache'][0]['data'])){
+
+            $page_boards = $body['resource_data_cache'][0]['data'];
             
-            $response = $this->_response_content;
             
-            //boards
-            if (isset($response['resource_data_cache'][0]['data'])){
 
-                $page_boards = $response['resource_data_cache'][0]['data'];
-
-                //remove items that have not the "pin" type (like module items)
-                $page_boards = array_filter(
-                    $page_boards,
-                    function ($e) {
-                        return $e['type'] == 'board';
-                    }
-                );  
-                $page_boards = array_values($page_boards); //reset keys
-
-            }
+            //remove items that have not the "pin" type (like module items)
+            $page_boards = array_filter(
+                $page_boards,
+                function ($e) {
+                    return $e['type'] == 'board';
+                }
+            );  
+            $page_boards = array_values($page_boards); //reset keys
 
             //bookmark (pagination)
-            if (!isset($response['resource']['options']['bookmarks'][0])){
-                throw new PinterestPinner\PinnerException( 'get_boards_page_custom(): Missing bookmark' );
-            }else{
-                $bookmark = $response['resource']['options']['bookmarks'][0];
+            if (isset($body['resource']['options']['bookmarks'][0])){
+                $bookmark = $body['resource']['options']['bookmarks'][0];
+            }else{ //force end
+                $bookmark = '-end-';
             }
-
+            
             return array('boards'=>$page_boards,'bookmark'=>$bookmark);
 
         }
 
-        throw new PinterestPinner\PinnerException( 'Error getting user boards.' );
+        return new WP_Error('pinim',__('Error getting user boards','pinim'));
 
     }
     
@@ -126,22 +407,31 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
      * @return \Exception
      */
 
-    public function get_all_board_pins_custom($board_id,$max=0,$stop_at_pin_id=null){
-        $bookmark = null;
+    public function get_all_board_pins_custom($board_id,$board_url,$bookmark=null,$max=0,$stop_at_pin_id=null){
         $board_page = 0;
         $board_pins = array();
+        //$bookmark = null; //TO FIX, the bookmark thing seems not to work.
 
         while ($bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
+
+            $query = $this->get_board_pins_page_custom($board_id,$board_url,$bookmark);
             
-            try {
-                $query = $this->get_board_pins_page_custom($board_id,$bookmark);
-            }catch (\Exception $e) {
-                throw new PinterestPinner\PinnerException($e->getMessage(), null, $e);
+            if ( is_wp_error($query) ){
+                
+                if(empty($board_pins)){
+                    $message = $query->get_error_message();
+                }else{
+                    $message = sprintf(__('Error getting some of the pins for board #%1$s','pinim'),$board_id);
+                }
+                
+                return new WP_Error( 'pinim', $message, array('pins'=>$board_pins,'bookmark'=>$bookmark) ); //return already loaded pins with error
             }
 
             $bookmark = $query['bookmark'];
 
             if (isset($query['pins'])){
+                
+                
 
                 $page_pins = $query['pins'];
 
@@ -170,8 +460,8 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
             $board_page++;
             
         }
-
-        return $board_pins;
+        
+        return array('pins'=>$board_pins,'bookmark'=>$bookmark);
 
     }
     
@@ -183,84 +473,106 @@ class PinIm_Pinner extends \PinterestPinner\Pinner{
      * @throws PinnerException
      */
 
-    private function get_board_pins_page_custom($board_id, $bookmark = null){
+    private function get_board_pins_page_custom($board_id, $board_url, $bookmark = null){
 
         $page_pins = array();
         
-        try {
-            $user_datas = $this->getUserData();
-        } catch (\Exception $e) {
-            throw new PinterestPinner\PinnerException($e->getMessage(), null, $e);
+        $user_datas = $this->get_user_datas();
+        
+        if (is_wp_error($user_datas)){
+            return $user_datas;
         }
-        
-        $user_url = self::PINTEREST_URL . $user_datas['username']. '/';
-        
-        $post_data_options = array(
-            'board_id'      => $board_id,
-            //'board_url'     => $board['url'],
-            'board_layout'  => 'default',
-            'prepend'       => true,
-            'page_size'     => null,
-            'access'        => array('write','delete'),
-        );
 
+        $data_options = array(
+            'board_id'                  => $board_id,
+            'add_pin_rep_with_place'    => null,
+            'board_url'                 => $board_url,
+            'page_size'                 => null,
+            'prepend'                   => true,
+            'access'                    => array('write','delete'),
+            'board_layout'              => 'default',
+            
+        );
+        
         if ($bookmark){ //used for pagination. Bookmark is defined when it is not the first page.
-            $post_data_options['bookmarks'] = $bookmark;
+            $data_options['bookmarks'] = (array)$bookmark;
         }
         
-        $post_data = array(
+        $data = array(
             'data' => json_encode(array(
-                'options' => $post_data_options,
+                'options' => $data_options,
                 'context' => new \stdClass,
             )),
-            'source_url' => '/',
+            'source_url' => $board_url,
+            /*
+            'module_path' => sprintf('App()>BoardPage(inviter_user_id=null, invite_type=null, show_follow_memo=null, board_invite_code=null, invite_code=null, tab=pins, resource=BoardResource(username=%1$s, slug=%2$s))',//board_id=%2$d
+                        $user_datas['username'],
+                        'illustrations'
+            ),
+            */ 
+            /*
             'module_path' => sprintf('UserProfilePage(resource=UserResource(username=%1$s, invite_code=null))>UserProfileContent(resource=UserResource(username=%1$s, invite_code=null))>UserBoards()>Grid(resource=ProfileBoardsResource(username=%1$s))>GridItems(resource=ProfileBoardsResource(username=%1$s))>Board(show_board_context=false, show_user_icon=false, view_type=boardCoverImage, component_type=1, resource=BoardResource(board_id=%2$d))',
                         $user_datas['username'],
                         $board_id
             ),
+            */
             '_' => time()*1000 //js timestamp
         );
+        
+        $extra_headers = array(
+            //'Referer'   => '/'
+            'X-Pinterest-AppState'  => 'background'
+        );
+        
+        $headers = $this->get_logged_headers($extra_headers);
 
-        try {
-            $this->_loadContent('/resource/BoardFeedResource/get/', $post_data, '/');
-        } catch (\Exception $e) {
-            throw new PinterestPinner\PinnerException($e->getMessage(), null, $e);
+        if (is_wp_error($headers)) return $headers;
+
+        $args = array(
+            'headers'       => $headers,
+            'cookies'       => $this->cookies,
+            'body'          => $data,
+        );
+
+        $response = wp_remote_post( $this->pinterest_url.'/resource/BoardFeedResource/get/', $args );
+        //$this->set_auth($response); //udpate token & cookies
+        
+        $body = wp_remote_retrieve_body($response);
+
+        if ( is_wp_error($body) ){
+            return $body;
         }
 
-        if (isset($this->_response_content['resource_data_cache'][0]['data'])){
+        $body = $this->try_decode_response($body);
 
-                $response = $this->_response_content;
+        if (isset($body['resource_data_cache'][0]['data'])){
 
-                //pins
-                if (isset($response['resource_data_cache'][0]['data'])){
 
-                    $page_pins = $response['resource_data_cache'][0]['data'];
+            $page_pins = $body['resource_data_cache'][0]['data'];
 
-                    //remove items that have not the "pin" type (like module items)
-                    $page_pins = array_filter(
-                        $page_pins,
-                        function ($e) {
-                            return $e['type'] == 'pin';
-                        }
-                    );  
-                    $page_pins = array_values($page_pins); //reset keys
-
+            //remove items that have not the "pin" type (like module items)
+            $page_pins = array_filter(
+                $page_pins,
+                function ($e) {
+                    return $e['type'] == 'pin';
                 }
+            );  
+            $page_pins = array_values($page_pins); //reset keys
 
-                //bookmark (pagination)
-                if (!isset($response['resource']['options']['bookmarks'][0])){
+            //bookmark (pagination)
+            if (isset($body['resource']['options']['bookmarks'][0])){
+                $bookmark = $body['resource']['options']['bookmarks'][0];
+            }else{ //force end
+                $bookmark = '-end-';
+            }
 
-                    throw new PinterestPinner\PinnerException( 'get_board_pins_page_custom(): Missing bookmark' );
-                }else{
-                    $bookmark = $response['resource']['options']['bookmarks'][0];
-                }
+            return array('pins'=>$page_pins,'bookmark'=>$bookmark);
 
-                return array('pins'=>$page_pins,'bookmark'=>$bookmark);
-            
         }
 
-        throw new PinterestPinner\PinnerException( 'Error getting user pins.' );
+        return new WP_Error('pinim',sprintf(__('Error getting pins for board #%1$s','pinim'),$board_id));
 
     }
+    
     
 }

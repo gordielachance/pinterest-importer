@@ -6,6 +6,7 @@ class Pinim_Tool_Page {
     public $current_step = 0;
     var $current_user_board = 0;
     private $steps = array('login','board-settings','fetch-pins');
+    var $existing_pin_ids = array();
     
     /**
     * @var The one true Instance
@@ -35,6 +36,7 @@ class Pinim_Tool_Page {
         
         if($step!==false){
             $this->current_step = $step;
+            $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
         }else{
             if ($user_boards = pinim()->get_session_data('user_boards')){ //check cache exists
                 $url = pinim_get_tool_page_url(array('step'=>1));
@@ -50,7 +52,7 @@ class Pinim_Tool_Page {
     }
     
     function save_step(){
-        
+
         $input = null; //form datas, etc.
         
         if ( isset($_POST['pinim_tool']) ) {
@@ -212,7 +214,7 @@ class Pinim_Tool_Page {
             case 1://'boards-settings':
 
             $board_settings = array();
-            $board_error_ids = array();
+            $board_errors = array();
             
             if ( isset($input['boards']) ){
                 $board_settings = $input['boards'];
@@ -234,14 +236,18 @@ class Pinim_Tool_Page {
                         $board_saved = $board->set_options($board_settings[$board->board_id]);
 
                         if (is_wp_error($board_saved)){
-                            $board_error_ids[]=$board->board_id;
-                            add_settings_error('pinim', 'set_options_board_'.$board->board_id, $board_saved->get_error_message());
+                            $board_errors[$board->board_id]=sprintf(__('Board #%1$s: ','pinim'),$board->board_id).$board_saved->get_error_message();
                         }
 
                     }
 
-                    if (!empty($bulk_boards) && empty($board_error_ids)){
+                    if (!empty($bulk_boards) && empty($board_errors)){
                         add_settings_error('pinim', 'set_options_boards', __( 'Boards Successfully updated', 'pinim' ), 'updated');
+                    }else{
+                        $board_errors = array_unique($board_errors);
+                        foreach ($board_errors as $board_id=>$error){
+                            add_settings_error('pinim', 'set_options_board_'.$board_id, $board_errors);
+                        }
                     }
                         
                     break;
@@ -249,17 +255,22 @@ class Pinim_Tool_Page {
 
                         foreach((array)$bulk_boards as $board){
                         
-                            $board_pins = $board->get_pins('disabled');
+                            $board_pins = $board->get_pins(true);
 
-                            if (is_wp_error($board_pins)){
-                                $board_error_ids[]=$board->board_id;
+                            if (is_wp_error($board_pins)){                                
+                                $board_error[$board->board_id]=sprintf(__('Board #%1$s: ','pinim'),$board->board_id).$board_pins->get_error_message();
                                 add_settings_error('pinim', 'cache_single_board_pins_'.$board->board_id, $board_pins->get_error_message());
                             }
                             
                         }
                         
-                        if (empty($board_error_ids)){
+                        if (empty($board_error)){
                             add_settings_error('pinim', 'cache_single_board_pins', __( 'Boards Pins Successfully cached', 'pinim' ), 'updated');
+                        }else{
+                            $board_errors = array_unique($board_errors);
+                            foreach ($board_errors as $board_id=>$error){
+                                add_settings_error('pinim', 'set_options_board_'.$board_id, $board_errors);
+                            }
                         }
                     
                     break;
@@ -333,14 +344,7 @@ class Pinim_Tool_Page {
 
         switch ($this->current_step){
             case 2: //pins settings
-                
-                $board_error_ids = array();
-                $bulk_pins_ids = array();
-                $bulk_pins = array();
-                $pins = array();
-                $requested_boards = array();
-                
-                
+
                 $pins = pinim_get_requested_pins();
                 
                 //filter by status
@@ -348,12 +352,10 @@ class Pinim_Tool_Page {
 
                 foreach ((array)$pins as $key=>$pin){
 
-                    $post_id = pinim_get_post_by_pin_id($pin->pin_id);
-
                     if ($requested_status=='pending'){
-                        if ($post_id) unset($pins[$key]);
+                        if (in_array($pin->pin_id,$this->existing_pin_ids)) unset($pins[$key]);
                     }elseif ($requested_status=='processed'){
-                        if (!$post_id) unset($pins[$key]);
+                        if (!in_array($pin->pin_id,$this->existing_pin_ids)) unset($pins[$key]);
                     }
 
                 }
@@ -388,19 +390,21 @@ class Pinim_Tool_Page {
 
                 foreach ((array)$boards as $key=>$board){
 
-                    $queue = $board->get_pins_queue();
+                    $is_queue_complete = $board->is_queue_complete();
+                    $is_fully_imported = $board->is_fully_imported();
 
                     if ($requested_status=='pending'){
-                        if ($queue) unset($boards[$key]);
-                    }elseif ($requested_status=='cached'){
-                        if (!$queue) unset($boards[$key]);
+                        if ($is_fully_imported) unset($boards[$key]);
+                    }elseif ($requested_status=='waiting'){
+                        if ($is_queue_complete) unset($boards[$key]);
+                    }elseif ($requested_status=='completed'){
+                        if (!$is_fully_imported) unset($boards[$key]);
                     }
 
                 }
                 
                 $this->table_board = new Pinim_Boards_Table($boards);
                 $this->table_board->prepare_items();
-
 
             break;
         }

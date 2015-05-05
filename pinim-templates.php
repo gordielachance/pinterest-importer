@@ -203,13 +203,14 @@ function pinim_get_boards_data(){
         $login = pinim()->pinterest_do_login();
         if (is_wp_error($login) ) return $login;
 
-        try {
-            $user_boards = pinim()->Pinterest->get_all_boards_custom();
-            pinim()->save_session_data('user_boards',$user_boards);
-
-        } catch (\Exception $e) {
-            return new WP_Error( 'pinim', __( "Error while trying to populate user boards datas", 'pinim' ));
+        $user_boards = pinim()->Pinterest->get_all_boards_custom();
+        
+        if (is_wp_error($user_boards)){
+            return $user_boards;
         }
+        
+        pinim()->save_session_data('user_boards',$user_boards);
+
     }
 
     return $user_boards;

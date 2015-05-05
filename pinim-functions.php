@@ -315,6 +315,8 @@ function pinim_get_requested_boards_ids(){
     }elseif ( isset($_REQUEST['board_ids']) ) {
         $bulk_boards_ids = explode(',',$_REQUEST['board_ids']);
     }
+    
+    
 
     return $bulk_boards_ids;
 }
@@ -331,8 +333,8 @@ function pinim_get_requested_boards(){
 }
 
 function pinim_get_requested_pins(){
-    
     $pins = array();
+    $raw_pins = array();
     $bulk_pins_ids = array();
 
     if (isset($_POST['pinim_tool'])){
@@ -365,14 +367,14 @@ function pinim_get_requested_pins(){
                 add_settings_error('pinim', 'get_datas_board_'.$board->board_id, $board_datas->get_error_message());
                 continue;
             }else{
-                $queue = $board->get_pins('only');
+                $queue = $board->get_cached_pins();
 
                 if ( empty($queue) || is_wp_error($queue) ){
                     $board_error_ids[]=$board->board_id;
                     $link_pins_cache = $board->get_link_action_cache();
                     add_settings_error('pinim', 'get_queue_board_'.$board->board_id, sprintf(__( 'No pins found for %1$s.  Please %2$s.', 'pinim' ),'<em>'.$board->get_datas('name').'</em>',$link_pins_cache));
                 }else{
-                    $pins = array_merge($pins,$queue);
+                    $raw_pins = array_merge($raw_pins,$queue);
                 }
             }
 
@@ -381,8 +383,14 @@ function pinim_get_requested_pins(){
 
     }
     
+    foreach ((array)$raw_pins as $key=>$raw_pin){
+        $pin = new Pinim_Pin($raw_pin['id']);
+        $pins[] = $pin;
+    }
+
     return $pins;
 }
+
 
 function pinim_get_screen_pins_import_status(){
     $status = 'pending';
@@ -402,4 +410,31 @@ function pinim_get_screen_boards_import_status(){
     }
 
     return $status;
+}
+
+function get_all_cached_pins($board_id = null){
+    
+    $pins = array();
+    
+    $queues = (array)pinim()->get_session_data('queues');
+
+    if (!$board_id){
+        foreach ($queues as $board_id=>$queue){
+            if (!isset($queue['pins'])) continue;
+            $pins = array_merge($pins,$queue['pins']);
+        }
+    }elseif( isset($queues[$board_id]['pins']) ){
+        $pins = $queues[$board_id]['pins'];
+    }
+
+    return $pins;
+    
+}
+
+function pinim_get_meta_value_by_key($meta_key,$limit = null){
+    global $wpdb;
+    if ($limit)
+        return $value = $wpdb->get_var( $wpdb->prepare("SELECT meta_value FROM $wpdb->postmeta WHERE meta_key = %s LIMIT %d" , $meta_key,$limit) );
+    else
+        return $value = $wpdb->get_col( $wpdb->prepare("SELECT meta_value FROM $wpdb->postmeta WHERE meta_key = %s" , $meta_key) );
 }

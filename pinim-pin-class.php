@@ -27,7 +27,7 @@ class Pinim_Pin{
     }
     
     function get_raw_datas(){
-        $all_pins = (array)pinim()->get_session_data('pins');
+        $all_pins = get_all_cached_pins();
         
         
 
@@ -226,11 +226,13 @@ class Pinim_Pin{
    function get_post_log_meta(){
        
        $datas = apply_filters('pin_sanitize_before_insert',$this->get_datas());
-
+       
+       $prefix = '_pinterest-';
+       
        $metas = array(
-           'pin_id'     => $this->pin_id,
-           'board_id'   => $this->board_id,
-           'log'        => $datas
+           $prefix.'pin_id'     => $this->pin_id,
+           $prefix.'board_id'   => $this->board_id,
+           $prefix.'log'        => $datas
        );
 
        return $metas;
@@ -356,7 +358,6 @@ class Pinim_Pin{
         $post_metas = $this->get_post_log_meta();
 
         foreach ( $post_metas as $key=>$value ) {
-            $key = '_pinterest-'.$key;
             update_post_meta( $post_id, $key, $value );
         }
         
@@ -668,15 +669,14 @@ class Pinim_Pins_Table extends WP_List_Table {
             $processed_count = 0;
             $pending_count = 0;
             
-            $bulk_pins = pinim_get_requested_pins();
+            $pins = pinim_get_requested_pins();
 
-            foreach((array)$bulk_pins as $bulk_pin){
-                if (!$post_id = pinim_get_post_by_pin_id($bulk_pin->pin_id)) continue;
-                $processed_count++;
+            
+            foreach ($pins as $pin){
+                if (in_array($pin->pin_id,pinim_tool_page()->existing_pin_ids)) $processed_count++;
             }
             
-            
-            $pending_count = count($bulk_pins) - $processed_count;
+            $pending_count = count($pins) - $processed_count;
             
             //
             
