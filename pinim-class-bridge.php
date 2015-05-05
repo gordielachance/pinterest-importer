@@ -78,7 +78,9 @@ class Pinim_Bridge{
         
         $app_version = $this->_getAppVersion();
         
-        if ( is_wp_error($app_version) ) return $app_version;
+        if ( is_wp_error($app_version) ) {
+            return $app_version;
+        }
         
         $login_headers = array(
                 'X-NEW-APP'             => 1,
@@ -118,18 +120,24 @@ class Pinim_Bridge{
         }
     }
     
+    private function refresh_token($url = null){
+        $response = wp_remote_get( $this->pinterest_url.$url );
+        $this->set_auth($response); //udpate token & cookies for further requests
+        return $this->_csrftoken;
+    }
+    
     /**
      * Try to log in to Pinterest.
      *
      * @throws PinnerException
      */
     public function do_login(){
+        
+        $api_error = null;
 
         if ($this->is_logged_in) return;
         
-        //get first token
-        $response = wp_remote_get( 'https://www.pinterest.com/login/?next=https%3A%2F%2Fwww.pinterest.com%2F&prev=https%3A%2F%2Fwww.pinterest.com%2F' );
-        $this->set_auth($response); //udpate token & cookies for further requests
+        $refresh_token = $this->refresh_token();
 
         $data = array(
             'data' => json_encode(array(
@@ -152,8 +160,10 @@ class Pinim_Bridge{
 
         $headers = $this->get_logged_headers($extra_headers);
         
-        if (is_wp_error($headers)) return $headers;
-        
+        if (is_wp_error($headers)){
+            return $headers;
+        }
+
         $args = array(
             'headers'       => $headers,
             'body'          => http_build_query($data),
@@ -161,22 +171,21 @@ class Pinim_Bridge{
         );
 
         $response = wp_remote_post( $url, $args );
-        $this->set_auth($response); //udpate token & cookies for further requests
-
         $body = wp_remote_retrieve_body($response);
 
         if ( is_wp_error($body) ){
             return $body;
         }
 
+        $this->set_auth($response); //udpate token & cookies for further requests
         $body = $this->try_decode_response($body);
 
         if (isset($body['resource_response']['error']) and $body['resource_response']['error']) {
-            return new WP_Error('pinim',$body['resource_response']['error']);
-        } else {
-            if (!isset($body['resource_response']['data']) or !$body['resource_response']['data']) {
-                return new WP_Error('pinim',__('Unknown error while logging in.','pinim'));
-            }
+            $api_error = $body['resource_response']['error'];
+        }
+
+        if (!isset($body['resource_response']['data']) or !$body['resource_response']['data']) {
+            return new WP_Error('pinim',__('Unknown error while logging in.','pinim'),$api_error);
         }
 
         $this->is_logged_in = true;
@@ -235,14 +244,18 @@ class Pinim_Bridge{
         if ($this->user_data) return $this->user_data;
         
         $login = $this->do_login();
-        
-        if (is_wp_error($login)) return $login;
+
+        if (is_wp_error($login)){
+            return $login;
+        }
 
         $extra_headers = array(
             //'Referer'   => '/'
         );
-        
+
         $headers = $this->get_logged_headers($extra_headers);
+        
+        
         
         if (is_wp_error($headers)) return $headers;
 
@@ -430,8 +443,6 @@ class Pinim_Bridge{
             $bookmark = $query['bookmark'];
 
             if (isset($query['pins'])){
-                
-                
 
                 $page_pins = $query['pins'];
 
@@ -478,7 +489,7 @@ class Pinim_Bridge{
         $page_pins = array();
         
         $user_datas = $this->get_user_datas();
-        
+
         if (is_wp_error($user_datas)){
             return $user_datas;
         }
@@ -518,7 +529,7 @@ class Pinim_Bridge{
             */
             '_' => time()*1000 //js timestamp
         );
-        
+
         $extra_headers = array(
             //'Referer'   => '/'
             'X-Pinterest-AppState'  => 'background'
@@ -573,6 +584,14 @@ class Pinim_Bridge{
         return new WP_Error('pinim',sprintf(__('Error getting pins for board #%1$s','pinim'),$board_id));
 
     }
-    
+    /*
+     * Converts an array to a string with keys and values
+     
+    private function implode_api_error($input){
+        if (!is_array($input)) return $input;
+        $input = array_filter($input);
+        return implode('; ', array_map(function ($v, $k) { return sprintf('%s="%s"', $k, $v); }, $input, array_keys($input)));
+    }
+    */
     
 }

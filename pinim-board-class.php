@@ -147,14 +147,6 @@ class Pinim_Board{
         return $board_datas[$key];
     }
     
-    function get_pins_queue(){
-        $all_queues = (array)pinim()->get_session_data('queues');
-        if (isset($all_queues[$this->board_id])){
-            return $all_queues[$this->board_id];
-        }
-        
-    }
-    
     function is_queue_complete(){
         $count = count( $this->get_cached_pins() );
         if ($count  < $this->get_datas('pin_count')) return false;
@@ -173,6 +165,14 @@ class Pinim_Board{
         
     }
     
+    function get_pins_queue(){
+        $all_queues = (array)pinim()->get_session_data('queues');
+        if (isset($all_queues[$this->board_id])){
+            return $all_queues[$this->board_id];
+        }
+        
+    }
+    
     /*
      * Append new pins to the board.
      */
@@ -180,12 +180,17 @@ class Pinim_Board{
     function set_pins_queue($queue){
         $existing_pins = array();
         
+        //no pins
+        if ( !isset($queue['pins']) || empty($queue['pins'])){
+            return $this->reset_pins_queue();
+        }
+        
         $all_queues = (array)pinim()->get_session_data('queues');
         
         if(isset($all_queues[$this->board_id]['pins'])){
             $existing_pins = $all_queues[$this->board_id]['pins'];
         }
-        
+
         $queue = array(
             'pins'      => array_merge($existing_pins,$queue['pins']),
             'bookmark'  => $queue['bookmark']
@@ -228,7 +233,6 @@ class Pinim_Board{
                 $bookmark = $board_queue['bookmark'];
                 $reset = false; //do not reset queue, it is not filled yet
             }
-            
 
             if ( $reset || !$board_queue || $bookmark ){
                 
@@ -247,18 +251,31 @@ class Pinim_Board{
                     $error_code = $error->get_error_code();
                     $board_queue = $error->get_error_data($error_code);
                     $this->set_pins_queue($board_queue);
+
+                    
                 }
 
                 $this->set_pins_queue($board_queue);
             }
-
-            $board_pins = $board_queue['pins'];
-            foreach ((array)$board_pins as $pin_raw){
-                $this->pins[] = new Pinim_Pin($pin_raw['id']);
+            
+            $board_queue = $this->get_pins_queue(); //reload queue
+            
+            if (isset($board_queue['pins'])){
+                $board_pins = $board_queue['pins'];
+                foreach ((array)$board_queue['pins'] as $pin_raw){
+                    $this->pins[] = new Pinim_Pin($pin_raw['id']);
+                }
             }
+
+
+        }
+
+        if ($error){
+            return $error;
+        }else{
+            return $this->pins;
         }
         
-        return $this->pins;
         
     }
     
@@ -642,14 +659,16 @@ class Pinim_Boards_Table extends WP_List_Table {
 
             switch (pinim_tool_page()->get_screen_boards_filter()){
                 case 'pending':
-                    submit_button( __( 'Import All Pins','pinim' ), 'button', 'filter_action', false );
+                    //Import All Pins
+                    submit_button( pinim_tool_page()->all_action_str['import_all_pins'], 'button', 'all_boards_action', false );
                 break;
                 case 'waiting':
-                    submit_button( __( 'Cache all pins','pinim' ), 'button', 'filter_action', false );
+                    //Cache All Pins
+                    submit_button( pinim_tool_page()->all_action_str['cache_all_pins'], 'button', 'all_boards_action', false );
                 break;
             }
-            
-                //submit_button( __( 'Update all boards settings','pinim' ), 'button', 'filter_action', false );
+                //Update All Boards Settings
+                //submit_button( pinim_tool_page()->all_action_str['update_all_boards'], 'button', 'all_boards_action', false );
 
 
         }

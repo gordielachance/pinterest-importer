@@ -3,13 +3,12 @@
 class Pinim_Tool_Page {
     
     var $options_page;
-    public $current_step = 0;
-    var $current_user_board = 0;
-    private $steps = array('login','board-settings','fetch-pins');
+    var $current_step = 0;
     var $existing_pin_ids = array();
-    
     var $screen_boards_filter = null;
     var $screen_pins_filter = null;
+
+    var $all_action_str = array(); //text on all pins | boards actions
     
     /**
     * @var The one true Instance
@@ -27,7 +26,16 @@ class Pinim_Tool_Page {
     private function __construct() { /* Do nothing here */ }
     
     function init(){
+
+        $this->all_action_str = array(
+            'cache_all_pins'        =>__( 'Cache All Pins','pinim' ),
+            'import_all_pins'       =>__( 'Import All Pins','pinim' ),
+            'update_all_pins'       =>__( 'Update All Pins','pinim' ),
+            'update_all_boards'     =>__( 'Update All Boards Settings','pinim' )
+        );
+        
         add_action( 'admin_init', array( $this, 'init_tool_page' ) );
+        add_action( 'admin_init', array( $this, 'reduce_settings_errors' ) );
         add_action( 'admin_init', array( $this, 'settings_page_init' ) );
         add_action( 'admin_menu',array(&$this,'admin_menu'),10,2);
     }
@@ -36,11 +44,12 @@ class Pinim_Tool_Page {
         if (!pinim_is_tool_page()) return false;
 
         $step = pinim_get_tool_page_step();
+        $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
         
         if($step!==false){
             
             $this->current_step = $step;
-            $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
+            
             $this->screen_boards_filter = $this->get_screen_boards_filter();
             $this->screen_pins_filter = $this->get_screen_pins_filter();
             $this->bridge = new Pinim_Bridge;
@@ -57,6 +66,27 @@ class Pinim_Tool_Page {
         $this->save_step();
         $this->init_step();
 
+    }
+    
+    /**
+     * Removes duplicate settings errors (based on their messages)
+     * @global type $wp_settings_errors
+     */
+    
+    function reduce_settings_errors(){
+        //remove duplicates errors based on their message
+        global $wp_settings_errors;
+
+        if (empty($wp_settings_errors)) return;
+        
+        foreach($wp_settings_errors as $key => $value) {
+          foreach($wp_settings_errors as $key2 => $value2) {
+            if($key != $key2 && $value['message'] === $value['message']) {
+              unset($wp_settings_errors[$key]);
+            }
+          }
+        }
+        
     }
     
     function get_screen_boards_filter(){
@@ -126,8 +156,8 @@ class Pinim_Tool_Page {
                 $bulk_pins = $this->get_requested_pins();
 
                 //check if a filter action is set
-                if ($filter_action = $this->get_pins_filter_action()){
-                    $action = $filter_action;
+                if ($all_pins_action = $this->get_all_pins_action()){
+                    $action = $all_pins_action;
                 }
 
                 switch ($action) {
@@ -161,7 +191,7 @@ class Pinim_Tool_Page {
                                 unset($bulk_pins[$key]);
                             }
                             
-                            if (!$this->get_pins_filter_action()){
+                            if (!$all_pins_action){
                             
                                 add_settings_error('pinim', 'pins_never_imported', 
                                     sprintf(
@@ -221,7 +251,7 @@ class Pinim_Tool_Page {
                                 unset($bulk_pins[$key]);
                             }
                             
-                            if (!$this->get_pins_filter_action()){
+                            if (!$all_pins_action){
                                 
                                 add_settings_error('pinim', 'pins_already_imported', 
                                     sprintf(
@@ -272,8 +302,8 @@ class Pinim_Tool_Page {
                 $bulk_boards = $this->get_requested_boards();
                 
                 //check if a filter action is set
-                if ($filter_action = $this->get_boards_filter_action()){
-                    $action = $filter_action;
+                if ($all_boards_action = $this->get_all_boards_action()){
+                    $action = $all_boards_action;
                 }
                 
 
@@ -395,7 +425,7 @@ class Pinim_Tool_Page {
                     //redirect to next step
                     $args = array(
                         'step'=>1,
-                        'filter_action'=>__( 'Cache all pins','pinim' )
+                        'all_boards_action' =>  $this->all_action_str['cache_all_pins'] //Cache All Pins
                     );
                     
                     $url = pinim_get_tool_page_url($args);
@@ -411,21 +441,8 @@ class Pinim_Tool_Page {
     }
 
     function init_step(){
-        
-        
+
         $board_ids = array();
-        
-        /*
-        //redirect to login page
-        if ($this->current_step){
-            if ( !$boards_data = pinim()->get_session_data('user_boards') ){ //check cache exists
-                $url = pinim_get_tool_page_url();
-                wp_redirect( $url );
-                die();
-            }
-        }
-         * 
-         */
 
         switch ($this->current_step){
             case 2: //pins settings
@@ -506,11 +523,11 @@ class Pinim_Tool_Page {
         /*
          * Do nothing here.  We use our own hooked function save_step() at init, this one is not necessary.
          */
+        return false;
     }
 
     function settings_page_init(){
-        
-        
+
         register_setting(
              'pinim', // Option group
              'pinim_tool', // Option name
@@ -518,11 +535,8 @@ class Pinim_Tool_Page {
          );
         
         switch($this->current_step){
-            
-            case 1://'boards-settings':
-            break;
-            
-            default:
+
+            case 0://authentification
 
                 add_settings_section(
                      'settings_general', // ID
@@ -590,7 +604,9 @@ class Pinim_Tool_Page {
         <div class="wrap">
             <?php screen_icon(); ?>
             <h2><?php _e('Pinterest Importer','pinim');?></h2>  
+            
             <?php settings_errors();?>
+            
             <h2 class="nav-tab-wrapper">
                 <?php $this->importer_page_tabs($this->current_step); ?>
             </h2>
@@ -796,17 +812,17 @@ class Pinim_Tool_Page {
         return $user_boards;
     }
     
-    function get_pins_filter_action(){
+    function get_all_pins_action(){
         $action = null;
 
         //filter buttons
-        if (isset($_REQUEST['filter_action'])){
-            switch ($_REQUEST['filter_action']){
+        if (isset($_REQUEST['all_pins_action'])){
+            switch ($_REQUEST['all_pins_action']){
                 //step 2
-                case __( 'Import All Pins','pinim' ):
+                case $this->all_action_str['import_all_pins']: //Import All Pins
                     $action = 'pins_import_pins';
                 break;
-                case __( 'Update All Pins','pinim' ):
+                case $this->all_action_str['update_all_pins']: //Update All Pins
                     $action = 'pins_update_pins';
                 break;
 
@@ -818,19 +834,19 @@ class Pinim_Tool_Page {
 
 
 
-    function get_boards_filter_action(){
+    function get_all_boards_action(){
         $action = null;
         //filter buttons
-        if (isset($_REQUEST['filter_action'])){
-            switch ($_REQUEST['filter_action']){
+        if (isset($_REQUEST['all_boards_action'])){
+            switch ($_REQUEST['all_boards_action']){
                 //step 1
-                case __( 'Update all boards settings','pinim' ):
+                case $this->all_action_str['update_all_boards']: //Update all boards settings
                     $action = 'boards_update_settings';
                 break;
-                case __( 'Cache all pins','pinim' ):
+                case $this->all_action_str['cache_all_pins']: //Cache All Pins
                     $action = 'boards_cache_pins';
                 break;
-                case __( 'Import All Pins','pinim' ):
+                case $this->all_action_str['import_all_pins']: //Import All Pins
                     $action = 'boards_import_pins';
                 break;
 
@@ -852,7 +868,7 @@ class Pinim_Tool_Page {
             $board_settings = $input['boards'];
 
             foreach((array)$board_settings as $board){
-                if ( !$this->get_boards_filter_action() && !isset($board['bulk']) ) continue;
+                if ( !$this->get_all_boards_action() && !isset($board['bulk']) ) continue;
                     $bulk_boards_ids[] = $board['id'];
             }
 
@@ -976,7 +992,7 @@ class Pinim_Tool_Page {
 
         return $count;
 
-     }
+    }
 
     function get_boards_count_completed(){
         $count = 0;

@@ -23,7 +23,7 @@ class PinIm {
     /**
     * @public string plugin DB version
     */
-    public $db_version = '100';
+    public $db_version = '200';
 
     /** Paths *****************************************************************/
 
@@ -43,6 +43,9 @@ class PinIm {
 
     var $Pinterest = null;
     var $user_boards_options = null;
+    var $pinterest_url = 'https://www.pinterest.com';
+    var $root_term_name = 'Pinterest.com';
+    var $likes_term_name = 'Likes';
 
 
     /**
@@ -59,11 +62,6 @@ class PinIm {
             }
             return self::$instance;
     }
-
-    var $pinterest_url = 'https://www.pinterest.com';
-    var $root_term_name = 'Pinterest.com';
-    var $likes_term_name = 'Likes';
-        
 
     /**
         * A dummy constructor to prevent bbPress from being loaded more than once.
@@ -96,31 +94,14 @@ class PinIm {
     
     function includes(){
         
-        // Custom Pinterest Pinner
-
         require $this->plugin_dir . '/pinim-class-bridge.php';
-        
-        
-        //require $this->plugin_dir . '_inc/lib/pinterest-pinner/PinterestPinner.php';
         require $this->plugin_dir . '/pinim-functions.php';
         require $this->plugin_dir . '/pinim-templates.php';
         require $this->plugin_dir . '/pinim-pin-class.php';
         require $this->plugin_dir . '/pinim-board-class.php';
         require $this->plugin_dir . '/pinim-dummy-importer.php';
         require $this->plugin_dir . '/pinim-tool-page.php';
-        require $this->plugin_dir . '/pinim-ajax.php';
 
-        /*
-        if ( ! class_exists( 'WP_Importer' ) ) {
-                $class_wp_importer = ABSPATH . 'wp-admin/includes/class-wp-importer.php';
-                if ( file_exists( $class_wp_importer ) ) {
-                    require $class_wp_importer;
-                }
-        }
-
-        require $this->plugin_dir . '/pinim-class.php';
-         * 
-         */
     }
 
     function setup_actions(){  
