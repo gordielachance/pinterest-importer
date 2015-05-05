@@ -124,7 +124,8 @@ class Pinim_Board{
      */
     
     function get_datas($key = null){
-        $boards_datas = pinim_get_boards_data();
+        
+        $boards_datas = pinim()->get_session_data('user_boards');
 
         //keep only our board
         $matching_boards = array_filter(
@@ -164,7 +165,7 @@ class Pinim_Board{
         $cached_pins = $this->get_cached_pins();
         $imported_pins_ids = pinim_tool_page()->existing_pin_ids;
         
-        foreach($cached_pins as $pin){
+        foreach((array)$cached_pins as $pin){
             if (!in_array($pin['id'],$imported_pins_ids)) return false;
         }
         
@@ -202,7 +203,12 @@ class Pinim_Board{
     }
     
     function get_cached_pins(){
-        return get_all_cached_pins($this->board_id);
+        $board_pins = array();
+ 
+        if ($all_pins = pinim_tool_page()->get_all_cached_pins()){
+           print_r($all_pins);die();
+        }
+        return $board_pins;
     }
     
     /**
@@ -229,11 +235,9 @@ class Pinim_Board{
                 if ($reset){
                     $this->reset_pins_queue();
                 }
-                
-                $login = pinim()->pinterest_do_login();
 
                 $board_url = $this->get_datas('url');
-                $board_queue = pinim()->Pinterest->get_all_board_pins_custom($this->board_id,$board_url,$bookmark);
+                $board_queue = pinim_tool_page()->bridge->get_all_board_pins_custom($this->board_id,$board_url,$bookmark);
 
                 if (is_wp_error($board_queue)){
                     
@@ -664,43 +668,30 @@ class Pinim_Boards_Table extends WP_List_Table {
 	 *
 	 * @return array
 	 */
+   
 	protected function get_views() {
             
+            $boards_data = pinim()->get_session_data('user_boards');
+
             $link_args = array(
                 'step'          => 1,   
             );
             
-            $link_waiting_args = $link_args;
-            $link_waiting_args['boards_filter'] = 'waiting';
-            $link_waiting_classes = array();
-            $waiting_count = 0;
-            
             $link_pending_args = $link_args;
             $link_pending_args['boards_filter'] = 'pending';
             $link_pending_classes = array();
-            $pending_count = 0;
+            $pending_count = pinim_tool_page()->get_boards_count_pending();
             
             $link_completed_args = $link_args;
             $link_completed_args['boards_filter'] = 'completed';
             $link_completed_classes = array();
-            $completed_count = 0;
+            $completed_count = pinim_tool_page()->get_boards_count_completed();
             
-            $boards_data = pinim_get_boards_data();
+            $link_waiting_args = $link_args;
+            $link_waiting_args['boards_filter'] = 'waiting';
+            $link_waiting_classes = array();
+            $waiting_count = pinim_tool_page()->get_boards_count_waiting();
 
-            foreach((array)$boards_data as $board_data){
-                $board = new Pinim_Board($board_data['id']);
-                if ($board->is_queue_complete()){
-                    $pending_count++;
-                }
-                if ($board->is_fully_imported()){
-                    $completed_count++;
-                }
-                
-            }
-            
-            
-            $waiting_count = count($boards_data) - $pending_count;
-            $pending_count -= $completed_count;
             //
 
             switch (pinim_tool_page()->get_screen_boards_filter()){

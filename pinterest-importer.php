@@ -98,7 +98,7 @@ class PinIm {
         
         // Custom Pinterest Pinner
 
-        require $this->plugin_dir . '/pinim-class-pinner.php';
+        require $this->plugin_dir . '/pinim-class-bridge.php';
         
         
         //require $this->plugin_dir . '_inc/lib/pinterest-pinner/PinterestPinner.php';
@@ -239,46 +239,6 @@ class PinIm {
         
         return $data;
     }
-    
-    function pinterest_is_logged(){
-        if (isset($this->Pinterest) && $this->Pinterest->is_logged_in) return true;
-        return false;
-    }
-        
-    function pinterest_do_login($login = null,$password = null){
-        
-        if ( $this->pinterest_is_logged() ) return true;
-        
-        if (!$login) $login = $this->get_session_data('login');
-        if (!$password) $password = $this->get_session_data('password');
-        if (!$login || !$password ) {
-            return new WP_Error( 'pinim', __( "Missing login and/or password", 'pinim' ));
-        }
-        
-        $this->Pinterest = new PinIm_Pinner;
-        $this->Pinterest->set_login($login)->set_password($password);
-        $user_datas = $this->Pinterest->get_user_datas();
-
-        if (is_wp_error($user_datas)){
-            return $user_datas;
-        }
-
-        if ($this->Pinterest->is_logged_in){
-            $this->save_session_data('login',$login);
-            $this->save_session_data('password',$password);
-            $this->save_session_data('user_datas',$this->Pinterest->user_data);
-            return true;
-        }
-
-    }
-    
-    
-
-    
-
-
-
- 
 
     
     /**

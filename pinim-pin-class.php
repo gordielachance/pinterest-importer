@@ -27,9 +27,8 @@ class Pinim_Pin{
     }
     
     function get_raw_datas(){
-        $all_pins = get_all_cached_pins();
-        
-        
+
+        $all_pins = pinim_tool_page()->get_all_cached_pins();
 
         //remove unecessary items
         $pins = array_filter(
@@ -655,7 +654,7 @@ class Pinim_Pins_Table extends WP_List_Table {
             
             $link_args = array(
                 'step'          => 2,   
-                'board_ids'     => implode(',',(array)pinim_get_requested_boards_ids())
+                'board_ids'     => implode(',',(array)pinim_tool_page()->get_requested_boards_ids())
             );
             
             $link_processed_args = $link_args;
@@ -672,7 +671,7 @@ class Pinim_Pins_Table extends WP_List_Table {
             $processed_count = 0;
             $pending_count = 0;
             
-            $pins = pinim_get_requested_pins();
+            $pins = pinim_tool_page()->get_requested_pins();
 
             
             foreach ($pins as $pin){

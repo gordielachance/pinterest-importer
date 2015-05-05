@@ -5,7 +5,7 @@
  * Based on https://github.com/dzafel/pinterest-pinner
  */
 
-class PinIm_Pinner{
+class Pinim_Bridge{
     
     /**
      * Pinterest.com base URL
@@ -125,11 +125,11 @@ class PinIm_Pinner{
      */
     public function do_login(){
 
+        if ($this->is_logged_in) return;
+        
         //get first token
         $response = wp_remote_get( 'https://www.pinterest.com/login/?next=https%3A%2F%2Fwww.pinterest.com%2F&prev=https%3A%2F%2Fwww.pinterest.com%2F' );
         $this->set_auth($response); //udpate token & cookies for further requests
-        
-        if ($this->is_logged_in) return;
 
         $data = array(
             'data' => json_encode(array(
@@ -320,7 +320,7 @@ class PinIm_Pinner{
         $user_datas = $this->get_user_datas();
         
         if (is_wp_error($user_datas)){
-            return $user_datas;
+            return __('You are not logged in.  Unable to get boards !','pinim');
         }
 
         $data_options = array(

@@ -28,12 +28,20 @@ function pinim_get_tool_page_step(){
 }
 
 function pinim_get_tool_page_url($args = array()){
-     $defaults = array(
-         'page'=>'pinim'
-     );
+    
+    $defaults = array(
+        'page'=>'pinim'
+    );
+
+    $args = wp_parse_args($args, $defaults);
      
-     $args = wp_parse_args($args, $defaults);
-     return add_query_arg($args,admin_url('tools.php'));
+    //url encode
+    $args = array_combine(
+            array_map( 'rawurlencode', array_keys( $args ) ),
+            array_map( 'rawurlencode', array_values( $args ) )
+    );
+
+    return add_query_arg($args,admin_url('tools.php'));
 
 }
 
@@ -191,29 +199,6 @@ function pinim_get_pin_meta($key = false, $post_id = false, $single = false){
     }
 
 
-}
-
-
-function pinim_get_boards_data(){
-
-    $user_boards = null;
-
-    if (!$user_boards = pinim()->get_session_data('user_boards')){ //already populated
-
-        $login = pinim()->pinterest_do_login();
-        if (is_wp_error($login) ) return $login;
-
-        $user_boards = pinim()->Pinterest->get_all_boards_custom();
-        
-        if (is_wp_error($user_boards)){
-            return $user_boards;
-        }
-        
-        pinim()->save_session_data('user_boards',$user_boards);
-
-    }
-
-    return $user_boards;
 }
 
 function pinim_get_boards_options(){
