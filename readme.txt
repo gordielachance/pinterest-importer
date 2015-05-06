@@ -20,9 +20,9 @@ Better use it quick !
 * Nice GUI
 * Get pins from public boards, secret boards (soon : likes)
 * Set import options for each of your boards (which category to use, etc)
+* Import original HD images from pins
 * Set pin creation date as post date
 * Supports both image & video pins; and set corresponding post format
-* Import original HD images from pins
 * Handles hashtags,which are converted to post tags
 * May be run several times as existing pins will not be imported again
 * Save the original Pin informations (pin ID, source, etc) as post metas (with prefix _pinterest-)
@@ -61,6 +61,8 @@ If you are a plugin developer, [we would like to hear from you](https://github.c
 You can set the content you want by using the filter "pinim_get_post_content", see function set_post_content() from class 'Pinim_Pin'.
 
 == Screenshots ==
+
+1. Boards settings
 
 
 == Changelog ==
