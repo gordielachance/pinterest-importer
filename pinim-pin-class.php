@@ -173,8 +173,8 @@ class Pinim_Pin{
     
     function get_post_status(){
         $board = $this->get_board();
-        $private = $board->get_options('private');
-        if ($private == 'on'){
+        $private = $board->is_private_board();
+        if ($private = $board->is_private_board()){
             return 'private';
         }else{
             return 'publish';
@@ -627,11 +627,11 @@ class Pinim_Pins_Table extends WP_List_Table {
                 switch (pinim_tool_page()->get_screen_pins_filter()){
                     case 'pending':
                         //Import All Pins
-                        submit_button( pinim_tool_page()->all_action_str['import_all_pins'], 'button', 'all_pins_action', false );
+                        submit_button( pinim_tool_page()->all_action_str['import_all_pins'], 'button', 'all_pins_action', false, array('id'=>'import_all_bt') );
                     break;
                     case 'processed':
                         //Update All Pins
-                        submit_button( pinim_tool_page()->all_action_str['update_all_pins'], 'button', 'all_pins_action', false );
+                        submit_button( pinim_tool_page()->all_action_str['update_all_pins'], 'button', 'all_pins_action', false, array('id'=>'update_all_bt') );
                     break;
                 }
         }

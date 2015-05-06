@@ -20,7 +20,7 @@ class Pinim_Board{
     function get_options($key = null){
         
         $boards_options = pinim_get_boards_options();
-        
+
         //keep only our board
         $matching_boards = array_filter(
             $boards_options,
@@ -145,6 +145,18 @@ class Pinim_Board{
         if (!isset($key)) return $board_datas;
         if (!isset($board_datas[$key])) return false;
         return $board_datas[$key];
+    }
+    
+    function is_private_board(){
+
+        $is_secret = false;
+
+        if ($private = $this->get_options('private')){
+            $is_secret = ($private=='on');
+        }else{
+            $is_secret = ($this->get_datas('privacy')=='secret');
+        }
+        return $is_secret;
     }
     
     function is_queue_complete(){
@@ -487,14 +499,8 @@ class Pinim_Boards_Table extends WP_List_Table {
     function column_private($board){
 
         //privacy
-        $secret_checked_str = checked(true, false, false );
-        $is_secret_board = ($board->get_datas('privacy')=='secret');
-
-        if ($private = $board->get_options('private')){
-            $secret_checked_str = checked($private, 'on', false );
-        }else{
-            $secret_checked_str = checked($is_secret_board, true, false );
-        }
+        $is_private = $board->is_private_board();
+        $secret_checked_str = checked($is_private, true, false );
         
         return sprintf(
             '<input type="checkbox" name="%1$s[boards][%2$s][private]" value="on" %3$s/>',
@@ -516,14 +522,20 @@ class Pinim_Boards_Table extends WP_List_Table {
     }
     
     function column_category($board){
-        
+        $board_term = null;
         $root_cat = pinim_get_root_category_id();
 
         if ( !$selected_cat = $board->get_options('categories') ){
+            $is_auto_cat = true;
             $selected_cat = $root_cat;
+            $cat_name = $board->get_datas('name');
+            if ( $board_term = term_exists($cat_name,'category',$root_cat) ){
+                $selected_cat = $board_term['term_id'];
+            }
         }
         
-        $is_auto_cat = ($selected_cat == $root_cat);
+        $is_auto_cat = (($selected_cat == $root_cat) || ($board_term));
+
 
         $checked_auto_str = checked($is_auto_cat, true, false );
         

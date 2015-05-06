@@ -113,12 +113,8 @@ class PinIm {
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts_styles' ) );
         
         add_action( 'admin_init', array(&$this,'load_textdomain'));
-        //add_action( 'admin_init', array(&$this,'register_importer'));
         add_action( 'admin_init', array( $this, 'register_session' ), 1);
-        
-        //pin raw data
-        //add_filter( 'pin_sanitize_raw_datas','pin_raw_data_board_reduce');
-        
+
         add_filter( 'pin_sanitize_raw_datas','pin_raw_data_remove_unecessary_keys');
         add_filter( 'pin_sanitize_raw_datas','pin_raw_data_date_to_timestamp');
         add_filter( 'pin_sanitize_before_insert','pin_raw_data_images_reduce');
@@ -166,9 +162,16 @@ class PinIm {
     function enqueue_scripts_styles($hook){
         $screen = get_current_screen();
         if ($screen->id != pinim_tool_page()->options_page) return;
+        
         wp_enqueue_script('pinim', $this->plugin_url.'_inc/js/pinim.js', array('jquery'),$this->version);
-        wp_enqueue_style('font-awesome', '//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css',false,'4.3.0');
+        //wp_enqueue_style('font-awesome', '//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css',false,'4.3.0');
         wp_enqueue_style('pinim', $this->plugin_url . '_inc/css/pinim.css',false,$this->version);
+        
+        //localize vars
+        $localize_vars=array();
+        $localize_vars['ajaxurl']=admin_url( 'admin-ajax.php' );
+        $localize_vars['update_warning']=__( 'Updating a pin will override it.  Continue ?',   'pinim' );
+        wp_localize_script('pinim','pinimL10n', $localize_vars);
         
     }
     
@@ -260,11 +263,6 @@ class PinIm {
                         $content = null;
                         
                          switch ($meta_key){
-                            case 'pinner':
-                                $meta_key = __('Pinner URL','pinim');
-                                $pinner_url = pinim_get_user_url($meta[0]);
-                                $content = '<a href="'.$pinner_url.'" target="_blank">'.$pinner_url.'</a>';
-                            break;
                             case 'pin_id':
                                 $meta_key = __('Pin URL','pinim');
                                 
@@ -280,31 +278,28 @@ class PinIm {
                                 
 
                             break;
-                            case 'board_slug':
-                                $meta_key = __('Board URL','pinim');
-                                $board_url = pinim_get_board_url($metas['pinner'],$meta[0]);
-                                $content = '<a href="'.$board_url.'" target="_blank">'.$board_url.'</a>';
-                            break;
-                            case 'source':
-                                $meta_key = __('Source URL','pinim');
-                                $content = '<a href="'.$meta[0].'" target="_blank">'.$meta[0].'</a>';
+                            case 'log':
+                                //nothing for now
                             break;
                             default:
                                 $content = $meta[0];
                             break;
                         }
                         
+                            if ($content){
                         
-                            ?>
-                            <tr class="alternate">
-                                <td class="left">
-                                    <?php echo $meta_key;?>
-                                </td>
-                                <td>
-                                    <?php echo $content;?>
-                                </td>
-                            </tr>
-                            <?php
+                                ?>
+                                <tr class="alternate">
+                                    <td class="left">
+                                        <?php echo $meta_key;?>
+                                    </td>
+                                    <td>
+                                        <?php echo $content;?>
+                                    </td>
+                                </tr>
+                                <?php
+                            
+                            }
                     }
 
                     ?>

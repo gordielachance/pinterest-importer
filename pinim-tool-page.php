@@ -125,10 +125,10 @@ class Pinim_Tool_Page {
             $status = 'processed';
         }
 
-        if (isset($_REQUEST['boards_filter'])){
-            $status = $_REQUEST['boards_filter'];
+        if (isset($_REQUEST['pins_filter'])){
+            $status = $_REQUEST['pins_filter'];
         }
-        
+
         $this->screen_pins_filter = $status;
 
         return $status;

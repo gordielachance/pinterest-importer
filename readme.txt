@@ -3,7 +3,7 @@ Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
 Tags: importer,Pinterest,pins
 Requires at least: 3.5
-Tested up to: 3.9
+Tested up to: 4.2.1
 Stable tag: trunk
 License: GPLv2 or later
 
@@ -11,14 +11,14 @@ Backup all your pins from Pinterest into Wordpress !
 
 == Description ==
 
-Pinterest Importer allows you to connect to your Pinterest.com account; to fetch all your pins (including from secret boards and likes); then to import them into Wordpress.
+Pinterest Importer allows you to connect to your Pinterest.com account; to fetch all your pins (including from secret boards); then to import them into Wordpress.
 
 The difference with other plugins is that it is not based on the (very limited) official Pinterest API.  
 This means that you can make a full backup (instead of getting only the last x pins); but it also means the plugin may broke one day or another.
 Better use it quick !
 
 * Nice GUI
-* Get pins from public boards, secret boards and likes
+* Get pins from public boards, secret boards (soon : likes)
 * Set import options for each of your boards (which category to use, etc)
 * Set pin creation date as post date
 * Supports both image & video pins; and set corresponding post format
@@ -40,7 +40,6 @@ This would be very appreciated — Thanks !
 4. Under the "Boards Settings" tab > "Pending" (which lists the boards that have pins cached), check the boards you want to import the pins from; and click/select "Import Pins".
 4. Under the "Import Pins" tab > "Pending" (which lists the pins that have not yet been imported), check the pins you want to import; and click/select "Import Pins".
 5. Enjoy !
-
 
 = Contributors =
 [Contributors are listed here](https://github.com/gordielachance/pinterest-importer/contributors)
