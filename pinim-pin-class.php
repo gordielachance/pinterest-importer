@@ -670,20 +670,9 @@ class Pinim_Pins_Table extends WP_List_Table {
             $link_processed_classes = array();
             $link_pending_classes = array();
             
-            $processed_count = 0;
-            $pending_count = 0;
-            
-            $pins = pinim_tool_page()->get_requested_pins();
+            $processed_count = pinim_tool_page()->get_pins_count_processed();
+            $pending_count = pinim_tool_page()->get_pins_count_pending();
 
-            
-            foreach ($pins as $pin){
-                if (in_array($pin->pin_id,pinim_tool_page()->existing_pin_ids)) $processed_count++;
-            }
-            
-            $pending_count = count($pins) - $processed_count;
-            
-            //
-            
             switch (pinim_tool_page()->get_screen_pins_filter()){
                 case 'pending':
                     $link_pending_classes[] = 'current';

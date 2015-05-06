@@ -93,12 +93,12 @@ class Pinim_Tool_Page {
         
         if ($this->screen_boards_filter) return $this->screen_boards_filter;
         
-        $status = 'pending';
-        
         //default
+        $status = 'pending';
         if (!$this->get_boards_count_pending()){
             $status = 'waiting';
         }
+        
 
         if (isset($_REQUEST['boards_filter'])){
             $status = $_REQUEST['boards_filter'];
@@ -113,7 +113,11 @@ class Pinim_Tool_Page {
 
         if ($this->screen_pins_filter) return $this->screen_pins_filter;
         
+        //default
         $status = 'pending';
+        if (!pinim_tool_page()->get_pins_count_pending()){
+            $status = 'processed';
+        }
 
         if (isset($_REQUEST['boards_filter'])){
             $status = $_REQUEST['boards_filter'];
@@ -277,8 +281,6 @@ class Pinim_Tool_Page {
                                 add_settings_error('pinim', 'import_pins', sprintf(__( '%1$s Pins successfully imported', 'pinim' ),$success_count), 'updated');
                                 //refresh pins list
                                 $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
-                                //remove from request
-                                unset($_REQUEST['pin_ids']);
                             }
                             
                             if (!empty($pins_errors)){
@@ -472,6 +474,9 @@ class Pinim_Tool_Page {
 
         switch ($this->current_step){
             case 2: //pins settings
+                
+                //remove processed pins from request
+                unset($_REQUEST['pin_ids']);
 
                 if ($pins = $this->get_requested_pins()){
 
@@ -1010,6 +1015,29 @@ class Pinim_Tool_Page {
 
         return $pins;
 
+    }
+    
+    function get_pins_count_pending(){
+        $count = 0;
+        
+        $pins = $this->get_requested_pins();
+        
+        $processed_count = $this->get_pins_count_processed();
+        
+        return count($pins) - $processed_count;
+    }
+    
+    function get_pins_count_processed(){
+        $count = 0;
+        
+        $pins = $this->get_requested_pins();
+        
+        foreach ((array)$pins as $pin){
+            if (in_array($pin->pin_id,pinim_tool_page()->existing_pin_ids)){
+                $count++;
+            }
+        }
+        return $count;
     }
     
     function get_boards_count_pending(){
