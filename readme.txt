@@ -22,7 +22,7 @@ Better use it quick !
 * Set import options for each of your boards (which category to use, etc)
 * Set pin creation date as post date
 * Supports both image & video pins; and set corresponding post format
-* Import images
+* Import original HD images from pins
 * Handles hashtags,which are converted to post tags
 * May be run several times as existing pins will not be imported again
 * Save the original Pin informations (pin ID, source, etc) as post metas (with prefix _pinterest-)

@@ -121,7 +121,17 @@ class Pinim_Bridge{
     }
     
     private function refresh_token($url = null){
-        $response = wp_remote_get( $this->pinterest_url.$url );
+        
+        $extra_headers = array();
+        
+        $headers = $this->get_logged_headers($extra_headers);
+        
+        $args = array(
+            'headers'       => $headers,
+            'cookies'       => $this->cookies
+        );
+        
+        $response = wp_remote_get( $this->pinterest_url.$url, $args );
         $this->set_auth($response); //udpate token & cookies for further requests
         return $this->_csrftoken;
     }
@@ -135,7 +145,11 @@ class Pinim_Bridge{
         
         $api_error = null;
 
-        if ($this->is_logged_in) return;
+        if ($this->is_logged_in) return $this->is_logged_in;
+        
+        if (!isset($this->login) or !isset($this->password)) {
+            return new WP_Error('pinim',__('Missing login and/or passwordAA','pinim'));
+        }
         
         $refresh_token = $this->refresh_token();
 
@@ -155,11 +169,11 @@ class Pinim_Bridge{
 
         $extra_headers = array(
             'Referer'           => $this->pinterest_login_url,
-            'Content-Type'      => 'application/x-www-form-urlencoded; charset=UTF-8'
+            //'Content-Type'      => 'application/x-www-form-urlencoded; charset=UTF-8'
         );
 
         $headers = $this->get_logged_headers($extra_headers);
-        
+
         if (is_wp_error($headers)){
             return $headers;
         }
@@ -230,7 +244,7 @@ class Pinim_Bridge{
             }
         }
         
-        return new WP_Error('pinim',__('Error getting App Version from P.scout.init() JSON data','pinim'));
+        return new WP_Error('pinim',__('Error getting App Version','pinim'));
     }
     
     /**

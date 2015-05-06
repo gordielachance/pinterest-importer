@@ -211,8 +211,12 @@ class Pinim_Board{
         $board_pins = array();
  
         if ($all_pins = pinim_tool_page()->get_all_cached_pins()){
-           print_r($all_pins);die();
+            foreach($all_pins as $pin){
+                if ($pin['board']['id'] != $this->board_id)  continue;
+                $board_pins[] = $pin;
+            }
         }
+
         return $board_pins;
     }
     
@@ -223,6 +227,8 @@ class Pinim_Board{
      */
     
     function get_pins($reset = false){
+        
+        $error = null;
         
         if (!isset($this->pins)){
             $pins = array();
@@ -238,6 +244,13 @@ class Pinim_Board{
                 
                 if ($reset){
                     $this->reset_pins_queue();
+                }
+                
+                //try to auth
+                $logged = pinim_tool_page()->do_bridge_login();
+
+                if ( is_wp_error($logged) ){
+                    return new WP_Error( 'pinim', $logged->get_error_message() ); 
                 }
 
                 $board_url = $this->get_datas('url');
@@ -423,9 +436,12 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         //Build row actions
         $actions = array(
-            'single_board_cache_pins'     => $board->get_link_action_cache(),
             'view'                        => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$board->get_remote_url(),__('View on Pinterest','pinim'),'view'),
         );
+        
+        if ( pinim_tool_page()->get_screen_boards_filter()=='waiting' ){
+            $actions['single_board_cache_pins']    = $board->get_link_action_cache();
+        }
         
         //import link
         if ( pinim_tool_page()->get_screen_boards_filter()=='completed' ){

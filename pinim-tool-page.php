@@ -275,6 +275,10 @@ class Pinim_Tool_Page {
                             
                             if ($success_count){
                                 add_settings_error('pinim', 'import_pins', sprintf(__( '%1$s Pins successfully imported', 'pinim' ),$success_count), 'updated');
+                                //refresh pins list
+                                $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
+                                //remove from request
+                                unset($_REQUEST['pin_ids']);
                             }
                             
                             if (!empty($pins_errors)){
@@ -391,11 +395,10 @@ class Pinim_Tool_Page {
                     }
                     
                     //try to auth
-                    $this->bridge->set_login($new_input['login'])->set_password($new_input['password']);
-                    $this->bridge->do_login();
+                    $logged = $this->do_bridge_login($new_input['login'],$new_input['password']);
                     
-                    if (!$this->bridge->is_logged_in){
-                        add_settings_error('pinim', 'do_login', __('Error while trying to login','pinim'));
+                    if ( is_wp_error($logged) ){
+                        add_settings_error('pinim', 'do_login', $logged->get_error_message() );
                         return;
                     }
                     
@@ -406,7 +409,7 @@ class Pinim_Tool_Page {
                     //try to get user datas
                     $user_datas = $this->bridge->get_user_datas();
                     if (is_wp_error($user_datas)){
-                        add_settings_error('pinim', 'get_user_data', $user_datas->get_error_message());
+                        add_settings_error('pinim', 'get_user_data', $user_datas->get_error_message() );
                         return;
                     }
                     
@@ -439,6 +442,29 @@ class Pinim_Tool_Page {
         }
         
     }
+    
+   function do_bridge_login($login = null, $password = null){
+       
+       if ($this->bridge->is_logged_in) return $this->bridge->is_logged_in;
+       
+       if (!$login){
+           $login = pinim()->get_session_data('login');
+       }
+       if (!$password){
+           $password = pinim()->get_session_data('password');
+       }
+
+        //try to auth
+        $this->bridge->set_login($login)->set_password($password);
+        $logged = $this->bridge->do_login();
+
+        if ( is_wp_error($logged) ){
+            return new WP_Error( 'pinim',$logged->get_error_message() );
+        }
+        
+        return $logged;
+
+   }
 
     function init_step(){
 
@@ -798,6 +824,8 @@ class Pinim_Tool_Page {
         $user_boards = null;
 
         if (!$user_boards = pinim()->get_session_data('user_boards')){ //already populated
+            
+            $logged = $this->do_bridge_login();
 
             $user_boards = $this->bridge->get_all_boards_custom();
 
@@ -956,6 +984,14 @@ class Pinim_Tool_Page {
             $pin = new Pinim_Pin($pin_id);
             $pins[] = $pin;
         }
+        
+        if (!$requested_pins_ids){ //get all
+            $all_pins = $this->get_all_cached_pins();
+            foreach ($all_pins as $raw_pin){
+                $pin = new Pinim_Pin($raw_pin['id']);
+                $pins[] = $pin;
+            }
+        }
 
         return $pins;
     }
@@ -1014,7 +1050,7 @@ class Pinim_Tool_Page {
         $count = 0;
         $boards_data = pinim()->get_session_data('user_boards');
 
-        $count = count($boards_data) - $this->get_boards_count_pending();
+        $count = count($boards_data) - $this->get_boards_count_pending() - $this->get_boards_count_completed();
 
        return $count;
 
