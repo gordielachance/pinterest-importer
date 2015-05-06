@@ -95,9 +95,15 @@ class Pinim_Tool_Page {
         
         //default
         $status = 'pending';
+        
         if (!$this->get_boards_count_pending()){
-            $status = 'waiting';
+            if (!$this->get_boards_count_waiting()){
+                $status = 'completed';
+            }else{
+                $status = 'waiting';
+            }
         }
+
         
 
         if (isset($_REQUEST['boards_filter'])){

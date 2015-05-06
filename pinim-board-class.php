@@ -318,7 +318,7 @@ class Pinim_Board{
             'step'      => 1,
             'action'    => 'boards_import_pins',
             'board_ids'  => $this->board_id,
-            'pin_status'    => 'pending',
+            'pins_filter'    => 'pending',
             'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
         );
 
@@ -338,7 +338,7 @@ class Pinim_Board{
             'step'          => 1,
             'action'        => 'boards_import_pins',
             'board_ids'     => $this->board_id,
-            'pin_status'    => 'processed',
+            'pins_filter'    => 'processed',
             'paged'         => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
         );
 

@@ -658,12 +658,13 @@ class Pinim_Pins_Table extends WP_List_Table {
                 'step'          => 2,   
                 'board_ids'     => implode(',',(array)pinim_tool_page()->get_requested_boards_ids())
             );
+            $link_args = array_filter($link_args);
             
             $link_processed_args = $link_args;
-            $link_processed_args['pin_status'] = 'processed';
+            $link_processed_args['pins_filter'] = 'processed';
             
             $link_pending_args = $link_args;
-            $link_pending_args['pin_status'] = 'pending';
+            $link_pending_args['pins_filter'] = 'pending';
             
             
             
