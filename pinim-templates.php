@@ -203,11 +203,11 @@ function pinim_get_pin_meta($key = false, $post_id = false, $single = false){
 
 function pinim_get_boards_options(){
 
-    //TO FIX TO RESTORE if (!pinim()->user_boards_options){
+    if (!$boards_settings = pinim()->user_boards_options){
         pinim()->user_boards_options = get_user_meta( get_current_user_id(), 'pinim_boards_settings', true);
-    //}
-
-    $boards_settings = pinim()->user_boards_options;
+    }
+    
+    if (!$boards_settings) return;
 
     //remove duplicates
     $boards_settings = array_filter(

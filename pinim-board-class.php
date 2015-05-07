@@ -20,6 +20,8 @@ class Pinim_Board{
     function get_options($key = null){
         
         $boards_options = pinim_get_boards_options();
+        
+        if (!$boards_options) return false;
 
         //keep only our board
         $matching_boards = array_filter(
@@ -266,7 +268,7 @@ class Pinim_Board{
                 }
 
                 $board_url = $this->get_datas('url');
-                $board_queue = pinim_tool_page()->bridge->get_all_board_pins_custom($this->board_id,$board_url,$bookmark);
+                $board_queue = pinim_tool_page()->bridge->get_board_pins($this->board_id,$board_url,$bookmark);
 
                 if (is_wp_error($board_queue)){
                     

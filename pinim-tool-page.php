@@ -642,7 +642,7 @@ class Pinim_Tool_Page {
             <?php screen_icon(); ?>
             <h2><?php _e('Pinterest Importer','pinim');?></h2>  
             
-            <?php settings_errors();?>
+            <?php settings_errors('pinim'); ?>
             
             <h2 class="nav-tab-wrapper">
                 <?php $this->importer_page_tabs($this->current_step); ?>
@@ -838,7 +838,7 @@ class Pinim_Tool_Page {
             
             $logged = $this->do_bridge_login();
 
-            $user_boards = $this->bridge->get_all_boards_custom();
+            $user_boards = $this->bridge->get_user_boards();
 
             if (is_wp_error($user_boards)){
                 return $user_boards;

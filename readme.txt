@@ -7,7 +7,7 @@ Tested up to: 4.2.1
 Stable tag: trunk
 License: GPLv2 or later
 
-Backup all your pins from Pinterest into Wordpress !
+Backup all your pins from Pinterest into Wordpress !  Own your data !
 
 == Description ==
 
@@ -67,6 +67,8 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 
 == Changelog ==
 
+= 0.2.1 =
+* Small bugs fixes
 = 0.2.0 =
 * Fully rewritten !  No more needs to save / upload an HTML file.  SO COOL !
 = 0.1.3 =
