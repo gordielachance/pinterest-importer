@@ -1,7 +1,9 @@
-#pinim-form.loading #import_pins{
-    background-color:red;
+.tools_page_pinim #header-links{
+    margin-bottom:2em;
 }
-
+.tools_page_pinim #header-links a{
+      text-decoration: none;
+}
 .tools_page_pinim .wp-list-table .column-private{
     width: 4em;
 }

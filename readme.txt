@@ -67,6 +67,8 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 
 == Changelog ==
 
+= 0.2.2 =
+* Small bugs fixes
 = 0.2.1 =
 * Small bugs fixes
 = 0.2.0 =

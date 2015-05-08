@@ -10,6 +10,9 @@ class Pinim_Tool_Page {
 
     var $all_action_str = array(); //text on all pins | boards actions
     
+    var $donation_link = 'http://bit.ly/gbreant';
+    var $plugin_link = 'https://wordpress.org/plugins/pinterest-importer';
+    
     /**
     * @var The one true Instance
     */
@@ -329,6 +332,8 @@ class Pinim_Tool_Page {
                         if (is_wp_error($board_saved)){
                             $board_errors[$board->board_id]=sprintf(__('Board #%1$s: ','pinim'),$board->board_id).$board_saved->get_error_message();
                         }
+                        
+                        pinim()->user_boards_options=null; //force reload
 
                     }
 
@@ -340,6 +345,8 @@ class Pinim_Tool_Page {
                             add_settings_error('pinim', 'set_options_board_'.$board_id, $board_errors);
                         }
                     }
+                    
+                    
                         
                     break;
                     case 'boards_cache_pins':
@@ -639,8 +646,20 @@ class Pinim_Tool_Page {
         // Set class property
         ?>
         <div class="wrap">
-            <?php screen_icon(); ?>
             <h2><?php _e('Pinterest Importer','pinim');?></h2>  
+            <?php
+                $pins_count = count($this->existing_pin_ids);
+                if ($pins_count > 1){
+                    $rate_link_wp = 'https://wordpress.org/support/view/plugin-reviews/pinterest-importer?rate#postform';
+                    $rate_link = '<a href="'.$rate_link_wp.'" target="_blank" href=""><i class="fa fa-star"></i> '.__('Reviewing it','pinim').'</a>';
+                    $donate_link = '<a href="'.$this->donation_link.'" target="_blank" href=""><i class="fa fa-usd"></i> '.__('make a donation','pinim').'</a>';
+                    ?>
+                    <p class="description" id="header-links">
+                        <?php printf(__('<i class="fa fa-pinterest-p"></i>roudly already imported %1$s pins !  Happy with it ? %2$s and %3$s would help a lot!','pinim'),'<strong>'.$pins_count.'</strong>',$rate_link,$donate_link);?>
+                    </p>
+                    <?php
+                }
+            ?>
             
             <?php settings_errors('pinim'); ?>
             
@@ -745,7 +764,7 @@ class Pinim_Tool_Page {
     
     function section_general_desc(){
         $session_cache = session_cache_expire();
-        echo "<p>".sprintf(__('Your login, password and datas retrieved from Pinterest will be stored for %1$s minutes in a PHP session. It is not stored in the database.','pinim'),$session_cache)."</p>";
+        echo '<p class="description">'.sprintf(__('Your login, password and datas retrieved from Pinterest will be stored for %1$s minutes in a PHP session. It is not stored in the database.','pinim'),$session_cache)."</p>";
     }
     
     function login_field_callback(){
@@ -818,7 +837,12 @@ class Pinim_Tool_Page {
     }
     
     function section_system_desc(){
-        _e('Datas are cached once you have imported them; and will not be synced to your Pinterest account.  If you want to refresh the datas, delete the current session.','pinim');
+        ?><p class="description">
+            <?php
+            _e('Datas are cached once you have imported them; and will not be synced to your Pinterest account.  If you want to refresh the datas, delete the current session.','pinim');
+            ?>
+        </p>
+        <?php
     }
     
     function delete_session_callback(){

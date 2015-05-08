@@ -40,9 +40,9 @@ class Pinim_Board{
 
     }
     
-    function get_categories(){
+    function get_category(){
         
-        $cats_ids = array();
+        $cats_ids = null;
 
         if (!$cats_ids = $this->get_options('categories')){
             $root_term_id = pinim_get_root_category_id();
@@ -53,12 +53,13 @@ class Pinim_Board{
             }
 
             $board_term = pinim_get_term_id($cat_name,'category',array('parent' => $root_term_id));
+
             if ( is_wp_error($board_term)) return $board_term;
             
-            $cats_ids[] = $board_term['term_id'];
+            $cats_ids = $board_term['term_id'];
         }
 
-        return (array)$cats_ids;
+        return $cats_ids;
 
     }
     
@@ -82,8 +83,6 @@ class Pinim_Board{
         //custom category
         if ( isset($input['categories']) && ($input['categories']=='custom') && isset($input['category_custom']) && get_term_by('id', $input['category_custom'], 'category') ){ //custom cat
                 $new_input['categories'] = $input['category_custom'];
-        }else{
-            $input['categories']=='auto';
         }
 
         //privacy
@@ -93,7 +92,7 @@ class Pinim_Board{
             $new_input['private'] = 'off';
         }
         
-        $boards_settings = pinim_get_boards_options();
+        $boards_settings = (array)pinim_get_boards_options();
         array_unshift($boards_settings, $new_input); //add at the start
         
         //remove duplicates
@@ -116,7 +115,7 @@ class Pinim_Board{
         if ($success = update_user_meta( get_current_user_id(), 'pinim_boards_settings', $parse_boards)){
             return $boards_settings;
         }else{
-            return new WP_Error( 'pinim', sprintf(__( 'Error while saving settings for board#%1$s', 'pinim' ),$board_id));
+            return new WP_Error( 'pinim', sprintf(__( 'Error while saving settings for board#%1$s', 'pinim' ),$this->board_id));
         }
 
     }
@@ -526,6 +525,8 @@ class Pinim_Boards_Table extends WP_List_Table {
     function column_category($board){
         $board_term = null;
         $root_cat = pinim_get_root_category_id();
+        
+        $category = $board->get_options('categories');
 
         if ( !$selected_cat = $board->get_options('categories') ){
             $is_auto_cat = true;

@@ -315,7 +315,7 @@ class Pinim_Pin{
         $post['post_status'] = $this->get_post_status();
         
         //set post categories
-        $post['post_category'] = (array)$board->get_categories();
+        $post['post_category'] = (array)$board->get_category();
         
         //set post date
         $post['post_date'] = date('Y-m-d H:i:s', $this->get_datas('created_at'));
