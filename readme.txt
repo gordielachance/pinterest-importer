@@ -3,35 +3,43 @@ Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
 Tags: importer,Pinterest,pins
 Requires at least: 3.5
-Tested up to: 3.9
+Tested up to: 4.2.1
 Stable tag: trunk
 License: GPLv2 or later
 
-Import pins from a Pinterest.com account.
+Backup all your pins from Pinterest into Wordpress !  Own your data !
 
 == Description ==
 
-Import pins from a Pinterest.com account !
-Useful to backup your whole Pinterest account and convert pins to Wordpress posts.
+Pinterest Importer allows you to connect to your Pinterest.com account; to fetch all your pins (including from secret boards); then to import them into Wordpress.
 
-The difference with other Pinterest plugins is that this one allows you to make a FULL backup of your pins, not only the last x pins from Pinterest's RSS feed.
-This will need you to save a [MHTML file](http://en.wikipedia.org/wiki/MHTML) of your pins page and upload it to your blog with this importer.
-You'll quickly learn to handle this.
+The difference with other plugins is that it is not based on the (very limited) official Pinterest API.  
+This means that you can make a full backup (instead of getting only the last x pins); but it also means the plugin may broke one day or another.
+Better use it quick !
 
-You can run it multiple time as it won't save twice the same pin.
-
-* Supports both image & video pins (uses post formats)
-* Supports featured images
-* Boards are saved as categories under the main category "Pinterest.com"
+* Nice GUI
+* Get pins from public boards, secret boards (soon : likes)
+* Set import options for each of your boards (which category to use, etc)
+* Import original HD images from pins
+* Set pin creation date as post date
+* Supports both image & video pins; and set corresponding post format
 * Handles hashtags,which are converted to post tags
-* Saves the Pinterest informations (pin ID, source, etc) as post metas (with prefix _pinterest-)
-
-It is not able (yet) to get the time the item was pinned.
+* May be run several times as existing pins will not be imported again
+* Save the original Pin informations (pin ID, source, etc) as post metas (with prefix _pinterest-)
 
 = Donate! =
-It took me a lot of time to make of my original code a plugin available for everyone:
-If it saved you the time to backup manually a few hundred (or more!) pins, please consider converting this time into [a donation](http://bit.ly/gbreant)...
-Thanks !
+It truly took me a LOT of time to code this plugin.
+If it saved you the time to backup manually a few hundred (or more!) pins, please consider converting this time into [a donation](http://bit.ly/gbreant).
+This would be very appreciated — Thanks !
+
+= Instruction =
+
+1. Go to Tools -> Pinterest Importer.
+2. Select "Authentification" tab; and login to Pinterest
+3. Select the "Boards Settings" tab > "Needs cache refresh", check the boards you want to import the pins from; and click/select "Cache Pins".  This will query Pinterest for your pins data (can take some time).
+4. Under the "Boards Settings" tab > "Pending" (which lists the boards that have pins cached), check the boards you want to import the pins from; and click/select "Import Pins".
+4. Under the "Import Pins" tab > "Pending" (which lists the pins that have not yet been imported), check the pins you want to import; and click/select "Import Pins".
+5. Enjoy !
 
 = Contributors =
 [Contributors are listed here](https://github.com/gordielachance/pinterest-importer/contributors)
@@ -45,26 +53,26 @@ If you are a plugin developer, [we would like to hear from you](https://github.c
 == Installation ==
 
 1. Upload the plugin to your blog and Activate it.
-2. Go to the Tools -> Import screen, Click on Pinterest.
-3. Follow the instructions.
+2. Go to Tools -> Pinterest Importer.
 
 == Frequently Asked Questions ==
 
 = I'm not happy with the content created for posts imported.  How can I change that ? =
-You can set the content you want by using the filter "pinim_get_post_content", see function Pinterest_Importer::set_post_content().
+You can set the content you want by using the filter "pinim_get_post_content", see function set_post_content() from class 'Pinim_Pin'.
 
 == Screenshots ==
+
+1. Boards settings
 
 
 == Changelog ==
 
-= TODO =
-* Wait for script to have stopped before be allowed to run it again
-* Feedback message for terms (categories and tags)
-* 2 step screen with author / category default
-* login with username and password to allow to fetch private pins
-
-
+= 0.2.2 =
+* Small bugs fixes
+= 0.2.1 =
+* Small bugs fixes
+= 0.2.0 =
+* Fully rewritten !  No more needs to save / upload an HTML file.  SO COOL !
 = 0.1.3 =
 * Replaced http:// by https:// in pinim_get_pin_url(); pinim_get_user_url(); pinim_get_board_url(); because wp_remote_get() was returning 301.
 = 0.1.2 =

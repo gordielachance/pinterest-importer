@@ -1,0 +1,44 @@
+.tools_page_pinim #header-links{
+    margin-bottom:2em;
+}
+.tools_page_pinim #header-links a{
+      text-decoration: none;
+}
+.tools_page_pinim .wp-list-table .column-private{
+    width: 4em;
+}
+
+.tools_page_pinim .wp-list-table .column-thumbnail{
+    width:150px;
+    position:relative;
+    overflow: hidden;
+}
+.tools_page_pinim .wp-list-table .column-thumbnail img{
+    object-fit: cover;
+    max-width:100%;
+}
+
+.tools_page_pinim .wp-list-table .column-pin_count{
+    width: 8em;
+}
+.tools_page_pinim .wp-list-table .column-pin_count_cached{
+    width: 8em;
+}
+
+#the-list td.column-thumbnail{
+    padding:0;
+}
+
+#the-list td.column-thumbnail img{
+  position:absolute;
+  width:100%;
+  height:100%;
+  object-fit: cover;
+  background-size: 100%;
+  background-repeat: no-repeat;
+  opacity:0.6;
+}
+
+#the-list tr:hover td.column-thumbnail img{
+    opacity:1;
+}
