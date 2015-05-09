@@ -101,7 +101,7 @@ class Pinim_Bridge{
         
     }
     
-    public function try_decode_response($response){
+    public function maybe_decode_response($response){
         if (substr($response, 0, 1) === '{') {
             $response = json_decode($response, true);
         }
@@ -191,7 +191,7 @@ class Pinim_Bridge{
         }
 
         $this->set_auth($response); //udpate token & cookies for further requests
-        $body = $this->try_decode_response($body);
+        $body = $this->maybe_decode_response($body);
 
         if (isset($body['resource_response']['error']) and $body['resource_response']['error']) {
             $api_error = $body['resource_response']['error'];
@@ -282,7 +282,7 @@ class Pinim_Bridge{
             return $body;
         }
 
-        $body = $this->try_decode_response($body);
+        $body = $this->maybe_decode_response($body);
 
         if (isset($body['resource_data_cache'][0]['data'])) {
             $data = $body['resource_data_cache'][0]['data'];
@@ -397,7 +397,7 @@ class Pinim_Bridge{
             return $body;
         }
 
-        $body = $this->try_decode_response($body);
+        $body = $this->maybe_decode_response($body);
         
         
         
@@ -600,7 +600,7 @@ class Pinim_Bridge{
             return $body;
         }
 
-        $body = $this->try_decode_response($body);
+        $body = $this->maybe_decode_response($body);
 
         if (isset($body['resource_data_cache'][0]['data'])){
 

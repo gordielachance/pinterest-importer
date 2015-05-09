@@ -1,15 +1,13 @@
 <?php
 /*
 Plugin Name: Pinterest Importer
-Description: Import images & videos from a Pinterest account.
+Description: Backup all your pins from Pinterest into Wordpress !  Own your data !
 Version: 0.2.2
 Author: G.Breant
 Author URI: http://sandbox.pencil2d.org
 Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
 License: GPL2
 */
-
-//ini_set('display_errors','Off'); //FIX for sessions (headers already sent...) - TO IMPROVE !
 
 class PinIm {
 
@@ -41,9 +39,9 @@ class PinIm {
     
     public $meta_name_options = 'pinim_options';
 
-    var $Pinterest = null;
     var $user_boards_options = null;
     var $pinterest_url = 'https://www.pinterest.com';
+    var $donation_url = 'http://bit.ly/gbreant';
     var $root_term_name = 'Pinterest.com';
     var $likes_term_name = 'Likes';
 
@@ -54,6 +52,7 @@ class PinIm {
     private static $instance;
 
     public static function instance() {
+        
             if ( ! isset( self::$instance ) ) {
                     self::$instance = new PinIm;
                     self::$instance->setup_globals();
@@ -93,15 +92,13 @@ class PinIm {
     
     
     function includes(){
-        
-        require $this->plugin_dir . '/pinim-class-bridge.php';
+        require $this->plugin_dir . '/pinim-class-bridge.php';      //communication with Pinterest
         require $this->plugin_dir . '/pinim-functions.php';
         require $this->plugin_dir . '/pinim-templates.php';
         require $this->plugin_dir . '/pinim-pin-class.php';
         require $this->plugin_dir . '/pinim-board-class.php';
         require $this->plugin_dir . '/pinim-dummy-importer.php';
         require $this->plugin_dir . '/pinim-tool-page.php';
-
     }
 
     function setup_actions(){  
@@ -113,7 +110,6 @@ class PinIm {
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts_styles' ) );
         
         add_action( 'admin_init', array(&$this,'load_textdomain'));
-        add_action( 'admin_init', array( $this, 'register_session' ), 1);
 
         add_filter( 'pin_sanitize_raw_datas','pin_raw_data_remove_unecessary_keys');
         add_filter( 'pin_sanitize_raw_datas','pin_raw_data_date_to_timestamp');
@@ -162,7 +158,7 @@ class PinIm {
     function enqueue_scripts_styles($hook){
         $screen = get_current_screen();
         if ($screen->id != pinim_tool_page()->options_page) return;
-        
+
         wp_enqueue_script('pinim', $this->plugin_url.'_inc/js/pinim.js', array('jquery'),$this->version);
         wp_enqueue_style('font-awesome', '//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css',false,'4.3.0');
         wp_enqueue_style('pinim', $this->plugin_url . '_inc/css/pinim.css',false,$this->version);
@@ -182,49 +178,6 @@ class PinIm {
         return $options[$key];
     }
 
-
-    /**
-     * Register a session so we can store the temporary.
-     */
-    function register_session(){
-        if (!pinim_is_tool_page()) return;
-        $this->start_session();
-    }
-    
-    function start_session(){
-        if( !session_id() ) session_start();
-    }
-    
-    function save_session_data($key,$data){
-        $_SESSION['pinim'][$key] = $data;
-        return true;
-    }
-    
-    function delete_session_data($key = null){
-        if ($key){
-            if (!isset($_SESSION['pinim'][$key])) return false;
-            unset($_SESSION['pinim'][$key]);
-        }
-        unset($_SESSION['pinim']);
-    }
-    
-    function get_session_data($key = null){
-        
-        $this->start_session();
-        
-        if (!isset($_SESSION['pinim'])) return null;
-        
-        $data = $_SESSION['pinim'];
-        
-        if ($key){
-            if (!isset($data[$key])) return null;
-            return $data[$key];
-        }
-        
-        return $data;
-    }
-
-    
     /**
      * Display a metabox for posts having imported with this plugin
      * @return type

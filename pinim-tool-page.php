@@ -7,11 +7,10 @@ class Pinim_Tool_Page {
     var $existing_pin_ids = array();
     var $screen_boards_filter = null;
     var $screen_pins_filter = null;
+    var $bridge = null;
+    var $session = null;
 
     var $all_action_str = array(); //text on all pins | boards actions
-    
-    var $donation_link = 'http://bit.ly/gbreant';
-    var $plugin_link = 'https://wordpress.org/plugins/pinterest-importer';
     
     /**
     * @var The one true Instance
@@ -36,29 +35,46 @@ class Pinim_Tool_Page {
             'update_all_pins'       =>__( 'Update All Pins','pinim' ),
             'update_all_boards'     =>__( 'Update All Boards Settings','pinim' )
         );
-        
+
         add_action( 'admin_init', array( $this, 'init_tool_page' ) );
         add_action( 'admin_init', array( $this, 'reduce_settings_errors' ) );
         add_action( 'admin_init', array( $this, 'settings_page_init' ) );
         add_action( 'admin_menu',array(&$this,'admin_menu'),10,2);
+        
+        add_action( 'admin_init', array( $this, 'register_session' ), 1);
+        add_action('wp_logout', array( $this, 'destroy_session' ) );
+        add_action('wp_login', array( $this, 'destroy_session' ) );
+        
     }
     
     function init_tool_page(){
         if (!pinim_is_tool_page()) return false;
+        
+        /*
+        //dependencies
+        if ( !is_plugin_active( 'wp-session-manager/wp-session-manager.php' ) ) {
+            $dep_install_url = admin_url( 'plugin-install.php?tab=search&s=WP+Session+Manager' );
+            $dep_link = '<a href="https://wordpress.org/plugins/wp-session-manager" target="_blank">WP Session Manager</a>';
+            $message = sprintf(__( 'Pinterest Importer requires the plugin %1$s by Eric Mann to be installed. Click <a href="%2$s">here</a> !', 'pinim' ),$dep_link,$dep_install_url);
+            add_settings_error('pinim', 'require_wp_session_manager', $message);
+            return;
+        }else{
+            $this->session = WP_Session::get_instance();
+        }
+         */
 
-        $step = pinim_get_tool_page_step();
         $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
+        $this->bridge = new Pinim_Bridge;
+        $step = pinim_get_tool_page_step();
         
         if($step!==false){
             
             $this->current_step = $step;
-            
             $this->screen_boards_filter = $this->get_screen_boards_filter();
             $this->screen_pins_filter = $this->get_screen_pins_filter();
-            $this->bridge = new Pinim_Bridge;
             
         }else{
-            if ( $boards_data = pinim()->get_session_data('user_boards') ){ //check cache exists
+            if ( $boards_data = $this->get_session_data('user_boards') ){ //check cache exists
                 $url = pinim_get_tool_page_url(array('step'=>1));
                 wp_redirect( $url );
                 die();
@@ -152,9 +168,9 @@ class Pinim_Tool_Page {
 
         //SYSTEM
         //clear boards cache
-        if ( isset($input['clear_user_boards_cache']) && $input['clear_user_boards_cache'] ){
-            pinim()->delete_session_data('user_boards');
-            add_settings_error('pinim', 'clear_user_boards_cache', __( 'Cache Successfully cleared', 'pinim' ), 'updated');
+        if ( isset($input['clear_cache']) && $input['clear_cache'] ){
+            $this->delete_session_data();
+            add_settings_error('pinim', 'clear_cache', __( 'Cache Successfully cleared', 'pinim' ), 'updated');
             return;
         }
         
@@ -391,9 +407,17 @@ class Pinim_Tool_Page {
             default: //login
                 
                 $is_form_submission = ( isset($input['login']) || isset($input['password']) );
+                
+                if (!$is_form_submission) return;
+                
+                //check sessions are enabled
+                if (!session_id()){
+                    add_settings_error('pinim', 'no_sessions', __("It seems that your host doesn't support PHP sessions.  This plugin will not work properly.  We'll try to fix this soon.","pinim"));
+                    return false;
+                }
 
-                if ( ( !$this->bridge->is_logged_in ) && $is_form_submission ) {
-                    
+                if ( !$this->bridge->is_logged_in ) {
+
                     //login
                     if( isset( $input['login'] )  ){
                         $new_input['login'] = $input['login']; 
@@ -418,8 +442,8 @@ class Pinim_Tool_Page {
                     }
                     
                     //store login / password
-                    pinim()->save_session_data('login',$new_input['login']);
-                    pinim()->save_session_data('password',$new_input['password']);
+                    $this->save_session_data('login',$new_input['login']);
+                    $this->save_session_data('password',$new_input['password']);
                     
                     //try to get user datas
                     $user_datas = $this->bridge->get_user_datas();
@@ -427,13 +451,13 @@ class Pinim_Tool_Page {
                         add_settings_error('pinim', 'get_user_data', $user_datas->get_error_message() );
                         return;
                     }
-                    
+
                     //store user datas
-                    pinim()->save_session_data('user_datas',$this->bridge->user_data);
+                    $this->save_session_data('user_datas',$user_datas);
                     
                     //try to populate boards
                     $boards_data = $this->get_boards_data();
-                    
+
                     if (is_wp_error($boards_data)){
                         add_settings_error('pinim', 'get_boards_data', sprintf(__('Error while trying to get boards data : %1$s.','pinim'),$boards_data->get_error_message()));
                         return;
@@ -442,8 +466,7 @@ class Pinim_Tool_Page {
                     
                     //redirect to next step
                     $args = array(
-                        'step'=>1,
-                        'all_boards_action' =>  $this->all_action_str['cache_all_pins'] //Cache All Pins
+                        'step'=>1
                     );
                     
                     $url = pinim_get_tool_page_url($args);
@@ -463,10 +486,10 @@ class Pinim_Tool_Page {
        if ($this->bridge->is_logged_in) return $this->bridge->is_logged_in;
        
        if (!$login){
-           $login = pinim()->get_session_data('login');
+           $login = $this->get_session_data('login');
        }
        if (!$password){
-           $password = pinim()->get_session_data('password');
+           $password = $this->get_session_data('password');
        }
 
         //try to auth
@@ -520,7 +543,7 @@ class Pinim_Tool_Page {
                 
                 $boards = array();
 
-                if ( $boards_data = pinim()->get_session_data('user_boards') ){ //check cache exists
+                if ( $boards_data = $this->get_session_data('user_boards') ){ //check cache exists
                     foreach((array)$boards_data as $board_data){
                         $boards[] = new Pinim_Board($board_data['id']);
                     }
@@ -591,7 +614,7 @@ class Pinim_Tool_Page {
                 
                 add_settings_field(
                     'login', 
-                    __('Login','pinim'), 
+                    __('Email/Username','pinim'), 
                     array( $this, 'login_field_callback' ), 
                     'pinim-user-auth', 
                     'settings_general'
@@ -605,7 +628,7 @@ class Pinim_Tool_Page {
                     'settings_general'
                 ); 
                 
-                if ( $user_datas = pinim()->get_session_data('user_datas') ){
+                if ( $user_datas = $this->get_session_data('user_datas') ){
                     
                     add_settings_field(
                          'status', 
@@ -618,7 +641,7 @@ class Pinim_Tool_Page {
                 }
 
                 
-                if(pinim()->get_session_data()){
+                if($this->get_session_data()){
                     
                     add_settings_section(
                         'settings_system', // ID
@@ -652,7 +675,7 @@ class Pinim_Tool_Page {
                 if ($pins_count > 1){
                     $rate_link_wp = 'https://wordpress.org/support/view/plugin-reviews/pinterest-importer?rate#postform';
                     $rate_link = '<a href="'.$rate_link_wp.'" target="_blank" href=""><i class="fa fa-star"></i> '.__('Reviewing it','pinim').'</a>';
-                    $donate_link = '<a href="'.$this->donation_link.'" target="_blank" href=""><i class="fa fa-usd"></i> '.__('make a donation','pinim').'</a>';
+                    $donate_link = '<a href="'.pinim()->donation_url.'" target="_blank" href=""><i class="fa fa-usd"></i> '.__('make a donation','pinim').'</a>';
                     ?>
                     <p class="description" id="header-links">
                         <?php printf(__('<i class="fa fa-pinterest-p"></i>roudly already imported %1$s pins !  Happy with it ? %2$s and %3$s would help a lot!','pinim'),'<strong>'.$pins_count.'</strong>',$rate_link,$donate_link);?>
@@ -768,8 +791,8 @@ class Pinim_Tool_Page {
     }
     
     function login_field_callback(){
-        $option = pinim()->get_session_data('login');
-        $has_user_datas = (null !== pinim()->get_session_data('user_datas'));
+        $option = $this->get_session_data('login');
+        $has_user_datas = (null !== $this->get_session_data('user_datas'));
         $disabled = disabled($has_user_datas, true, false);
         printf(
             '<input type="text" name="%1$s[login]" value="%2$s"%3$s/>',
@@ -780,8 +803,8 @@ class Pinim_Tool_Page {
     }
     
     function password_field_callback(){
-        $option = pinim()->get_session_data('password');
-        $has_user_datas = (null !== pinim()->get_session_data('user_datas'));
+        $option = $this->get_session_data('password');
+        $has_user_datas = (null !== $this->get_session_data('user_datas'));
         $disabled = disabled($has_user_datas, true, false);
         printf(
             '<input type="password" name="%1$s[password]" value="%2$s"%3$s/>',
@@ -793,7 +816,7 @@ class Pinim_Tool_Page {
     
     function status_field_callback(){
 
-        if ( $user_datas = pinim()->get_session_data('user_datas') ){
+        if ( $user_datas = $this->get_session_data('user_datas') ){
             if (isset($user_datas['image_medium_url'])){
                 $image = $user_datas['image_medium_url'];
                 printf(
@@ -848,7 +871,7 @@ class Pinim_Tool_Page {
     function delete_session_callback(){
 
             printf(
-                '<p><input type="checkbox" name="%1$s[clear_user_boards_cache]" value="on"/> %2$s</p>',
+                '<p><input type="checkbox" name="%1$s[clear_cache]" value="on"/> %2$s</p>',
                 'pinim_tool',
                 __('Logout and delete cache','pinim')
             );
@@ -858,7 +881,7 @@ class Pinim_Tool_Page {
 
         $user_boards = null;
 
-        if (!$user_boards = pinim()->get_session_data('user_boards')){ //already populated
+        if (!$user_boards = $this->get_session_data('user_boards')){ //already populated
             
             $logged = $this->do_bridge_login();
 
@@ -868,7 +891,7 @@ class Pinim_Tool_Page {
                 return $user_boards;
             }
 
-            pinim()->save_session_data('user_boards',$user_boards);
+            $this->save_session_data('user_boards',$user_boards);
 
         }
 
@@ -1035,7 +1058,7 @@ class Pinim_Tool_Page {
 
         $pins = array();
 
-        $queues = (array)pinim()->get_session_data('queues');
+        $queues = (array)$this->get_session_data('queues');
 
         foreach ((array)$queues as $board_id=>$queue){
             if( isset($queue['pins']) ){
@@ -1072,7 +1095,7 @@ class Pinim_Tool_Page {
     
     function get_boards_count_pending(){
          $count = 0;
-         $boards_data = pinim()->get_session_data('user_boards');
+         $boards_data = $this->get_session_data('user_boards');
 
         foreach((array)$boards_data as $board_data){
             $board = new Pinim_Board($board_data['id']);
@@ -1090,7 +1113,7 @@ class Pinim_Tool_Page {
 
     function get_boards_count_completed(){
         $count = 0;
-        $boards_data = pinim()->get_session_data('user_boards');
+        $boards_data = $this->get_session_data('user_boards');
 
        foreach((array)$boards_data as $board_data){
            $board = new Pinim_Board($board_data['id']);
@@ -1106,14 +1129,53 @@ class Pinim_Tool_Page {
 
     function get_boards_count_waiting(){
         $count = 0;
-        $boards_data = pinim()->get_session_data('user_boards');
+        $boards_data = $this->get_session_data('user_boards');
 
         $count = count($boards_data) - $this->get_boards_count_pending() - $this->get_boards_count_completed();
 
        return $count;
 
     }
+    
+    /**
+     * Register a session so we can store the temporary.
+     */
+    function register_session(){
+        if (!pinim_is_tool_page()) return;
+        if( !session_id() ) session_start();
+    }
+    
+    function destroy_session(){
+        $this->delete_session_data();
+    }
 
+    function save_session_data($key,$data){
+        $_SESSION['pinim'][$key] = $data;
+        return true;
+    }
+    
+    function delete_session_data($key = null){
+        if ($key){
+            if (!isset($_SESSION['pinim'][$key])) return false;
+            unset($_SESSION['pinim'][$key]);
+            return;
+        }
+        unset($_SESSION['pinim']);
+    }
+    
+    function get_session_data($key = null){
+
+        if (!isset($_SESSION['pinim'])) return null;
+        
+        $data = $_SESSION['pinim'];
+        
+        if ($key){
+            if (!isset($data[$key])) return null;
+            return $data[$key];
+        }
+        
+        return $data;
+    }
 
 }
 

@@ -1,4 +1,4 @@
-=== Pinterest.com Importer ===
+=== Pinterest Importer ===
 Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
 Tags: importer,Pinterest,pins

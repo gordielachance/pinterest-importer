@@ -126,7 +126,7 @@ class Pinim_Board{
     
     function get_datas($key = null){
         
-        $boards_datas = pinim()->get_session_data('user_boards');
+        $boards_datas = pinim_tool_page()->get_session_data('user_boards');
 
         //keep only our board
         $matching_boards = array_filter(
@@ -179,7 +179,7 @@ class Pinim_Board{
     }
     
     function get_pins_queue(){
-        $all_queues = (array)pinim()->get_session_data('queues');
+        $all_queues = (array)pinim_tool_page()->get_session_data('queues');
         if (isset($all_queues[$this->board_id])){
             return $all_queues[$this->board_id];
         }
@@ -198,7 +198,7 @@ class Pinim_Board{
             return $this->reset_pins_queue();
         }
         
-        $all_queues = (array)pinim()->get_session_data('queues');
+        $all_queues = (array)pinim_tool_page()->get_session_data('queues');
         
         if(isset($all_queues[$this->board_id]['pins'])){
             $existing_pins = $all_queues[$this->board_id]['pins'];
@@ -211,13 +211,13 @@ class Pinim_Board{
 
         $all_queues[$this->board_id] = $queue;
         
-        return pinim()->save_session_data('queues',$all_queues);
+        return pinim_tool_page()->save_session_data('queues',$all_queues);
     }
     
     function reset_pins_queue(){
-        $all_queues = (array)pinim()->get_session_data('queues');
+        $all_queues = (array)pinim_tool_page()->get_session_data('queues');
         unset($all_queues[$this->board_id]);
-        return pinim()->save_session_data('queues',$all_queues);
+        return pinim_tool_page()->save_session_data('queues',$all_queues);
     }
     
     function get_cached_pins(){
@@ -721,7 +721,7 @@ class Pinim_Boards_Table extends WP_List_Table {
    
 	protected function get_views() {
             
-            $boards_data = pinim()->get_session_data('user_boards');
+            $boards_data = pinim_tool_page()->get_session_data('user_boards');
 
             $link_args = array(
                 'step'          => 1,   
