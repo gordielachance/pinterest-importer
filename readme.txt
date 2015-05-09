@@ -18,7 +18,7 @@ This means that you can make a full backup (instead of getting only the last x p
 Better use it quick !
 
 * Nice GUI
-* Get pins from public boards, secret boards (soon : likes)
+* Get pins from public boards, secret boards, and likes
 * Set import options for each of your boards (which category to use, etc)
 * Import original HD images from pins
 * Set pin creation date as post date
@@ -67,6 +67,9 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 
 == Changelog ==
 
+= 0.2.3 =
+* Added support for likes
+* Warning for users who don't have sessions enabled
 = 0.2.2 =
 * Small bugs fixes
 = 0.2.1 =

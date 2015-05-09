@@ -21,6 +21,7 @@ class Pinim_Pin{
 
         $this->pin_id = $pin_id;
         $this->pin_datas_raw = $this->get_raw_datas();
+        $this->is_like = (isset($this->pin_datas_raw['is_like']));
         $this->board_id = $this->pin_datas_raw['board']['id'];
         $this->datas = $this->sanitize_raw_datas($this->pin_datas_raw);
         
@@ -46,8 +47,15 @@ class Pinim_Pin{
     function get_board(){
         
         if ( !isset($this->board) ){
-            $this->board = new Pinim_Board($this->board_id);
+        
+            if ($this->is_like){
+                $this->board = new Pinim_Board('likes');
+            }else{
+                $this->board = new Pinim_Board($this->board_id);
+            }
+
         }
+        
         return $this->board;
         
     }
@@ -560,6 +568,7 @@ class Pinim_Pins_Table extends WP_List_Table {
     function column_board($pin){
         
         $board = $pin->get_board();
+
         $board_name = $board->get_datas('name');
 
         return $board_name;

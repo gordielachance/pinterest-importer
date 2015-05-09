@@ -419,8 +419,6 @@ class Pinim_Bridge{
             //bookmark (pagination)
             if (isset($body['resource']['options']['bookmarks'][0])){
                 $bookmark = $body['resource']['options']['bookmarks'][0];
-            }else{ //force end
-                $bookmark = '-end-';
             }
             
             return array('boards'=>$page_boards,'bookmark'=>$bookmark);
@@ -433,29 +431,28 @@ class Pinim_Bridge{
     
     /**
      * Get all pins for a board.
-     * @param type $board_id - board id or "likes"
-     * @param type $board_url
+     * @param type $board
      * @param type $bookmark
      * @param type $max
      * @param type $stop_at_pin_id
      * @return \WP_Error
      */
 
-    public function get_board_pins($board_id,$board_url,$bookmark=null,$max=0,$stop_at_pin_id=null){
+    public function get_board_pins($board,$bookmark=null,$max=0,$stop_at_pin_id=null){
         $board_page = 0;
         $board_pins = array();
         //$bookmark = null; //TO FIX, the bookmark thing seems not to work.
 
         while ($bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
 
-            $query = $this->get_board_pins_page($board_id,$board_url,$bookmark);
+            $query = $this->get_board_pins_page($board,$bookmark);
             
             if ( is_wp_error($query) ){
                 
                 if(empty($board_pins)){
                     $message = $query->get_error_message();
                 }else{
-                    $message = sprintf(__('Error getting some of the pins for board #%1$s','pinim'),$board_id);
+                    $message = sprintf(__('Error getting some of the pins for board #%1$s','pinim'),$board->board_id);
                 }
                 
                 return new WP_Error( 'pinim', $message, array('pins'=>$board_pins,'bookmark'=>$bookmark) ); //return already loaded pins with error
@@ -499,12 +496,11 @@ class Pinim_Bridge{
     
     /**
      * 
-     * @param type $board_id - board id or "likes"
-     * @param type $board_url
+     * @param type $board
      * @param type $bookmark
      * @return \WP_Error
      */
-    private function get_board_pins_page($board_id, $board_url, $bookmark = null){
+    private function get_board_pins_page($board, $bookmark = null){
 
         $page_pins = array();
         $data_options = array();
@@ -516,18 +512,19 @@ class Pinim_Bridge{
             return $user_datas;
         }
         
-        if ($board_id == 'likes'){
+        if ($board->board_id == 'likes'){
             
             $data_options = array(
                 'username'                  => $user_datas['username']
             );
             
+            
         }else{
             
             $data_options = array(
-                'board_id'                  => $board_id,
+                'board_id'                  => $board->board_id,
                 'add_pin_rep_with_place'    => null,
-                'board_url'                 => $board_url,
+                'board_url'                 => $board->get_datas('url'),
                 'page_size'                 => null,
                 'prepend'                   => true,
                 'access'                    => array('write','delete'),
@@ -548,23 +545,23 @@ class Pinim_Bridge{
                 'options' => $data_options,
                 'context' => new \stdClass,
             )),
-            'source_url' => $board_url,
+            'source_url' => $board->get_datas('url'),
             '_' => time()*1000 //js timestamp
         );
         
         /*
-        if ($board_id == 'likes'){
+        if ($board->board_id == 'likes'){
             
             $data['module_path'] = sprintf('App()>UserProfilePage(resource=UserResource(username=%1$s))>UserInfoBar(tab=likes, spinner=[object Object], resource=UserResource(username=%1$s, invite_code=null))',
                         $user_datas['username'],
-                        $board_id
+                        $board->board_id
             );
             
         }else{
             
             $data['module_path'] = sprintf('UserProfilePage(resource=UserResource(username=%1$s, invite_code=null))>UserProfileContent(resource=UserResource(username=%1$s, invite_code=null))>UserBoards()>Grid(resource=ProfileBoardsResource(username=%1$s))>GridItems(resource=ProfileBoardsResource(username=%1$s))>Board(show_board_context=false, show_user_icon=false, view_type=boardCoverImage, component_type=1, resource=BoardResource(board_id=%2$d))',
                         $user_datas['username'],
-                        $board_id
+                        $board->board_id
             );
             
         }
@@ -585,15 +582,13 @@ class Pinim_Bridge{
             'body'          => $data,
         );
         
-        if ($board_id == 'likes'){
+        if ($board->board_id == 'likes'){
             $url = $this->pinterest_url.'/resource/UserLikesResource/get/';
         }else{
             $url = $this->pinterest_url.'/resource/BoardFeedResource/get/';
         }
 
-        $response = wp_remote_post( $url, $args );
-        //$this->set_auth($response); //udpate token & cookies
-        
+        $response = wp_remote_post( $url, $args );        
         $body = wp_remote_retrieve_body($response);
 
         if ( is_wp_error($body) ){
@@ -603,7 +598,6 @@ class Pinim_Bridge{
         $body = $this->maybe_decode_response($body);
 
         if (isset($body['resource_data_cache'][0]['data'])){
-
 
             $page_pins = $body['resource_data_cache'][0]['data'];
 
@@ -619,15 +613,13 @@ class Pinim_Bridge{
             //bookmark (pagination)
             if (isset($body['resource']['options']['bookmarks'][0])){
                 $bookmark = $body['resource']['options']['bookmarks'][0];
-            }else{ //force end
-                $bookmark = '-end-';
             }
 
             return array('pins'=>$page_pins,'bookmark'=>$bookmark);
-
+            
         }
 
-        return new WP_Error('pinim',sprintf(__('Error getting pins for board #%1$s','pinim'),$board_id));
+        return new WP_Error('pinim',sprintf(__('Error getting pins for board #%1$s','pinim'),$board->board_id));
 
     }
     /*

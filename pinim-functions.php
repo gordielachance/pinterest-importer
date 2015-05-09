@@ -27,7 +27,7 @@
 
      if (!isset($raw_pin['images'])) return $raw_pin;
 
-     if ($raw_pin['images']['orig']['url']){ //get best resolution
+     if (isset($raw_pin['images']['orig']['url'])){ //get best resolution
          $image = $raw_pin['images']['orig'];
      }else{ //get first array item
          $first_key = array_values($raw_pin['images']);

@@ -48,9 +48,6 @@ class Pinim_Board{
             $root_term_id = pinim_get_root_category_id();
             
             $cat_name = $this->get_datas('name');
-            if ($this->board_id=='likes'){
-                $cat_name = pinim()->likes_term_name;
-            }
 
             $board_term = pinim_get_term_id($cat_name,'category',array('parent' => $root_term_id));
 
@@ -125,23 +122,23 @@ class Pinim_Board{
      */
     
     function get_datas($key = null){
-        
+
         $boards_datas = pinim_tool_page()->get_session_data('user_boards');
 
-        //keep only our board
-        $matching_boards = array_filter(
-            $boards_datas,
-            function ($e) {
-                return $e['id'] == $this->board_id;
-            }
-        );  
+         //keep only our board
+         $matching_boards = array_filter(
+             $boards_datas,
+             function ($e) {
+                 return $e['id'] == $this->board_id;
+             }
+         );  
 
-        $board_keys = array_values($matching_boards);
-        $board_datas = array_shift($board_keys);
-        
-        if (!$board_datas){
-            return new WP_Error( 'get_datas_board_'.$this->board_id, sprintf(__( 'Unable to load datas for board #%1$s', 'wordpress-importer' ),$this->board_id));
-        }
+         $board_keys = array_values($matching_boards);
+         $board_datas = array_shift($board_keys);
+
+         if (!$board_datas){
+             return new WP_Error( 'get_datas_board_'.$this->board_id, sprintf(__( 'Unable to load datas for board #%1$s', 'wordpress-importer' ),$this->board_id));
+         }
 
         if (!isset($key)) return $board_datas;
         if (!isset($board_datas[$key])) return false;
@@ -161,6 +158,7 @@ class Pinim_Board{
     }
     
     function is_queue_complete(){
+        
         $count = count( $this->get_cached_pins() );
         if ($count  < $this->get_datas('pin_count')) return false;
         return true;
@@ -198,10 +196,20 @@ class Pinim_Board{
             return $this->reset_pins_queue();
         }
         
+        
+        
         $all_queues = (array)pinim_tool_page()->get_session_data('queues');
         
         if(isset($all_queues[$this->board_id]['pins'])){
             $existing_pins = $all_queues[$this->board_id]['pins'];
+        }
+        
+        //special key for likes (will be used in function 'get_cached_pins' )
+        if ( ($this->board_id=='likes') && isset($queue['pins']) ){
+            foreach ($queue['pins'] as $key=>$pin_raw){
+                $pin_raw['is_like'] = true;
+                $queue['pins'][$key] = $pin_raw;
+            }
         }
 
         $queue = array(
@@ -210,22 +218,28 @@ class Pinim_Board{
         );
 
         $all_queues[$this->board_id] = $queue;
-        
-        return pinim_tool_page()->save_session_data('queues',$all_queues);
+
+        return pinim_tool_page()->set_session_data('queues',$all_queues);
     }
     
     function reset_pins_queue(){
         $all_queues = (array)pinim_tool_page()->get_session_data('queues');
         unset($all_queues[$this->board_id]);
-        return pinim_tool_page()->save_session_data('queues',$all_queues);
+        return pinim_tool_page()->set_session_data('queues',$all_queues);
     }
     
     function get_cached_pins(){
         $board_pins = array();
  
         if ($all_pins = pinim_tool_page()->get_all_cached_pins()){
+            
             foreach($all_pins as $pin){
-                if ($pin['board']['id'] != $this->board_id)  continue;
+                if ( $this->board_id=='likes' ){
+                    if (!isset($pin['is_like']))  continue;
+                }else{
+                    if ($pin['board']['id'] != $this->board_id)  continue;
+                }
+                
                 $board_pins[] = $pin;
             }
         }
@@ -248,7 +262,7 @@ class Pinim_Board{
             $board_queue = $this->get_pins_queue();
             $bookmark = null;
             
-            if (isset($board_queue['bookmark'])){ //uncomplete queue
+            if ( isset($board_queue['bookmark']) && ($board_queue['bookmark']!='-end-') ){ //uncomplete queue
                 $bookmark = $board_queue['bookmark'];
                 $reset = false; //do not reset queue, it is not filled yet
             }
@@ -266,8 +280,7 @@ class Pinim_Board{
                     return new WP_Error( 'pinim', $logged->get_error_message() ); 
                 }
 
-                $board_url = $this->get_datas('url');
-                $board_queue = pinim_tool_page()->bridge->get_board_pins($this->board_id,$board_url,$bookmark);
+                $board_queue = pinim_tool_page()->bridge->get_board_pins($this,$bookmark);
 
                 if (is_wp_error($board_queue)){
                     
@@ -282,14 +295,20 @@ class Pinim_Board{
                 }
 
                 $this->set_pins_queue($board_queue);
+                
             }
             
             $board_queue = $this->get_pins_queue(); //reload queue
-            
+
             if (isset($board_queue['pins'])){
                 $board_pins = $board_queue['pins'];
+                
                 foreach ((array)$board_queue['pins'] as $pin_raw){
+                    
                     $this->pins[] = new Pinim_Pin($pin_raw['id']);
+            
+
+
                 }
             }
 
@@ -463,14 +482,16 @@ class Pinim_Boards_Table extends WP_List_Table {
             $actions['single_board_import_pins']    = $board->get_link_action_import();
         }
         
+        if ($board->board_id == 'likes'){
+            $title = '<i class="fa fa-heart"></i> '.$board->get_datas('name');
+        }else{
+            $title = sprintf('%1$s <span style="color:silver">(id:%2$s)</span>',
+                $board->get_datas('name'),
+                $board->board_id
+            );
+        }
         
-        
-        //Return the title contents
-        return sprintf('%1$s <span style="color:silver">(id:%2$s)</span>%3$s',
-            /*$1%s*/ $board->get_datas('name'),
-            /*$2%s*/ $board->board_id,
-            /*$3%s*/ $this->row_actions($actions)
-        );
+        return $title.$this->row_actions($actions);
     }
 
 

@@ -2,7 +2,7 @@
 /*
 Plugin Name: Pinterest Importer
 Description: Backup all your pins from Pinterest into Wordpress !  Own your data !
-Version: 0.2.2
+Version: 0.2.3
 Author: G.Breant
 Author URI: http://sandbox.pencil2d.org
 Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
@@ -16,7 +16,7 @@ class PinIm {
     /**
     * @public string plugin version
     */
-    public $version = '0.2.2';
+    public $version = '0.2.3';
 
     /**
     * @public string plugin DB version
@@ -43,7 +43,6 @@ class PinIm {
     var $pinterest_url = 'https://www.pinterest.com';
     var $donation_url = 'http://bit.ly/gbreant';
     var $root_term_name = 'Pinterest.com';
-    var $likes_term_name = 'Likes';
 
 
     /**
@@ -139,9 +138,6 @@ class PinIm {
             /*
             if (!$root_term = term_exists($this->root_term_name,'category')){
                 $root_term = wp_insert_term($this->root_term_name,'category');
-            }
-            if ( !is_wp_errort($root_term) && ($root_term_id = $root_term->term_id) ){
-                $likes_term = wp_insert_term($this->likes_term_name,'category',array('parent' => $root_term_id));
             }
             */
             

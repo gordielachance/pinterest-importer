@@ -442,8 +442,8 @@ class Pinim_Tool_Page {
                     }
                     
                     //store login / password
-                    $this->save_session_data('login',$new_input['login']);
-                    $this->save_session_data('password',$new_input['password']);
+                    $this->set_session_data('login',$new_input['login']);
+                    $this->set_session_data('password',$new_input['password']);
                     
                     //try to get user datas
                     $user_datas = $this->bridge->get_user_datas();
@@ -453,7 +453,7 @@ class Pinim_Tool_Page {
                     }
 
                     //store user datas
-                    $this->save_session_data('user_datas',$user_datas);
+                    $this->set_session_data('user_datas',$user_datas);
                     
                     //try to populate boards
                     $boards_data = $this->get_boards_data();
@@ -574,7 +574,7 @@ class Pinim_Tool_Page {
                     }
 
                 }
-                
+
                 $this->table_board = new Pinim_Boards_Table($boards);
                 $this->table_board->prepare_items();
 
@@ -890,8 +890,25 @@ class Pinim_Tool_Page {
             if (is_wp_error($user_boards)){
                 return $user_boards;
             }
+            
+            //likes board
 
-            $this->save_session_data('user_boards',$user_boards);
+            if ( $user_datas = pinim_tool_page()->get_session_data('user_datas') ){
+                $likes_board = array(
+                    'name'          => __('Likes','pinim'),
+                    'id'            => 'likes',
+                    'pin_count'     => $user_datas['like_count'],
+                    'cover_images'  => array(
+                        array(
+                            'url'   => $user_datas['image_medium_url']
+                        )
+                    ),
+                    'url'           => '/'.$user_datas['username'].'/likes'
+                );
+                $user_boards[] = $likes_board;
+            }
+
+            $this->set_session_data('user_boards',$user_boards);
 
         }
 
@@ -1149,7 +1166,7 @@ class Pinim_Tool_Page {
         $this->delete_session_data();
     }
 
-    function save_session_data($key,$data){
+    function set_session_data($key,$data){
         $_SESSION['pinim'][$key] = $data;
         return true;
     }
