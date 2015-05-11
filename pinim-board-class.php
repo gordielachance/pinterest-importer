@@ -615,7 +615,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         return sprintf(
             '<span class="board-cached-count">%1$s</span> <span class="board-cached-pc" data-cached-pc="%2$s" style="color:silver">(%2$s%%)</span>',
             $count_str,
-            round($percent)
+            floor($percent)
                 
         );
         
@@ -642,7 +642,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         return sprintf(
             '<span class="board-imported-count">%1$s</span> <span class="board-imported-pc" data-cached-pc="%2$s" style="color:silver">(%2$s%%)</span>',
             $imported_str,
-            round($percent)
+            floor($percent)
                 
         );
         
