@@ -3,7 +3,7 @@ Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
 Tags: importer,Pinterest,pins
 Requires at least: 3.5
-Tested up to: 4.2.1
+Tested up to: 4.2.2
 Stable tag: trunk
 License: GPLv2 or later
 
@@ -67,6 +67,8 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 
 == Changelog ==
 
+= 0.2.4 =
+* Fixed missing slash in pin's get_remote_url()
 = 0.2.3 =
 * Added support for likes
 * Warning for users who don't have sessions enabled
