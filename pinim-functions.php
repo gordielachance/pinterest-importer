@@ -118,110 +118,80 @@ function pinim_get_hashtags($string){
 }
 
 /**
- * Download remote file, keep track of URL map
- *
- * @param object $post
- * @param string $url
- * @return array
+ * Import and pin image; store original URL as attachment meta
+ * @param type $post_parent
+ * @param type $image_url
+ * @return string|\WP_Error
  */
-function pinim_fetch_remote_image( $url, $post ) {
-        global $switched, $switched_stack, $blog_id;
-        
-        if (empty($url)){
-            return new WP_Error('upload_empty_url',__("Image url is empty",'pinim'));
-        }
-
-        if (count($switched_stack) == 1 && in_array($blog_id, $switched_stack))
-                $switched = false;
-
-        // Build filename
-        $filename = $post->post_title;
-        $filename = (strlen($filename) > 49) ? substr($filename,0,49) : $filename;
-        $filename = sanitize_file_name(trim($filename));
-
-        // Set file extension
-        $size = getimagesize($url);
-        $extension = image_type_to_extension($size[2]);
-        $filename = $filename.$extension;
-
-        if(!$extension){
-            return new WP_Error( 'import_file_error', sprintf( __( 'Invalid image: %d' ), $url ) );
-        }
-
-        //TO FIX check attachment already exists
-
-        //Fetch image
-        if( !class_exists( 'WP_Http' ) )
-                include_once( ABSPATH . WPINC. '/class-http.php' );
-
-        $image = new WP_Http();
-        $image = $image->request($url);
-        
-        if (is_wp_error($image)){
-            return $image;
-        }
-
-        // get placeholder file in the upload dir with a unique sanitized filename
-        $upload = wp_upload_bits( $filename,null,$image['body'], $post->post_date );
-
-        if ( $upload['error'] ){
-            return new WP_Error( 'upload_dir_error', $upload['error'] );
-        }
-                
-
-        //TO FIX TO CHECK do we need to apply those filters here ?
-        return apply_filters( 'wp_handle_upload', $upload );
-}
-
-/**
- * Import and processes each attachment
- *
- * @param object $post
- * @param array $fullsizes
- * @param array $thumbs
- * @return void
- */
-function pinim_process_post_image( $post, $image_url ) {
+function pinim_attach_remote_image( $post_parent, $image_url ) {
 
     if (!$attachment_id = pinim_image_exists($image_url)){
-
+        
+        //TO FIX is this needed ?
         if ( !current_user_can('upload_files') ) {
             return new WP_Error('upload_capability',__("User cannot upload files",'pinim'));
         }
-
-        $upload = pinim_fetch_remote_image( $image_url, $post );
-        if ( is_wp_error( $upload ) ) return $upload;
-
-        if ( 0 == filesize( $upload['file'] ) ) {
-                @unlink( $upload['file'] );
-                return new WP_Error('upload_empty',__("Zero length file",'pinim'));
+        
+        if (empty($image_url)){
+            return new WP_Error('upload_empty_url',__("Image url is empty",'pinim'));
         }
-
-        $info = wp_check_filetype( $upload['file'] );
-
-        if ( false === $info['ext'] ) {
-                @unlink( $upload['file'] );
-                return new WP_Error('upload_invalid_file_type',__("Invalid file type.",'pinim'));
+        
+        // Image base name:
+        $name = basename( $image_url );
+        
+        // Save as a temporary file
+        $tmp = download_url( $image_url );
+        
+        $file_array = array(
+            'name'     => $name,
+            'tmp_name' => $tmp
+        );
+        
+        // Check for download errors
+        if ( is_wp_error( $tmp ) ) {
+            @unlink( $file_array[ 'tmp_name' ] );
+            return $tmp;
         }
+        
+        // Get file extension (without downloading the whole file)
+        $extension = image_type_to_extension( exif_imagetype( $file_array['tmp_name'] ) );
 
-        // as per wp-admin/includes/upload.php
-        $attachment = array ( 
-                'post_title' => $post->post_title, 
-                'post_content' => '', 
-                'post_status' => 'inherit', 
-                'guid' => $upload['url'], 
-                'post_mime_type' => $info['type'],
-                'post_author' => $post->post_author,
-                );
+        // Take care of image files without extension:
+        $path = pathinfo( $tmp );
+        if( ! isset( $path['extension'] ) ):
+            $tmpnew = $tmp . '.tmp';
+            if( ! rename( $tmp, $tmpnew ) ):
+                return '';
+            else:
+                $ext  = pathinfo( $image_url, PATHINFO_EXTENSION );
+                $name = pathinfo( $image_url, PATHINFO_FILENAME )  . $extension;
+                $tmp = $tmpnew;
+            endif;
+        endif;
+        
+        // Construct the attachment array.
+        $attachment_data = array (
+            'post_date'     => $post_parent->post_date, //use same date than parent
+            'post_date_gmt' => $post_parent->post_date_gmt
+        );
+        
+        /*
+        if ($post_parent->post_title){ //set pin title as attachment title if any
+            $attachment_data['post_title'] = $post_parent->post_title;
+        }
+         */
 
-        $attachment_id = (int) wp_insert_attachment( $attachment, $upload['file'], $post->ID );
-        if(!$attachment_id) return false;
-
-        $attachment_meta = @wp_generate_attachment_metadata( $attachment_id, $upload['file'] );
-        wp_update_attachment_metadata( $attachment_id, $attachment_meta );
-
+        $attachment_id = media_handle_sideload( $file_array, $post_parent->ID, null, $attachment_data );
+        
+        // Check for handle sideload errors:
+       if ( is_wp_error( $attachment_id ) ){
+           @unlink( $file_array['tmp_name'] );
+           return $attachment_id;
+       }
+       
         //save URL in meta (so we can check if image already exists)
         add_post_meta($attachment_id, '_pinterest-image-url',$image_url);
+
     }
 
     return $attachment_id;

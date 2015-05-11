@@ -68,6 +68,9 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 == Changelog ==
 
 = 0.2.4 =
+* Improved remote image download + merged pinim_fetch_remote_image() and pinim_process_post_image() into pinim_attach_remote_image() 
+* Added "updated" sortable column for pins (when have been processed)
+* Fixed boards / pins sortable columns
 * Fixed missing slash in pin's get_remote_url()
 = 0.2.3 =
 * Added support for likes

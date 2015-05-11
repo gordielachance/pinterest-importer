@@ -532,7 +532,7 @@ class Pinim_Tool_Page {
                 }else{
                     add_settings_error('pinim', 'pins-cache', __( 'No pins found.  Have you cached the boards pins ?', 'pinim'));
                 }
-
+ 
                 $this->table_pins = new Pinim_Pins_Table($pins);
                 $this->table_pins->prepare_items();
                     
@@ -862,7 +862,7 @@ class Pinim_Tool_Page {
     function section_system_desc(){
         ?><p class="description">
             <?php
-            _e('Datas are cached once you have imported them; and will not be synced to your Pinterest account.  If you want to refresh the datas, delete the current session.','pinim');
+            _e('Delete session to reset the cache.  It will clear the temporary datas fetched from Pinterest but have no effects on pins already imported.','pinim');
             ?>
         </p>
         <?php

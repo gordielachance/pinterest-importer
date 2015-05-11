@@ -329,10 +329,15 @@ class Pinim_Pin{
         $post['post_date'] = date('Y-m-d H:i:s', $this->get_datas('created_at'));
 
         $post = array_filter($post);
+        
+        $image_url = $datas['image'];
 
         //insert post
         $post_id = wp_insert_post( $post, true );
         if ( is_wp_error($post_id) ) return $post_id;
+        
+        //TO FIX : post is created before image is checked.
+        // We should reverse that.
 
         $new_post = get_post($post_id);
 
@@ -343,10 +348,10 @@ class Pinim_Pin{
             return $error;
         }
 
-        $featured_image_id = pinim_process_post_image($new_post,$datas['image']);
+        $attachment_id = pinim_attach_remote_image($new_post,$image_url);
 
         //set featured image
-        if ( !is_wp_error($featured_image_id) ){
+        if ( !is_wp_error($attachment_id) ){
             
                 if ($update){ //delete old thumb
                     if ($old_thumb_id = get_post_thumbnail_id( $post_id )){
@@ -354,13 +359,24 @@ class Pinim_Pin{
                     }
                 }
             
-                set_post_thumbnail($new_post, $featured_image_id);
-                $hd_file = wp_get_attachment_image_src($featured_image_id, 'full');
+                set_post_thumbnail($new_post, $attachment_id);
+                $hd_file = wp_get_attachment_image_src($attachment_id, 'full');
                 $hd_url = $hd_file[0];
+                
         }else{
-            $error_msg =  sprintf(__('Error while setting post thumbnail: %1s','pinim'),'<a href="'.$datas['image'].'" target="_blank">'.$datas['image'].'</a>');
+            
+            wp_delete_post( $post_id, true );
+            $error_code = $attachment_id->get_error_code();
+            $error_message = $attachment_id->get_error_message($error_code);
+            $image_name = basename( $image_url );
+            $error_msg =  sprintf(
+                __('Error while setting post thumbnail %1s : %2s','pinim'),
+                '<a href="'.$image_url.'" target="_blank">'.$image_name.'</a>',
+                $error_message
+            );
             $error->add('pin_thumbnail_error', $error_msg, $post_id);
             return $error;
+            
         }
 
         //set post metas
@@ -559,10 +575,18 @@ class Pinim_Pins_Table extends WP_List_Table {
     }
     
     function column_date($pin){
-
         $timestamp = $pin->get_datas('created_at');
-        $date_format = get_option( 'date_format' );
-        return date( $date_format, $timestamp );
+        $date = date_i18n( get_option( 'date_format'), $timestamp );
+        $time = date_i18n( get_option( 'time_format'), $timestamp );
+        return sprintf( __('%1$s at %2$s','pinim'), $date, $time );
+    }
+    
+    function column_updated($pin){
+        if (!$post = $pin->get_post()) return;
+        $timestamp = get_post_modified_time( 'U', false, $post );
+        $date = date_i18n( get_option( 'date_format'), $timestamp );
+        $time = date_i18n( get_option( 'time_format'), $timestamp );
+        return sprintf( __('%1$s at %2$s','pinim'), $date, $time );
     }
     
     function column_board($pin){
@@ -596,6 +620,11 @@ class Pinim_Pins_Table extends WP_List_Table {
             'date'     => __('Date','pinim'),
             'board'     => __('Board','pinim')
         );
+        
+        if (pinim_tool_page()->get_screen_pins_filter() =='processed'){
+            $columns['updated'] = __('Last Updated','pinim');
+        }
+        
         return $columns;
     }
 
@@ -617,8 +646,8 @@ class Pinim_Pins_Table extends WP_List_Table {
     function get_sortable_columns() {
         $sortable_columns = array(
             'title'     => array('title',false),     //true means it's already sorted
-            'pin_count'    => array('title',false),
-            'pin_count_cached'    => array('title',false),
+            'date'    => array('date',false),
+            'updated'    => array('updated',false),
         );
         return $sortable_columns;
     }
@@ -848,10 +877,31 @@ class Pinim_Pins_Table extends WP_List_Table {
          * sorting technique would be unnecessary.
          */
         function usort_reorder($a,$b){
+            
+            $orderby_default = 'date';
+            $order_default = 'desc';
 
-            $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : 'id'; //If no sort, default to title
-            $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : 'desc'; //If no order, default to asc
-            $result = strcmp($a->get_datas($orderby), $b->get_datas($orderby)); //Determine sort order
+            $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : $orderby_default; //If no sort, default to date
+            $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : $order_default; //If no order, default to desc
+            
+            switch ($orderby){
+                case 'title':
+                    $title_a = ($a->get_datas('title')) ? $a->get_datas('title') : $a->pin_id;
+                    $title_b = ($b->get_datas('title')) ? $b->get_datas('title') : $b->pin_id;
+                    $result = strcmp($title_a, $title_b);
+                break;
+                case 'date':
+                    $result = strcmp($a->get_datas('created_at'), $b->get_datas('created_at'));
+                break;
+                case 'updated':
+                    $post_a = $a->get_post();
+                    $post_b = $b->get_post();
+                    $timestamp_a = get_post_modified_time( 'U', false, $post_a );
+                    $timestamp_b = get_post_modified_time( 'U', false, $post_b );
+                    $result = strcmp($timestamp_a, $timestamp_b);
+                break;
+            }
+
             return ($order==='asc') ? $result : -$result; //Send final sort direction to usort
         }
         usort($data, 'usort_reorder');

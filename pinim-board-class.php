@@ -145,6 +145,38 @@ class Pinim_Board{
         return $board_datas[$key];
     }
     
+    function get_count_cached_pins(){
+        return count( $this->get_cached_pins() );
+    }
+    
+    function get_pc_cached_pins(){
+        $percent = 0;
+        $count = $this->get_count_cached_pins();
+        if ($total_pins  = $this->get_datas('pin_count')){
+            $percent = $count / $total_pins * 100;
+        }
+        return $percent;
+    }
+    
+    function get_count_imported_pins(){
+        $imported = 0;
+        $cached_pins = $this->get_cached_pins();
+        
+        foreach ((array)$cached_pins as $raw_pin){
+            if (in_array($raw_pin['id'],pinim_tool_page()->existing_pin_ids)) $imported++;
+        }
+        return $imported;
+    }
+    
+    function get_pc_imported_pins(){
+        $percent = 0;
+        $count = $this->get_count_imported_pins();
+        if ($total_pins  = $this->get_datas('pin_count')){
+            $percent = $count / $total_pins * 100;
+        }
+        return $percent;
+    }
+    
     function is_private_board(){
 
         $is_secret = false;
@@ -159,18 +191,14 @@ class Pinim_Board{
     
     function is_queue_complete(){
         
-        $count = count( $this->get_cached_pins() );
+        $count = $this->get_count_cached_pins();
         if ($count  < $this->get_datas('pin_count')) return false;
         return true;
     }
     
     function is_fully_imported(){
         $cached_pins = $this->get_cached_pins();
-        $imported_pins_ids = pinim_tool_page()->existing_pin_ids;
-        
-        foreach((array)$cached_pins as $pin){
-            if (!in_array($pin['id'],$imported_pins_ids)) return false;
-        }
+        if ( $this->get_count_imported_pins() < $this->get_count_cached_pins() ) return false;
         
         return true;
         
@@ -601,20 +629,16 @@ class Pinim_Boards_Table extends WP_List_Table {
     
     function column_pin_count_cached($board){
         
-        $percent = 0;
+        $count = $board->get_count_cached_pins();
+        $percent = $board->get_pc_cached_pins();
 
-        $count = count( $board->get_cached_pins() ); //check queue, do not populate pins
-        if ($total_pins  = $board->get_datas('pin_count')){
-            $percent = $count / $total_pins * 100;
-        }
-        $count_str = $count;
         if ($percent>=100){
-            $count_str = '<strong>'.$count_str.'</strong>';
+            $count = '<strong>'.$count.'</strong>';
         }
 
         return sprintf(
             '<span class="board-cached-count">%1$s</span> <span class="board-cached-pc" data-cached-pc="%2$s" style="color:silver">(%2$s%%)</span>',
-            $count_str,
+            $count,
             floor($percent)
                 
         );
@@ -623,25 +647,16 @@ class Pinim_Boards_Table extends WP_List_Table {
     
     function column_pin_count_imported($board){
         
-        $percent = 0;
-        $imported = 0;
-        $cached_pins = $board->get_cached_pins();
-        
-        foreach ((array)$cached_pins as $raw_pin){
-            if (in_array($raw_pin['id'],pinim_tool_page()->existing_pin_ids)) $imported++;
-        }
-        
-        if ($total_pins  = $board->get_datas('pin_count')){
-            $percent = $imported / $total_pins * 100;
-        }
-        $imported_str = $imported;
+        $percent = $board->get_pc_imported_pins();
+        $imported = $board->get_count_imported_pins();
+                
         if ($percent>=100){
-            $imported_str = '<strong>'.$imported_str.'</strong>';
+            $imported = '<strong>'.$imported.'</strong>';
         }
 
         return sprintf(
             '<span class="board-imported-count">%1$s</span> <span class="board-imported-pc" data-cached-pc="%2$s" style="color:silver">(%2$s%%)</span>',
-            $imported_str,
+            $imported,
             floor($percent)
                 
         );
@@ -694,9 +709,14 @@ class Pinim_Boards_Table extends WP_List_Table {
     function get_sortable_columns() {
         $sortable_columns = array(
             'title'     => array('title',false),     //true means it's already sorted
-            'pin_count'    => array('title',false),
-            'pin_count_cached'    => array('title',false),
+            'pin_count'    => array('pin_count',false),
+            'pin_count_cached'    => array('pin_count_cached',false)
         );
+        
+        if ( pinim_tool_page()->get_screen_boards_filter() != 'completed' ){
+            $sortable_columns['pin_count_imported'] = array('pin_count_imported',false);
+        }
+        
         return $sortable_columns;
     }
     
@@ -943,9 +963,27 @@ class Pinim_Boards_Table extends WP_List_Table {
          */
         function usort_reorder($a,$b){
 
-            $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : 'id'; //If no sort, default to title
-            $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : 'asc'; //If no order, default to asc
-            $result = strcmp($a->get_datas('orderby'), $a->get_datas('orderby')); //Determine sort order
+            $orderby_default = 'title';
+            $order_default = 'asc';
+
+            $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : $orderby_default;
+            $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : $order_default;
+            
+            switch ($orderby){
+                case 'title':
+                    $result = strcmp($a->get_datas('name'), $b->get_datas('name'));
+                break;
+                case 'pin_count':
+                    $result = strcmp($a->get_datas('pin_count'), $b->get_datas('pin_count'));
+                break;
+                case 'pin_count_cached':
+                    $result = strcmp( $a->get_pc_cached_pins(), count( $b->get_pc_cached_pins() ) );
+                break;
+                case 'pin_count_imported':
+                    $result = strcmp( $a->get_pc_imported_pins(), count( $b->get_pc_imported_pins() ) );
+                break;
+            }
+
             return ($order==='asc') ? $result : -$result; //Send final sort direction to usort
         }
         usort($data, 'usort_reorder');
