@@ -163,7 +163,7 @@ class Pinim_Pin{
     }
     
     function get_remote_url(){
-        $url = pinim()->pinterest_url.'pin/'.$this->pin_id;
+        $url = pinim()->pinterest_url.'/pin/'.$this->pin_id;
         return $url;
     }
     
