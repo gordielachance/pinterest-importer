@@ -389,7 +389,6 @@ class Pinim_Bridge{
         );
 
         $response = wp_remote_post( $this->pinterest_url.'/resource/BoardsResource/get/', $args );
-        //$this->set_auth($response); //udpate token & cookies
         
         $body = wp_remote_retrieve_body($response);
 
