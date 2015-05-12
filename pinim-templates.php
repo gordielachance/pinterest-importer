@@ -3,9 +3,6 @@
 
 
 function pinim_is_tool_page(){
-
-    //TO FIX should also allow options.php
-
     global $pagenow;
 
     switch($pagenow){
@@ -21,8 +18,6 @@ function pinim_is_tool_page(){
 }
 
 function pinim_get_tool_page_step(){
-    //if (!pinim_is_tool_page()) return false; //TO FIX do not work if page is options !
-
     if (!isset($_REQUEST['step'])) return false;
     return $_REQUEST['step'];
 }
