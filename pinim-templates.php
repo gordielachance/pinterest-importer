@@ -18,6 +18,7 @@ function pinim_is_tool_page(){
 }
 
 function pinim_get_tool_page_step(){
+    if (!pinim_is_tool_page()) return false;
     if (!isset($_REQUEST['step'])) return false;
     return $_REQUEST['step'];
 }
