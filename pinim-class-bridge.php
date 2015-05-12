@@ -441,7 +441,6 @@ class Pinim_Bridge{
     public function get_board_pins($board,$bookmark=null,$max=0,$stop_at_pin_id=null){
         $board_page = 0;
         $board_pins = array();
-        //$bookmark = null; //TO FIX, the bookmark thing seems not to work.
 
         while ($bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
 
