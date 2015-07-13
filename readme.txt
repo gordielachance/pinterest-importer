@@ -34,6 +34,8 @@ This would be very appreciated — Thanks !
 
 = Instruction =
 
+This plugin requires at least php 5.3.
+
 1. Go to Tools -> Pinterest Importer.
 2. Select "Authentification" tab; and login to Pinterest
 3. Select the "Boards Settings" tab > "Needs cache refresh", check the boards you want to import the pins from; and click/select "Cache Pins".  This will query Pinterest for your pins data (can take some time).
@@ -66,7 +68,8 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 
 
 == Changelog ==
-
+= 0.2.5 =
+* fixed anonymous functions (closures) that were broken with old php versions : inherit variables from the parent scope with 'use' (http://www.php.net/manual/en/functions.anonymous.php)
 = 0.2.4 =
 * Improved remote image download + merged pinim_fetch_remote_image() and pinim_process_post_image() into pinim_attach_remote_image() 
 * Added "updated" sortable column for pins (when have been processed)

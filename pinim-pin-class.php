@@ -32,10 +32,11 @@ class Pinim_Pin{
         $all_pins = pinim_tool_page()->get_all_cached_pins();
 
         //remove unecessary items
+        $current_pin_id = $this->pin_id;
         $pins = array_filter(
             $all_pins,
-            function ($e) {
-                return $e['id'] == $this->pin_id;
+            function ($e) use ($current_pin_id) {
+                return $e['id'] == $current_pin_id;
             }
         );  
         

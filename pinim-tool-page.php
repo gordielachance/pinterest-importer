@@ -757,7 +757,6 @@ class Pinim_Tool_Page {
             }
 
             echo $tabs_html;
-            do_action( 'bp_admin_tabs' );
     }
     
     /**

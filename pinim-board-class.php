@@ -24,10 +24,11 @@ class Pinim_Board{
         if (!$boards_options) return false;
 
         //keep only our board
+        $current_board_id = $this->board_id;
         $matching_boards = array_filter(
             $boards_options,
-            function ($e) {
-                return $e['id'] == $this->board_id;
+            function ($e) use ($current_board_id) {
+                return $e['id'] == $current_board_id;
             }
         );  
         
@@ -125,20 +126,21 @@ class Pinim_Board{
 
         $boards_datas = pinim_tool_page()->get_session_data('user_boards');
 
-         //keep only our board
-         $matching_boards = array_filter(
-             $boards_datas,
-             function ($e) {
-                 return $e['id'] == $this->board_id;
-             }
-         );  
+        //keep only our board
+        $current_board_id = $this->board_id;
+        $matching_boards = array_filter(
+            $boards_datas,
+            function ($e) use ($current_board_id) {
+                return $e['id'] == $current_board_id;
+            }
+        );  
 
-         $board_keys = array_values($matching_boards);
-         $board_datas = array_shift($board_keys);
+        $board_keys = array_values($matching_boards);
+        $board_datas = array_shift($board_keys);
 
-         if (!$board_datas){
-             return new WP_Error( 'get_datas_board_'.$this->board_id, sprintf(__( 'Unable to load datas for board #%1$s', 'wordpress-importer' ),$this->board_id));
-         }
+        if (!$board_datas){
+            return new WP_Error( 'get_datas_board_'.$this->board_id, sprintf(__( 'Unable to load datas for board #%1$s', 'wordpress-importer' ),$this->board_id));
+        }
 
         if (!isset($key)) return $board_datas;
         if (!isset($board_datas[$key])) return false;
