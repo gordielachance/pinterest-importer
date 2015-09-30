@@ -1202,4 +1202,3 @@ function pinim_tool_page() {
 if (is_admin()){
     pinim_tool_page();
 }
-

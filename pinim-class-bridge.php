@@ -125,6 +125,7 @@ class Pinim_Bridge{
         $extra_headers = array();
         
         $headers = $this->get_logged_headers($extra_headers);
+        if ( is_wp_error($headers) ) return $headers;
         
         $args = array(
             'headers'       => $headers,
@@ -147,7 +148,7 @@ class Pinim_Bridge{
         if ($this->is_logged_in) return $this->is_logged_in;
         
         if (!isset($this->login) or !isset($this->password)) {
-            return new WP_Error('pinim',__('Missing login and/or passwordAA','pinim'));
+            return new WP_Error('pinim',__('Missing login and/or password','pinim'));
         }
         
         $refresh_token = $this->refresh_token();
@@ -172,10 +173,7 @@ class Pinim_Bridge{
         );
 
         $headers = $this->get_logged_headers($extra_headers);
-
-        if (is_wp_error($headers)){
-            return $headers;
-        }
+        if ( is_wp_error($headers) ) return $headers;
 
         $args = array(
             'headers'       => $headers,
@@ -221,14 +219,14 @@ class Pinim_Bridge{
 
         $response = wp_remote_get( $url, $args );
         $body = wp_remote_retrieve_body($response);
-        
+
         if ( is_wp_error($body) ){
             return $body;
         }
 
         if (is_string($body)){
 
-            preg_match('/P\.scout\.init\((\{.+\})\);/isU', $body, $match);
+            preg_match('/P\.main\.start\((\{.+\})\);/isU', $body, $match);
 
             if (isset($match[1]) and $match[1]) {
 
@@ -263,10 +261,7 @@ class Pinim_Bridge{
         );
 
         $headers = $this->get_logged_headers($extra_headers);
-        
-        
-        
-        if (is_wp_error($headers)) return $headers;
+        if ( is_wp_error($headers) ) return $headers;
 
         $args = array(
             'headers'       => $headers,
@@ -379,7 +374,6 @@ class Pinim_Bridge{
         );
         
         $headers = $this->get_logged_headers($extra_headers);
-        
         if (is_wp_error($headers)) return $headers;
 
         $args = array(
@@ -571,7 +565,6 @@ class Pinim_Bridge{
         );
         
         $headers = $this->get_logged_headers($extra_headers);
-
         if (is_wp_error($headers)) return $headers;
 
         $args = array(

@@ -3,7 +3,7 @@ Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
 Tags: importer,Pinterest,pins
 Requires at least: 3.5
-Tested up to: 4.2.2
+Tested up to: 4.3.1
 Stable tag: trunk
 License: GPLv2 or later
 
@@ -68,6 +68,8 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 
 
 == Changelog ==
+= 0.2.6 =
+* Fixed "Error getting App Version"
 = 0.2.5 =
 * fixed anonymous functions (closures) that were broken with old php versions : inherit variables from the parent scope with 'use' (http://www.php.net/manual/en/functions.anonymous.php)
 = 0.2.4 =
