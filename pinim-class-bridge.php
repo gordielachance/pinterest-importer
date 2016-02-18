@@ -226,7 +226,7 @@ class Pinim_Bridge{
 
         if (is_string($body)){
 
-            preg_match('/P\.main\.start\((\{.+\})\);/isU', $body, $match);
+            preg_match('/P\.startArgs.=.(\{.+\});/isU', $body, $match);
 
             if (isset($match[1]) and $match[1]) {
 

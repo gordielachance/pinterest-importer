@@ -3,7 +3,7 @@ Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
 Tags: importer,Pinterest,pins
 Requires at least: 3.5
-Tested up to: 4.3.1
+Tested up to: 4.4.2
 Stable tag: trunk
 License: GPLv2 or later
 
@@ -68,6 +68,8 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 
 
 == Changelog ==
+= 0.2.7 =
+* Fixed "Error getting App Version", thanks to markamp.
 = 0.2.6 =
 * Fixed "Error getting App Version"
 = 0.2.5 =
