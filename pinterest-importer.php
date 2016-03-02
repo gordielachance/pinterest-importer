@@ -2,7 +2,7 @@
 /*
 Plugin Name: Pinterest Importer
 Description: Backup all your pins from Pinterest into Wordpress !  Own your data !
-Version: 0.2.7
+Version: 0.2.8
 Author: G.Breant
 Author URI: http://sandbox.pencil2d.org
 Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
@@ -16,7 +16,7 @@ class PinIm {
     /**
     * @public string plugin version
     */
-    public $version = '0.2.7';
+    public $version = '0.2.8';
 
     /**
     * @public string plugin DB version

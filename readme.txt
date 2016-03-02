@@ -34,7 +34,7 @@ This would be very appreciated — Thanks !
 
 = Instruction =
 
-This plugin requires at least php 5.3.
+This plugin requires at least php 5.3.6
 
 1. Go to Tools -> Pinterest Importer.
 2. Select "Authentification" tab; and login to Pinterest
