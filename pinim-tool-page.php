@@ -436,8 +436,8 @@ class Pinim_Tool_Page {
             break;
             default: //login
                 
-                $login = ( isset($_POST['pinim_form_login_username']) ? $_POST['pinim_form_login_username'] : null);
-                $password = ( isset($_POST['pinim_form_login_password']) ? $_POST['pinim_form_login_password'] : null);
+                $login = ( isset($_POST['pinim_form_login']['username']) ? $_POST['pinim_form_login']['username'] : null);
+                $password = ( isset($_POST['pinim_form_login']['password']) ? $_POST['pinim_form_login']['password'] : null);
 
                 $logged = $this->form_do_login($login,$password);
 
@@ -794,7 +794,7 @@ class Pinim_Tool_Page {
         $has_user_datas = (null !== $this->get_session_data('user_datas'));
         $disabled = disabled($has_user_datas, true, false);
         printf(
-            '<input type="text" name="pinim_form_login_username" value="%2$s"%3$s/>',
+            '<input type="text" name="pinim_form_login[username]" value="%2$s"%3$s/>',
             'pinim_tool',
             $option,
             $disabled
@@ -806,7 +806,7 @@ class Pinim_Tool_Page {
         $has_user_datas = (null !== $this->get_session_data('user_datas'));
         $disabled = disabled($has_user_datas, true, false);
         printf(
-            '<input type="password" name="pinim_form_login_password" value="%2$s"%3$s/>',
+            '<input type="password" name="pinim_form_login[password]" value="%2$s"%3$s/>',
             'pinim_tool',
             $option,
             $disabled
