@@ -159,6 +159,30 @@ class Pinim_Tool_Page {
         return $status;
     }
     
+    function form_do_login($login=null,$password=null){
+
+        if ( !isset($login) || !isset($password) ) return new WP_Error( 'missing_credentials', __( "Missing login and/or password", 'pinim' ) );
+
+        //try to auth
+        $logged = $this->do_bridge_login($login,$password);
+        if ( is_wp_error($logged) ) return $logged;
+        
+        //store login / password
+        $this->set_session_data('login',$login);
+        $this->set_session_data('password',$password);
+
+        //try to get user datas
+        $user_datas = $this->bridge->get_user_datas();
+        if (is_wp_error($user_datas)) return $user_datas;
+
+        //store user datas
+        $this->set_session_data('user_datas',$user_datas);
+
+        return true;
+        
+    }
+
+    
     function save_step(){
 
         $input = null; //form datas, etc.
@@ -412,75 +436,29 @@ class Pinim_Tool_Page {
             break;
             default: //login
                 
-                $is_form_submission = ( isset($input['login']) || isset($input['password']) );
-                
-                if (!$is_form_submission) return;
-                
-                //check sessions are enabled
-                if (!session_id()){
-                    add_settings_error('pinim', 'no_sessions', __("It seems that your host doesn't support PHP sessions.  This plugin will not work properly.  We'll try to fix this soon.","pinim"));
-                    return false;
+                $login = ( isset($_POST['pinim_form_login_username']) ? $_POST['pinim_form_login_username'] : null);
+                $password = ( isset($_POST['pinim_form_login_password']) ? $_POST['pinim_form_login_password'] : null);
+
+                $logged = $this->form_do_login($login,$password);
+
+                if (is_wp_error($logged)){
+                    add_settings_error( 'pinim_form_login', 'do_login', $logged->get_error_message() );
+                    return;
                 }
+                
+                //try to populate boards
+                $boards_data = $this->get_boards_data();
 
-                if ( !$this->bridge->is_logged_in ) {
+                if (is_wp_error($boards_data)) return $boards_data;
 
-                    //login
-                    if( isset( $input['login'] )  ){
-                        $new_input['login'] = $input['login']; 
-                    }
+                //redirect to next step
+                $args = array(
+                    'step'=>1
+                );
 
-                    //pwd
-                    if( isset( $input['password'] )  ){
-                        $new_input['password'] = $input['password']; 
-                    }
-
-                    if ( !isset($new_input['login']) || !isset($new_input['password']) ){
-                        add_settings_error( 'pinim', 'do_login', __( "Missing login and/or password", 'pinim' ) );
-                        return;
-                    }
-                    
-                    //try to auth
-                    $logged = $this->do_bridge_login($new_input['login'],$new_input['password']);
-                    
-                    if ( is_wp_error($logged) ){
-                        add_settings_error('pinim', 'do_login', $logged->get_error_message() );
-                        return;
-                    }
-                    
-                    //store login / password
-                    $this->set_session_data('login',$new_input['login']);
-                    $this->set_session_data('password',$new_input['password']);
-                    
-                    //try to get user datas
-                    $user_datas = $this->bridge->get_user_datas();
-                    if (is_wp_error($user_datas)){
-                        add_settings_error('pinim', 'get_user_data', $user_datas->get_error_message() );
-                        return;
-                    }
-
-                    //store user datas
-                    $this->set_session_data('user_datas',$user_datas);
-                    
-                    //try to populate boards
-                    $boards_data = $this->get_boards_data();
-
-                    if (is_wp_error($boards_data)){
-                        add_settings_error('pinim', 'get_boards_data', sprintf(__('Error while trying to get boards data : %1$s.','pinim'),$boards_data->get_error_message()));
-                        return;
-                    }
-
-                    
-                    //redirect to next step
-                    $args = array(
-                        'step'=>1
-                    );
-                    
-                    $url = pinim_get_tool_page_url($args);
-                    wp_redirect( $url );
-                    die();
-                    
-                    
-                }               
+                $url = pinim_get_tool_page_url($args);
+                wp_redirect( $url );
+                die();
 
             break;
         }
@@ -697,6 +675,7 @@ class Pinim_Tool_Page {
             </h2>
                     <?php
                     
+                    $form_classes = array('pinim-form');
                     $form_id = null;
                     $form_action = null;
                     $form_content = null;
@@ -730,7 +709,14 @@ class Pinim_Tool_Page {
                             $form_action = 'options.php';
                             $form_bt_txt = __('Login to Pinterest','pinim');
                             
+                            //check sessions are enabled
+                            if (!session_id()){
+                                add_settings_error('pinim_form_login', 'no_sessions', __("It seems that your host doesn't support PHP sessions.  This plugin will not work properly.  We'll try to fix this soon.","pinim"));
+                            }
+                            
                             ob_start();
+                            
+                            settings_errors('pinim_form_login');
 
                             // This prints out all hidden setting fields
                             settings_fields( 'pinim' );
@@ -749,7 +735,7 @@ class Pinim_Tool_Page {
                     
                     $form_bt = get_submit_button($form_bt_txt);
                     
-                    printf('<form class="pinim-form" id="%1$s" method="post" action="%2$s">%3$s,%4$s</form>',$form_id,$form_action,$form_content,$form_bt);
+                    printf('<form id="%1$s" %2$s method="post" action="%3$s">%4$s,%5$s</form>',$form_id,pinim_get_classes($form_classes),$form_action,$form_content,$form_bt);
 
                 ?>
             
@@ -808,7 +794,7 @@ class Pinim_Tool_Page {
         $has_user_datas = (null !== $this->get_session_data('user_datas'));
         $disabled = disabled($has_user_datas, true, false);
         printf(
-            '<input type="text" name="%1$s[login]" value="%2$s"%3$s/>',
+            '<input type="text" name="pinim_form_login_username" value="%2$s"%3$s/>',
             'pinim_tool',
             $option,
             $disabled
@@ -820,7 +806,7 @@ class Pinim_Tool_Page {
         $has_user_datas = (null !== $this->get_session_data('user_datas'));
         $disabled = disabled($has_user_datas, true, false);
         printf(
-            '<input type="password" name="%1$s[password]" value="%2$s"%3$s/>',
+            '<input type="password" name="pinim_form_login_password" value="%2$s"%3$s/>',
             'pinim_tool',
             $option,
             $disabled

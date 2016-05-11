@@ -13,13 +13,14 @@ jQuery(document).ready(function($){
         
         switch(form_id) {
             case 'pinim-form-login':
-                form_data.login = 'XXX';
-                form_data.password = 'XXX';
+                form_data.login = $('input[name="pinim_form_login_username"]').val();
+                form_data.password = $('input[name="pinim_form_login_password"]').val();
                 form_data.action='pinim_login';
             break;
         }
         
         console.log(form_data);
+        return;
         
         $.ajax({
     
