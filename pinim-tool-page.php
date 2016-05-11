@@ -696,53 +696,61 @@ class Pinim_Tool_Page {
                 <?php $this->importer_page_tabs($this->current_step); ?>
             </h2>
                     <?php
+                    
+                    $form_id = null;
+                    $form_action = null;
+                    $form_content = null;
+                    $form_bt_txt = null;
 
                     switch ($this->current_step){
                         case 2: //fetch pins
-                            ?>
-                            <form id="pinim-form" method="post" action="">
-                                <?php
-                                $this->table_pins->views();
-                                $this->table_pins->display();
-                                ?>
-                            </form>
-                            <?php
+                            $form_id = 'pinim-form-pins';
+                            
+                            ob_start();
+    
+                            $this->table_pins->views();
+                            $this->table_pins->display();
+                            
+                            $form_content = ob_get_clean();
+                            
                             break;
                         case 1: //'boards-settings'
-                            ?>
-                            <form id="pinim-form" method="post" action="">
-                                <?php
-                                $this->table_board->views();
-                                $this->table_board->display();
-                                ?>
-                            </form>
-                            <?php
+                            $form_id = 'pinim-form-boards';
+                            
+                            ob_start();
+
+                            $this->table_board->views();
+                            $this->table_board->display();
+        
+                            $form_content = ob_get_clean();
+                            
                         break;
                         default: //login
+                            $form_id = 'pinim-form-login';
+                            $form_action = 'options.php';
+                            $form_bt_txt = __('Login to Pinterest','pinim');
+                            
+                            ob_start();
+
+                            // This prints out all hidden setting fields
+                            settings_fields( 'pinim' );
+
                             ?>
-                            <form id="pinim-form" method="post" action="options.php">
-                                <?php
-                                // This prints out all hidden setting fields
-                                settings_fields( 'pinim' );
-
-                                ?>
-                                <input type="hidden" name="step" value="<?php echo $this->current_step;?>" />
-                                <?php
-
-                                do_settings_sections( 'pinim-user-auth' );
-                                submit_button();
-
-
-                                ?>
-                            </form>
+                            <input type="hidden" name="step" value="<?php echo $this->current_step;?>" />
                             <?php
-                            
-                            
+
+                            do_settings_sections( 'pinim-user-auth' );
+
+
+                            $form_content = ob_get_clean();
                             
                         break;
                     }
                     
-                
+                    $form_bt = get_submit_button($form_bt_txt);
+                    
+                    printf('<form class="pinim-form" id="%1$s" method="post" action="%2$s">%3$s,%4$s</form>',$form_id,$form_action,$form_content,$form_bt);
+
                 ?>
             
         </div>
