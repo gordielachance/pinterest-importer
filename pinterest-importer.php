@@ -79,6 +79,7 @@ class PinIm {
             $this->plugin_url = plugin_dir_url ( $this->file );
 
             $this->options_default = array(
+                'boards_active'     => array(),
                 'boards_per_page'   => 20,
                 'pins_per_page'     => 50,
                 'category_root_id'  => null,
