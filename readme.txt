@@ -7,7 +7,7 @@ Tested up to: 4.4.2
 Stable tag: trunk
 License: GPLv2 or later
 
-Backup all your pins from Pinterest into Wordpress !  Own your data !
+Backup your Pinterest.com account by imports pins as Wordpress posts.  Supports boards, secret boards and likes.  Images are downloaded as Wordpress medias.
 
 == Description ==
 
@@ -34,10 +34,10 @@ This would be very appreciated — Thanks !
 
 = Instruction =
 
-This plugin requires at least php 5.3.6
+This plugin requires at least php 5.3.6 with the [exif extension enabled](http://stackoverflow.com/questions/23978360/php-fatal-error-call-to-undefined-function-exif-imagetype/23978385#23978385).
 
 1. Go to Tools -> Pinterest Importer.
-2. Select "Authentification" tab; and login to Pinterest
+2. Select "1. My account" tab; and login to Pinterest
 3. Select the "Boards Settings" tab > "Needs cache refresh", check the boards you want to import the pins from; and click/select "Cache Pins".  This will query Pinterest for your pins data (can take some time).
 4. Under the "Boards Settings" tab > "Pending" (which lists the boards that have pins cached), check the boards you want to import the pins from; and click/select "Import Pins".
 4. Under the "Import Pins" tab > "Pending" (which lists the pins that have not yet been imported), check the pins you want to import; and click/select "Import Pins".

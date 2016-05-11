@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Pinterest Importer
-Description: Backup all your pins from Pinterest into Wordpress !  Own your data !
+Description: Backup your Pinterest.com account by imports pins as Wordpress posts.  Supports boards, secret boards and likes.  Images are downloaded as Wordpress medias.
 Version: 0.2.8
 Author: G.Breant
 Author URI: http://sandbox.pencil2d.org
@@ -152,9 +152,9 @@ class PinIm {
     }
 
     function enqueue_scripts_styles($hook){
+        
         $screen = get_current_screen();
         if ($screen->id != pinim_tool_page()->options_page) return;
-
         wp_enqueue_script('pinim', $this->plugin_url.'_inc/js/pinim.js', array('jquery'),$this->version);
         wp_enqueue_style('font-awesome', '//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css',false,'4.3.0');
         wp_enqueue_style('pinim', $this->plugin_url . '_inc/css/pinim.css',false,$this->version);
