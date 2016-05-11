@@ -47,6 +47,14 @@ class Pinim_Tool_Page {
         
     }
     
+    function step(){
+        
+        //1  login page
+        //2  cache board page + ajax redirect - EXCEPT IF IS FIRST LOGIN, board setup first
+        //3  import pins page + details if any
+        
+    }
+    
     function init_tool_page(){
         if (!pinim_is_tool_page()) return false;
         
@@ -113,17 +121,15 @@ class Pinim_Tool_Page {
         if ($this->screen_boards_filter) return $this->screen_boards_filter;
         
         //default
-        $status = 'pending';
+        $status = 'active';
         
         if (!$this->get_boards_count_pending()){
             if (!$this->get_boards_count_waiting()){
-                $status = 'completed';
+                $status = 'active';
             }else{
-                $status = 'waiting';
+                $status = 'disabled';
             }
         }
-
-        
 
         if (isset($_REQUEST['boards_filter'])){
             $status = $_REQUEST['boards_filter'];
@@ -768,7 +774,7 @@ class Pinim_Tool_Page {
             $tabs = array(
                     '0' => array(
                             'href' => pinim_get_tool_page_url(array('step'=>0)),
-                            'name' => __( 'Authentification', 'pinim' )
+                            'name' => __( '1. My Account', 'pinim' )
                     )
             );
             

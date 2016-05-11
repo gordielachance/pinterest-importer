@@ -1,0 +1,77 @@
+.tools_page_pinim {
+  #header-links {
+    margin-bottom: 2em;
+    a {
+      text-decoration: none;
+    }
+  }
+  .wp-list-table {
+    .column-private {
+      width: 4em;
+    }
+    .column-thumbnail {
+      width: 150px;
+      position: relative;
+      overflow: hidden;
+      img {
+        object-fit: cover;
+        max-width: 100%;
+      }
+    }
+    .column-pin_count, .column-pin_count_cached {
+      width: 8em;
+    }
+  }
+}
+
+#pinim-form .wp-list-table {
+    
+    .column-details{
+        display:none;
+    }
+    
+  td.column-thumbnail {
+    padding: 0;
+    img {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background-size: 100%;
+      background-repeat: no-repeat;
+      opacity: 0.6;
+    }
+  }
+  
+  tr{
+    &:hover td.column-thumbnail img {
+        opacity: 1;
+    }
+    
+
+
+    
+    
+  }
+
+  
+}
+
+.pinim-pc-bar{
+    position: relative;
+    display:block;
+    border:1px solid #ccc;
+    clear:both;
+    width:100%;
+    height:1em;
+    .pinim-pc-bar-fill{
+        display:block;
+        background-color:orange;
+        height:100%;
+        
+        &.complete{
+            background-color:green;
+        }
+        
+    }
+}
