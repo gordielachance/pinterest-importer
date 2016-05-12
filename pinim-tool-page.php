@@ -199,15 +199,6 @@ class Pinim_Tool_Page {
         $user_id = get_current_user_id();
         $action = ( isset($_REQUEST['action']) ? $_REQUEST['action'] : null);
 
-        //SYSTEM
-        //clear boards cache
-        if ( isset($input['clear_cache']) && $input['clear_cache'] ){
-            $this->delete_session_data();
-            add_settings_error('pinim', 'clear_cache', __( 'Cache Successfully cleared', 'pinim' ), 'updated');
-            return;
-        }
-        
-
         switch ($this->current_step){
 
             case 'grab-pins':
@@ -439,6 +430,13 @@ class Pinim_Tool_Page {
             break;
             default: //pinterest-login
                 
+                //logout
+                if ( $this->get_session_data() && isset($_REQUEST['logout']) ){
+                    $this->delete_session_data();
+                    add_settings_error('pinim_form_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated');
+                    return;
+                }
+
                 if ( !isset($_POST['pinim_form_login']) ) return;
                 
                 $login = ( isset($_POST['pinim_form_login']['username']) ? $_POST['pinim_form_login']['username'] : null);
@@ -617,38 +615,7 @@ class Pinim_Tool_Page {
                     array( $this, 'password_field_callback' ), 
                     'pinim-user-auth', 
                     'settings_general'
-                ); 
-                
-                if ( $user_datas = $this->get_session_data('user_datas') ){
-                    
-                    add_settings_field(
-                         'status', 
-                         __('Account','pinim'), 
-                         array( $this, 'status_field_callback' ), 
-                        'pinim-user-auth', 
-                        'settings_general'
-                    );
-                    
-                }
-
-                
-                if($this->get_session_data()){
-                    
-                    add_settings_section(
-                        'settings_system', // ID
-                        __('System','pinim'), // Title
-                        array( $this, 'section_system_desc' ), // Callback
-                        'pinim-user-auth' // Page
-                    );
-
-                    add_settings_field(
-                        'delete_user_boards_data', 
-                        __('Delete session','pinim'), 
-                        array( $this, 'delete_session_callback' ), 
-                        'pinim-user-auth', 
-                        'settings_system'
-                    );
-                 }
+                );
 
             break;
         }
@@ -674,12 +641,17 @@ class Pinim_Tool_Page {
                     <?php
                 }
             ?>
+                    
+            <?php $this->user_infos_block();?>
             
             <?php settings_errors('pinim'); ?>
             
             <h2 class="nav-tab-wrapper">
                 <?php $this->importer_page_tabs($this->current_step); ?>
             </h2>
+                    
+            
+                    
                     <?php
                     
                     $form_classes = array('pinim-form');
@@ -810,15 +782,14 @@ class Pinim_Tool_Page {
         );
     }
     
-    function status_field_callback(){
+    function user_infos_block(){
         
         $user_icon = $user_text = $user_stats = null;
 
-        if ( $user_datas = $this->get_session_data('user_datas') ){
+        if ( !$user_datas = $this->get_session_data('user_datas') ) return;
 
-            if (isset($user_datas['image_medium_url'])){
-                $user_icon = $user_datas['image_medium_url'];
-            }
+        if (isset($user_datas['image_medium_url'])){
+            $user_icon = $user_datas['image_medium_url'];
         }
         
         //names
@@ -846,32 +817,12 @@ class Pinim_Tool_Page {
         
         $user_stats = implode(",",$list);
         
-        $logout_link = pinim_get_tool_page_url(array('step'=>'pinterest-logout'));
+        $logout_link = pinim_get_tool_page_url(array('step'=>'pinterest-login','logout'=>true));
         
         printf('<div id="user-info"><span id="user-info-username"><img src="%1$s"/>%2$s</span> <small id="user-info-stats">(%3$s)</small> — <a id="user-logout-link" href="%4$s">%5$s</a></div>',$user_icon,$user_text,$user_stats,$logout_link,__('Logout','pinim'));
-        
-        //print_r($user_datas);
 
     }
-    
-    function section_system_desc(){
-        ?><p class="description">
-            <?php
-            _e('Delete session to reset the cache.  It will clear the temporary datas fetched from Pinterest but have no effects on pins already imported.','pinim');
-            ?>
-        </p>
-        <?php
-    }
-    
-    function delete_session_callback(){
 
-            printf(
-                '<p><input type="checkbox" name="%1$s[clear_cache]" value="on"/> %2$s</p>',
-                'pinim_tool',
-                __('Logout and delete cache','pinim')
-            );
-    }
-    
     function get_boards_data(){
 
         $user_boards = null;
