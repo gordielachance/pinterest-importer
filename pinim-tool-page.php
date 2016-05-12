@@ -811,45 +811,44 @@ class Pinim_Tool_Page {
     }
     
     function status_field_callback(){
+        
+        $user_icon = $user_text = $user_stats = null;
 
         if ( $user_datas = $this->get_session_data('user_datas') ){
+
             if (isset($user_datas['image_medium_url'])){
-                $image = $user_datas['image_medium_url'];
-                printf(
-                    '<img src="%1$s"/>',
-                    $image
-                );
+                $user_icon = $user_datas['image_medium_url'];
             }
         }
         
         //names
-        printf(
-            '<p><strong>%1$s (%2$s)</strong></p>',
-            $user_datas['username'],
-            $user_datas['full_name']
-        );
+        $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$user_datas['username'].'</strong>');
         
         $list = array();
         
         //public boards
         $list[] = sprintf(
-            '<li>'.__('%1$s public boards','pinim').'</li>',
+            '<span>'.__('%1$s public boards','pinim').'</span>',
             '<strong>'.$user_datas['board_count'].'</strong>'
         );
         
         //public boards
         $list[] = sprintf(
-            '<li>'.__('%1$s private boards','pinim').'</li>',
+            '<span>'.__('%1$s private boards','pinim').'</span>',
             '<strong>'.$user_datas['secret_board_count'].'</strong>'
         );
         
         //likes
         $list[] = sprintf(
-            '<li>'.__('%1$s likes','pinim').'</li>',
+            '<span>'.__('%1$s likes','pinim').'</span>',
             '<strong>'.$user_datas['like_count'].'</strong>'
         );
         
-        echo "<ul>".implode("\n",$list)."</ul>";
+        $user_stats = implode(",",$list);
+        
+        $logout_link = pinim_get_tool_page_url(array('step'=>'pinterest-logout'));
+        
+        printf('<div id="user-info"><span id="user-info-username"><img src="%1$s"/>%2$s</span> <small id="user-info-stats">(%3$s)</small> — <a id="user-logout-link" href="%4$s">%5$s</a></div>',$user_icon,$user_text,$user_stats,$logout_link,__('Logout','pinim'));
         
         //print_r($user_datas);
 

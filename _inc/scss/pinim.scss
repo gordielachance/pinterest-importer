@@ -24,6 +24,21 @@
   }
 }
 
+#user-info{
+    height:3em;
+    position:relative;
+    line-height:3em;
+    #user-info-username{
+        vertical-align: middle;
+        img{
+            height:100%;
+            width:auto;
+            float:left;
+            padding-right:1em;
+        }
+    }
+}
+
 .pinim-form {
     &.pinim-form-loading{
         opacity:0.5;
