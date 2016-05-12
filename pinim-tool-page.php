@@ -82,11 +82,16 @@ class Pinim_Tool_Page {
             $this->screen_pins_filter = $this->get_screen_pins_filter();
             
         }else{
-            if ( $boards_data = $this->get_session_data('user_boards') ){ //check cache exists
-                $url = pinim_get_tool_page_url(array('step'=>1));
-                wp_redirect( $url );
-                die();
+            
+            if ( $boards_data = $this->get_session_data('user_boards') ){ //we've got a boards cache
+                $url = pinim_get_tool_page_url(array('step'=>'boards-settings'));
+
+            }else{
+                $url = pinim_get_tool_page_url(array('step'=>'pinterest-login'));
             }
+            
+            wp_redirect( $url );
+            die();
             
         }
 
@@ -161,8 +166,6 @@ class Pinim_Tool_Page {
     
     function form_do_login($login=null,$password=null){
 
-        if ( !isset($login) || !isset($password) ) return new WP_Error( 'missing_credentials', __( "Missing login and/or password", 'pinim' ) );
-
         //try to auth
         $logged = $this->do_bridge_login($login,$password);
         if ( is_wp_error($logged) ) return $logged;
@@ -207,7 +210,7 @@ class Pinim_Tool_Page {
 
         switch ($this->current_step){
 
-            case 2://'fetch-pins':
+            case 'grab-pins':
 
                 $pin_settings = array();
                 $pin_error_ids = array();
@@ -350,7 +353,7 @@ class Pinim_Tool_Page {
 
             break;
             
-            case 1://'boards-settings':
+            case 'boards-settings'://'boards-settings':
 
             $board_settings = array();
             $board_errors = array();
@@ -427,14 +430,16 @@ class Pinim_Tool_Page {
                         }
                         
                         //redirect to next step, and set selected board_ids.
-                        $url = pinim_get_tool_page_url(array('step'=>2,'board_ids'=>implode(',',$bulk_boards_ids)));
+                        $url = pinim_get_tool_page_url(array('step'=>'grab-pins','board_ids'=>implode(',',$bulk_boards_ids)));
                         wp_redirect( $url );
                         die();
                     break;
                 }
 
             break;
-            default: //login
+            default: //pinterest-login
+                
+                if ( !isset($_POST['pinim_form_login']) ) return;
                 
                 $login = ( isset($_POST['pinim_form_login']['username']) ? $_POST['pinim_form_login']['username'] : null);
                 $password = ( isset($_POST['pinim_form_login']['password']) ? $_POST['pinim_form_login']['password'] : null);
@@ -446,6 +451,8 @@ class Pinim_Tool_Page {
                     return;
                 }
                 
+                
+                
                 //try to populate boards
                 $boards_data = $this->get_boards_data();
 
@@ -453,7 +460,7 @@ class Pinim_Tool_Page {
 
                 //redirect to next step
                 $args = array(
-                    'step'=>1
+                    'step'=>'boards-settings'
                 );
 
                 $url = pinim_get_tool_page_url($args);
@@ -493,7 +500,7 @@ class Pinim_Tool_Page {
         $board_ids = array();
 
         switch ($this->current_step){
-            case 2: //pins settings
+            case 'grab-pins':
                 
                 //remove processed pins from request
                 unset($_REQUEST['pin_ids']);
@@ -523,7 +530,7 @@ class Pinim_Tool_Page {
                 
 
             break;
-            case 1: //boards settings
+            case 'boards-settings': //boards settings
                 
                 $boards = array();
 
@@ -587,7 +594,7 @@ class Pinim_Tool_Page {
         
         switch($this->current_step){
 
-            case 0://authentification
+            case 'pinterest-login':
 
                 add_settings_section(
                      'settings_general', // ID
@@ -682,7 +689,7 @@ class Pinim_Tool_Page {
                     $form_bt_txt = null;
 
                     switch ($this->current_step){
-                        case 2: //fetch pins
+                        case 'grab-pins':
                             $form_id = 'pinim-form-pins';
                             
                             ob_start();
@@ -693,7 +700,7 @@ class Pinim_Tool_Page {
                             $form_content = ob_get_clean();
                             
                             break;
-                        case 1: //'boards-settings'
+                        case 'boards-settings':
                             $form_id = 'pinim-form-boards';
                             
                             ob_start();
@@ -747,42 +754,32 @@ class Pinim_Tool_Page {
             $tabs_html    = '';
             $idle_class   = 'nav-tab';
             $active_class = 'nav-tab nav-tab-active';
-            $tabs         = $this->importer_page_get_tabs( $active_tab );
+
+            $tabs = array(
+                'pinterest-login' => array(
+                    'href' => pinim_get_tool_page_url(array('step'=>'pinterest-login')),
+                        'name' => __( '1. My Account', 'pinim' )
+                ),
+                'boards-settings' => array(
+                    'href' => pinim_get_tool_page_url(array('step'=>'boards-settings')),
+                    'name' => __( 'Boards Settings', 'pinim' )
+                ),
+                'grab-pins' => array(
+                    'href' => pinim_get_tool_page_url(array('step'=>'grab-pins')),
+                    'name' => __( 'Import Pins', 'pinim' )
+                )
+            );
 
             // Loop through tabs and build navigation
-            foreach ( array_values( $tabs ) as $key=>$tab_data ) {
-                    $is_current = (bool) ( $key == $active_tab );
+            foreach ($tabs as $slug=>$tab_data ) {
+                    $is_current = (bool) ( $slug == $active_tab );
                     $tab_class  = $is_current ? $active_class : $idle_class;
                     $tabs_html .= '<a href="' . esc_url( $tab_data['href'] ) . '" class="' . esc_attr( $tab_class ) . '">' . esc_html( $tab_data['name'] ) . '</a>';
             }
 
             echo $tabs_html;
     }
-    
-    /**
-     * Get the data for the tabs in the admin area.
-     *
-     * @param string $active_tab Name of the tab that is active. Optional.
-     */
-    function importer_page_get_tabs( $active_tab = '' ) {
-            $tabs = array(
-                    '0' => array(
-                            'href' => pinim_get_tool_page_url(array('step'=>0)),
-                            'name' => __( '1. My Account', 'pinim' )
-                    )
-            );
-            
-            $tabs[1] = array(
-                    'href' => pinim_get_tool_page_url(array('step'=>1)),
-                    'name' => __( 'Boards Settings', 'pinim' )
-            );
-            $tabs[2] = array(
-                    'href' => pinim_get_tool_page_url(array('step'=>2)),
-                    'name' => __( 'Import Pins', 'pinim' )
-            );
-            
-            return $tabs;
-    }
+
     
     function section_general_desc(){
         $session_cache = session_cache_expire();
