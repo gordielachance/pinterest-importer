@@ -21,7 +21,7 @@ class PinIm {
     /**
     * @public string plugin DB version
     */
-    public $db_version = '200';
+    public $db_version = '201';
 
     /** Paths *****************************************************************/
 
@@ -79,7 +79,6 @@ class PinIm {
             $this->plugin_url = plugin_dir_url ( $this->file );
 
             $this->options_default = array(
-                'boards_active'     => array(),
                 'boards_per_page'   => 20,
                 'pins_per_page'     => 50,
                 'category_root_id'  => null,
@@ -129,8 +128,6 @@ class PinIm {
         $current_version = get_option("_pinterest-importer-db_version");
 
         if ($current_version==$this->db_version) return false;
-        
-        if($current_version < '1.0.3') $current_version = null; //force re-install
 
         if(!$current_version){ //not installed
             /*
@@ -143,6 +140,15 @@ class PinIm {
             }
             */
             
+        }else{
+            /*
+            if($current_version < '201'){
+                $boards_options = pinim_get_boards_options();
+                print_r($boards_options);
+                die();
+            }
+             * 
+             */
         }
 
 

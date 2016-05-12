@@ -1,13 +1,14 @@
 jQuery(document).ready(function($){
     
     //new boards row
+    $('#pinim-form-boards .column-new_board').hide();
     $('#pinim-form-boards table.wp-list-table tbody tr').each(function() {
        var row = $(this);
        var new_checkbox = row.find('td.column-new_board input[type=checkbox]');
        if ( new_checkbox.is(":checked") ){
            row.addClass('is-new-board');
        }
-       console.log(new_checkbox);
+       
     });
     
     //form buttons

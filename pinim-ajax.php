@@ -7,11 +7,15 @@ function pinim_login_ajax(){
     );
     $result['message'] ="yololo";
     
+    
+
+    
+    
     /*
     
     if (!isset($_POST['post_id'])) return false;
     
-    $action = $_POST['action'];
+    
     $post_id = $_POST['post_id'];
     
     if ( $action=='pinim_post_vote_up' ){

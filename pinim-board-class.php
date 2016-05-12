@@ -556,9 +556,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         //privacy
         $is_private = $board->is_private_board();
-        
-        var_dump($is_private);
-        
+
         $secret_checked_str = checked($is_private, true, false );
         
         return sprintf(
@@ -645,7 +643,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         }
         
         if ( !$board->get_cached_pins() ){
-            printf('<button>%1$s</button>',__('Refresh board cache','pinim') );
+            printf('<em>%1$s</em>',__('Not yet cached','pinim') );
         }else{
             
             $percent = $board->get_pc_imported_pins();
