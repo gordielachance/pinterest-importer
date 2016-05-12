@@ -21,7 +21,7 @@ class Pinim_Board{
         
         $boards_options = pinim_get_boards_options();
         
-        if (!$boards_options) return false;
+        if (!$boards_options) return null;
 
         //keep only our board
         $current_board_id = $this->board_id;
@@ -36,7 +36,7 @@ class Pinim_Board{
         $board_options = array_shift($board_keys);
 
         if (!isset($key)) return $board_options;
-        if (!isset($board_options[$key])) return false;
+        if (!isset($board_options[$key])) return null;
         return $board_options[$key];
 
     }
@@ -71,63 +71,40 @@ class Pinim_Board{
             'id'    => $input['id']
         );
         
-        //included
-        if( isset( $input['included'] )  ){
-            $new_input['included'] = $input['included']; 
-        }else{
-            $new_input['included'] = 'off';
-        }
+        //active
+        $new_input['active'] = ( isset($input['active']) );
+        
+        //private
+        $new_input['private'] = ( isset($input['private']) );
         
         //custom category
         if ( isset($input['categories']) && ($input['categories']=='custom') && isset($input['category_custom']) && get_term_by('id', $input['category_custom'], 'category') ){ //custom cat
                 $new_input['categories'] = $input['category_custom'];
         }
 
-        //privacy
-        if( isset( $input['private'] )  ){
-            $new_input['private'] = $input['private']; 
-        }else{
-            $new_input['private'] = 'off';
+        //(force) reloading boards settings...
+        $boards_settings = (array)pinim_get_boards_options(true);
+
+        //remove previous settings if they exists
+        foreach ((array)$boards_settings as $key => $single_board_settings){
+            if ($single_board_settings['id'] == $new_input['id']){
+                unset($boards_settings[$key]);
+            }
         }
-        
-        $boards_settings = (array)pinim_get_boards_options();
-        array_unshift($boards_settings, $new_input); //add at the start
-        
-        //remove duplicates
-        $parse_boards = array_filter(
-            $boards_settings,
-                function ( $board ) {
-                  static $idlist = array();
-                  
-                  if ( in_array( $board['id'], $idlist ) ){
-                      return false;
-                  }
 
-                  $idlist[] = $board['id'];
-                  return true;    
-                }
-        );
+        //append new settings
+        $boards_settings[] = $new_input;
         
-        $parse_boards = array_filter($parse_boards); //reset keys
+        //remove empty + reset keys...
+        $boards_settings = array_filter($boards_settings);
+        $boards_settings = array_values($boards_settings);
 
-        if ($success = update_user_meta( get_current_user_id(), 'pinim_boards_settings', $parse_boards)){
-            return $boards_settings;
+        if ($success = update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_settings)){
+            return $new_input;
         }else{
             return new WP_Error( 'pinim', sprintf(__( 'Error while saving settings for board#%1$s', 'pinim' ),$this->board_id));
         }
 
-    }
-    
-    function is_active(){
-        $board_active = false;
-        if ( !$boards_active = pinim()->get_options('boards_active') ){
-            $board_active = true;
-        }else {
-            if ( in_array($boards_active, $board->board_id) ){
-                $board_active = true;
-            }
-        }
-        return $board_active;
     }
     
     /*
@@ -194,10 +171,11 @@ class Pinim_Board{
     function is_private_board(){
 
         $is_secret = false;
+        $option = $this->get_options('private');
 
-        if ($private = $this->get_options('private')){
-            $is_secret = ($private=='on');
-        }else{
+        if ( is_bool($option) ){ //saved option
+            $is_secret = $option;
+        }else{ //default
             $is_secret = ($this->get_datas('privacy')=='secret');
         }
         return $is_secret;
@@ -436,6 +414,7 @@ class Pinim_Board{
 class Pinim_Boards_Table extends WP_List_Table {
     
     var $input_data = array();
+    var $board_idx = -1;
 
     /** ************************************************************************
      * REQUIRED. Set up a constructor that references the parent constructor. We 
@@ -486,6 +465,12 @@ class Pinim_Boards_Table extends WP_List_Table {
                 return print_r($item,true); //Show the whole array for troubleshooting purposes
             case 'board_id':
                 return $item->board_id;
+            case 'new_board':
+                $is_new = empty($item->get_options());
+                return sprintf(
+                    '<input type="checkbox" disabled="disabled" %1$s/>',
+                    checked( $is_new, true, false )
+                );
         }
     }
 
@@ -542,29 +527,28 @@ class Pinim_Boards_Table extends WP_List_Table {
      **************************************************************************/
     function column_cb($board){
         
-        $hidden = sprintf('<input type="hidden" name="%1$s[boards][%2$s][id]" value="%2$s" />',
-            'pinim_tool',
+        $this->board_idx++;
+        
+        $hidden = sprintf('<input type="hidden" name="pinim_form_boards[%1$s][id]" value="%2$s" />',
+            $this->board_idx,
             $board->board_id
         );
-        
-        
+
         $board_active = false;
-        if ( !$boards_active = pinim()->get_options('boards_active') ){
+        
+        if ( empty($board->get_options() ) ){ //no options saved, set as active
             $board_active = true;
         }else {
-            if ( in_array($boards_active, $board->board_id) ){
-                $board_active = true;
-            }
+            $board_active = $board->get_options('active');
         }
         
         
-        $bulk = sprintf(
-            '<input type="checkbox" name="%1$s[boards][%2$s][bulk]" value="on" %3$s/>',
-            'pinim_tool',
-            $board->board_id,
+        $active = sprintf(
+            '<input type="checkbox" name="pinim_form_boards[%1$s][active]" value="on" %2$s/>',
+            $this->board_idx,
             checked( $board_active, true, false )
         );
-        return $hidden.$bulk;
+        return $hidden.$active;
     }
     
     
@@ -572,12 +556,14 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         //privacy
         $is_private = $board->is_private_board();
+        
+        var_dump($is_private);
+        
         $secret_checked_str = checked($is_private, true, false );
         
         return sprintf(
-            '<input type="checkbox" name="%1$s[boards][%2$s][private]" value="on" %3$s/>',
-            'pinim_tool',
-            $board->board_id,
+            '<input type="checkbox" name="pinim_form_boards[%1$s][private]" value="on" %2$s/>',
+            $this->board_idx,
             $secret_checked_str
         );
         
@@ -618,9 +604,8 @@ class Pinim_Boards_Table extends WP_List_Table {
         $checked_auto_str = checked($is_auto_cat, true, false );
         
         $category_auto = sprintf(
-            '<input type="radio" name="%1$s[boards][%2$s][categories]" value="auto" %3$s/>%4$s',
-            'pinim_tool',
-            $board->board_id,
+            '<input type="radio" name="pinim_form_boards[%1$s][categories]" value="auto" %2$s/>%3$s',
+            $this->board_idx,
             $checked_auto_str,
             __('auto','pinim')
         );
@@ -631,16 +616,15 @@ class Pinim_Boards_Table extends WP_List_Table {
             'hierarchical'  => 1,
             'echo'          => false,
             'selected'      => $selected_cat,
-            'name'          => sprintf('%1$s[boards][%2$s][category_custom]','pinim_tool',$board->board_id)
+            'name'          => sprintf('pinim_form_boards[%1$s][category_custom]',$this->board_idx)
         );
 
         $checked_custom_str = checked($is_auto_cat, false, false );
         $custom_cats = wp_dropdown_categories( $cat_args );
         
         $category_custom = sprintf(
-            '<input type="radio" name="%1$s[boards][%2$s][categories]" value="custom" %3$s/>%4$s',
-            'pinim_tool',
-            $board->board_id,
+            '<input type="radio" name="pinim_form_boards[%1$s][categories]" value="custom" %2$s/>%3$s',
+            $this->board_idx,
             $checked_custom_str,
             __('custom','pinim')
         );
@@ -655,6 +639,7 @@ class Pinim_Boards_Table extends WP_List_Table {
     
     function column_pin_count_imported($board){
         
+        //TO FIX
         if ($this->active){
             die();
         }
@@ -688,9 +673,6 @@ class Pinim_Boards_Table extends WP_List_Table {
 
 
         }
-        
-
- 
 
         
     }
@@ -712,10 +694,10 @@ class Pinim_Boards_Table extends WP_List_Table {
 
     function get_columns(){
         
-        $has_boards_active = pinim()->get_options('boards_active');
+        $has_boards_options = pinim_get_boards_options();
  
         $columns = array(
-            'cb'        => sprintf('<input type="checkbox" %s/>',checked( empty($has_boards_active), true, false )), //Render a checkbox instead of text
+            'cb'        => sprintf('<input type="checkbox" %s/>',checked( empty($has_boards_options), true, false )), //Render a checkbox instead of text
             'thumbnail'             => '',
             'title'                 => __('Board Title','pinim'),
             'details'               => __('Details','pinim'),
@@ -724,6 +706,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             'board_id'              => __('ID','pinim'),
             'pin_count'             => __('Pins count','pinim'),
             'pin_count_imported'    => __('Status','pinim'),
+            'new_board'                => __('New','pinim'),
         );
 
         return $columns;
@@ -766,6 +749,8 @@ class Pinim_Boards_Table extends WP_List_Table {
         <div class="alignleft actions">
         <?php
         if ( 'top' == $which && !is_singular() ) {
+            
+            //TO FIX remove ?
 
             switch (pinim_tool_page()->get_screen_boards_filter()){
                 case 'pending':
@@ -797,9 +782,44 @@ class Pinim_Boards_Table extends WP_List_Table {
 	 *
 	 * @return array
 	 */
-   
-	protected function get_views() {
+    
+protected function get_views() {
+
+            $link_simple_classes = $link_advanced_classes = array();
             
+            //TO FIX remove ?
+            
+            switch (pinim_tool_page()->get_screen_boards_filter()){
+                case 'simple':
+                    $link_simple_classes[] = 'current';
+                break;
+                case 'advanced':
+                    $link_advanced_classes[] = 'current';
+                break;
+            }
+            
+            $link_simple = sprintf(
+                __('<a href="%1$s"%2$s>%3$s</a>'),
+                pinim_get_tool_page_url(array('step'=>'boards-settings')),
+                pinim_get_classes($link_simple_classes),
+                __('Simple','pinim')
+            );
+            
+            $link_advanced = sprintf(
+                __('<a href="%1$s"%2$s>%3$s</a>'),
+                pinim_get_tool_page_url(array('step'=>'boards-settings','boards_view'=>'advanced')),
+                pinim_get_classes($link_advanced_classes),
+                __('Advanced','pinim')
+            );
+            
+            return array(
+                'simple'       => $link_simple,
+                'advanced'        => $link_advanced,
+            );
+	}
+   
+	protected function get_views_OLD() { //TO FIX remove ?
+
             $boards_data = pinim_tool_page()->get_session_data('user_boards');
 
             $link_args = array(
@@ -859,13 +879,10 @@ class Pinim_Boards_Table extends WP_List_Table {
                 $completed_count
             );
 
-
 		return array(
                     'all'       => $link_all,
                     'active'        => $link_active,
                     'completed'     => $link_disabled
-                    
-                    
                 );
 	}
 
@@ -905,10 +922,13 @@ class Pinim_Boards_Table extends WP_List_Table {
      * @return array An associative array containing all the bulk actions: 'slugs'=>'Visible Titles'
      **************************************************************************/
     function get_bulk_actions() {
+        
+        //TO FIX can be cleared out
+        
         $actions = array(
-            'boards_update_settings'    => __('Update Settings','pinim'),
-            'boards_cache_pins'    => __('Cache Pins','pinim'),
-            'boards_import_pins'    => __('Import Pins','pinim')
+            //'boards_update_settings'    => __('Update Settings','pinim'),
+            //'boards_cache_pins'    => __('Cache Pins','pinim'),
+            //'boards_import_pins'    => __('Import Pins','pinim')
         );
         return $actions;
     }
@@ -922,9 +942,7 @@ class Pinim_Boards_Table extends WP_List_Table {
      * @see $this->prepare_items()
      **************************************************************************/
     function process_bulk_action() {
-        
 
-        
     }
 
 

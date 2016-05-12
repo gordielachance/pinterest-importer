@@ -1,6 +1,17 @@
 jQuery(document).ready(function($){
     
-    //form buttongs
+    //new boards row
+    $('#pinim-form-boards table.wp-list-table tbody tr').each(function() {
+       var row = $(this);
+       var new_checkbox = row.find('td.column-new_board input[type=checkbox]');
+       if ( new_checkbox.is(":checked") ){
+           row.addClass('is-new-board');
+       }
+       console.log(new_checkbox);
+    });
+    
+    //form buttons
+    /*
     $('#pinim-form-login #submit').click(function(e) {
         var button = $(this);
         var form = button.parents('.pinim-form');
@@ -12,6 +23,7 @@ jQuery(document).ready(function($){
         
         
         switch(form_id) {
+            
             case 'pinim-form-login':
                 form_data.login = $('input[name="pinim_form_login[username]"]').val();
                 form_data.password = $('input[name="pinim_form_login[password]"]').val();
@@ -57,6 +69,7 @@ jQuery(document).ready(function($){
         return false;  
         
     });
+    */
     
     //handle board categories
     var boardCats = $('#the-list .column-category input[type="radio"]');
