@@ -108,7 +108,7 @@ class Pinim_Pin{
     function get_link_action_import(){
         //Refresh cache
         $link_args = array(
-            'step'      => 2,
+            'step'      => 'pins-list',
             'action'    => 'pins_import_pins',
             'pin_ids'  => $this->pin_id,
             'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
@@ -130,7 +130,7 @@ class Pinim_Pin{
         if (!in_array($this->pin_id,pinim_tool_page()->existing_pin_ids)) return;
 
         $link_args = array(
-            'step'          => 2,
+            'step'          => 'pins-list',
             'action'        => 'pins_update_pins',
             'pin_ids'       => $this->pin_id,
             'paged'         => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
@@ -694,7 +694,7 @@ class Pinim_Pins_Table extends WP_List_Table {
 	protected function get_views() {
             
             $link_args = array(
-                'step'          => 2,   
+                'step'          => 'pins-list',   
                 'board_ids'     => implode(',',(array)pinim_tool_page()->get_requested_boards_ids())
             );
             $link_args = array_filter($link_args);

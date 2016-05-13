@@ -344,7 +344,7 @@ class Pinim_Board{
     function get_link_action_cache(){
         //Refresh cache
         $link_args = array(
-            'step'      => 1,
+            'step'      => 'boards-settings',
             'action'    => 'boards_cache_pins',
             'board_ids'  => $this->board_id,
             'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
@@ -364,7 +364,7 @@ class Pinim_Board{
     function get_link_action_import($board_id = null){
         //Refresh cache
         $link_args = array(
-            'step'      => 1,
+            'step'      => 'boards-settings',
             'action'    => 'boards_import_pins',
             'board_ids'  => $this->board_id,
             'pins_filter'    => 'pending',
@@ -384,7 +384,7 @@ class Pinim_Board{
     function get_link_action_update($board_id = null){
         //Refresh cache
         $link_args = array(
-            'step'          => 1,
+            'step'          => 'boards-settings',
             'action'        => 'boards_import_pins',
             'board_ids'     => $this->board_id,
             'pins_filter'    => 'processed',
@@ -818,7 +818,7 @@ protected function get_views() {
             $boards_data = pinim_tool_page()->get_session_data('user_boards');
 
             $link_args = array(
-                'step'          => 1,   
+                'step'          => 'boards-settings',   
             );
             
             $link_active_args = $link_args;
