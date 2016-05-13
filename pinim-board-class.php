@@ -631,7 +631,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         
     }
     
-    function column_pin_count($board){
+    function column_pin_count_remote($board){
         return $board->get_datas('pin_count');
     }
     
@@ -667,7 +667,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             }
 
             $pc_status = pinim_get_classes($pc_status_classes);
-            return sprintf('<span class="pinim-pc-bar"><span %1$s style="width:%2$s"></span></span>',$pc_status,$pc_imported.'%');
+            return sprintf('<span class="pinim-pc-bar"><span %1$s style="width:%2$s"><span class="pinim-pc-bar-text">%2$s</span></span></span>',$pc_status,$pc_imported.'%');
 
 
         }
@@ -702,7 +702,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             'category'              => __('Category','pinim'),
             'private'               => __('Private','pinim'),
             'board_id'              => __('ID','pinim'),
-            'pin_count'             => __('Pins count','pinim'),
+            'pin_count_remote'      => __('Board Pins','pinim'),
             'pin_count_imported'    => __('Status','pinim'),
             'new_board'                => __('New','pinim'),
         );
@@ -727,8 +727,8 @@ class Pinim_Boards_Table extends WP_List_Table {
      **************************************************************************/
     function get_sortable_columns() {
         $sortable_columns = array(
-            'title'     => array('title',false),     //true means it's already sorted
-            'pin_count'    => array('pin_count',false),
+            'title'                 => array('title',false),     //true means it's already sorted
+            'pin_count_remote'      => array('pin_count_remote',false),
             
         );
         
@@ -1027,7 +1027,7 @@ protected function get_views() {
                 case 'title':
                     $result = strcmp($a->get_datas('name'), $b->get_datas('name'));
                 break;
-                case 'pin_count':
+                case 'pin_count_remote':
                     $result = strcmp($a->get_datas('pin_count'), $b->get_datas('pin_count'));
                 break;
                 case 'pin_count_imported':

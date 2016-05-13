@@ -1,3 +1,5 @@
+@import "compass/css3";
+
 .tools_page_pinim {
   #header-links {
     margin-bottom: 2em;
@@ -86,7 +88,7 @@
           width: 4em;
         }
 
-        .column-pin_count, .column-pin_count_cached {
+        .column-pin_count_remote {
           width: 8em;
         }
 
@@ -114,18 +116,31 @@
 .pinim-pc-bar{
     position: relative;
     display:block;
-    border:1px solid #ccc;
+    background-color:rgba(#CCC, 0.4);
     clear:both;
     width:100%;
-    height:1em;
+    height:1.3em;
+    line-height:1.3em;
     .pinim-pc-bar-fill{
         display:block;
         background-color:orange;
         height:100%;
+        text-align:left;
+        @include transition(all 0.5s ease-out);
+        
+        .pinim-pc-bar-text{
+            position:absolute;
+            font-size: 0.8em;
+            padding-left:1em;
+        }
         
         &.complete{
-            background-color:green;
+            background-color:#FFE000;
+            .pinim-pc-bar-text{
+                display:none;
+            }
         }
         
     }
+    
 }
