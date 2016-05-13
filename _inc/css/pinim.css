@@ -6,18 +6,26 @@
 .tools_page_pinim #header-links a {
   text-decoration: none;
 }
-
+/* line 11, ../scss/pinim.scss */
+.tools_page_pinim .tab-description {
+  margin: 2em;
+}
 /* line 13, ../scss/pinim.scss */
+.tools_page_pinim .tab-description p {
+  font-size: 1.1em;
+}
+
+/* line 21, ../scss/pinim.scss */
 #user-info {
   height: 3em;
   position: relative;
   line-height: 3em;
 }
-/* line 17, ../scss/pinim.scss */
+/* line 25, ../scss/pinim.scss */
 #user-info #user-info-username {
   vertical-align: middle;
 }
-/* line 19, ../scss/pinim.scss */
+/* line 27, ../scss/pinim.scss */
 #user-info #user-info-username img {
   height: 100%;
   width: auto;
@@ -25,20 +33,20 @@
   padding-right: 1em;
 }
 
-/* line 29, ../scss/pinim.scss */
+/* line 37, ../scss/pinim.scss */
 .pinim-form.pinim-form-loading {
   opacity: 0.5;
   pointer-events: none;
 }
-/* line 40, ../scss/pinim.scss */
+/* line 48, ../scss/pinim.scss */
 .pinim-form .wp-list-table .column-details {
   display: none;
 }
-/* line 44, ../scss/pinim.scss */
+/* line 52, ../scss/pinim.scss */
 .pinim-form .wp-list-table td.column-thumbnail {
   padding: 0;
 }
-/* line 46, ../scss/pinim.scss */
+/* line 54, ../scss/pinim.scss */
 .pinim-form .wp-list-table td.column-thumbnail img {
   position: absolute;
   width: 100%;
@@ -48,48 +56,48 @@
   background-repeat: no-repeat;
   opacity: 0.6;
 }
-/* line 58, ../scss/pinim.scss */
+/* line 66, ../scss/pinim.scss */
 .pinim-form .wp-list-table tr:hover td.column-thumbnail img {
   opacity: 1;
 }
-/* line 71, ../scss/pinim.scss */
+/* line 79, ../scss/pinim.scss */
 .pinim-form .column-thumbnail {
   width: 150px;
   position: relative;
   overflow: hidden;
 }
-/* line 75, ../scss/pinim.scss */
+/* line 83, ../scss/pinim.scss */
 .pinim-form .column-thumbnail img {
   object-fit: cover;
   max-width: 100%;
 }
-/* line 83, ../scss/pinim.scss */
+/* line 91, ../scss/pinim.scss */
 .pinim-form#pinim-form-boards .column-pin_count_imported {
   text-align: center;
 }
-/* line 87, ../scss/pinim.scss */
+/* line 95, ../scss/pinim.scss */
 .pinim-form#pinim-form-boards .column-private {
   width: 4em;
 }
-/* line 91, ../scss/pinim.scss */
+/* line 99, ../scss/pinim.scss */
 .pinim-form#pinim-form-boards .column-pin_count_remote {
   width: 8em;
 }
-/* line 96, ../scss/pinim.scss */
+/* line 104, ../scss/pinim.scss */
 .pinim-form#pinim-form-boards tbody tr.is-new-board {
   background-color: #FAFFE9;
 }
-/* line 101, ../scss/pinim.scss */
+/* line 109, ../scss/pinim.scss */
 .pinim-form#pinim-form-boards.boards-view-simple {
   width: 65%;
   margin: auto;
 }
-/* line 106, ../scss/pinim.scss */
+/* line 114, ../scss/pinim.scss */
 .pinim-form#pinim-form-boards.boards-view-simple .column-category, .pinim-form#pinim-form-boards.boards-view-simple .column-private, .pinim-form#pinim-form-boards.boards-view-simple .column-board_id {
   display: none;
 }
 
-/* line 116, ../scss/pinim.scss */
+/* line 124, ../scss/pinim.scss */
 .pinim-pc-bar {
   position: relative;
   display: block;
@@ -99,7 +107,7 @@
   height: 1.3em;
   line-height: 1.3em;
 }
-/* line 124, ../scss/pinim.scss */
+/* line 132, ../scss/pinim.scss */
 .pinim-pc-bar .pinim-pc-bar-fill {
   display: block;
   background-color: orange;
@@ -110,17 +118,17 @@
   -webkit-transition: all 0.5s ease-out;
   transition: all 0.5s ease-out;
 }
-/* line 131, ../scss/pinim.scss */
+/* line 139, ../scss/pinim.scss */
 .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-text {
   position: absolute;
   font-size: 0.8em;
   padding-left: 1em;
 }
-/* line 137, ../scss/pinim.scss */
+/* line 145, ../scss/pinim.scss */
 .pinim-pc-bar .pinim-pc-bar-fill.complete {
   background-color: #FFE000;
 }
-/* line 139, ../scss/pinim.scss */
+/* line 147, ../scss/pinim.scss */
 .pinim-pc-bar .pinim-pc-bar-fill.complete .pinim-pc-bar-text {
   display: none;
 }

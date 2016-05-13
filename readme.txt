@@ -68,6 +68,8 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 
 
 == Changelog ==
+= TO FIX =
+* use some ajax functions (populate cache etc)
 = 0.2.7 =
 * Fixed "Error getting App Version", thanks to markamp.
 = 0.2.6 =

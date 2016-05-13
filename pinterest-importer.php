@@ -95,7 +95,7 @@ class PinIm {
         require $this->plugin_dir . '/pinim-functions.php';
         require $this->plugin_dir . '/pinim-templates.php';
         require $this->plugin_dir . '/pinim-pin-class.php';
-        require $this->plugin_dir . '/pinim-ajax.php';
+        //require $this->plugin_dir . '/pinim-ajax.php';
         require $this->plugin_dir . '/pinim-board-class.php';
         require $this->plugin_dir . '/pinim-dummy-importer.php';
         require $this->plugin_dir . '/pinim-tool-page.php';

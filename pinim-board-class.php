@@ -113,7 +113,7 @@ class Pinim_Board{
     
     function get_datas($key = null){
 
-        $boards_datas = pinim_tool_page()->get_session_data('user_boards');
+        $boards_datas = pinim_tool_page()->get_boards_raw();
 
         //keep only our board
         $current_board_id = $this->board_id;
@@ -209,15 +209,13 @@ class Pinim_Board{
      */
     
     function set_pins_queue($queue){
-        $existing_pins = array();
+        $existing_pins = $new_pins = array();
         
         //no pins
         if ( !isset($queue['pins']) || empty($queue['pins'])){
             return $this->reset_pins_queue();
         }
-        
-        
-        
+
         $all_queues = (array)pinim_tool_page()->get_session_data('queues');
         
         if(isset($all_queues[$this->board_id]['pins'])){
@@ -231,9 +229,13 @@ class Pinim_Board{
                 $queue['pins'][$key] = $pin_raw;
             }
         }
+        
+        foreach ((array)$queue['pins'] as $pin){
+            $new_pins[] = apply_filters('pin_sanitize_raw_datas',$pin);
+        }
 
         $queue = array(
-            'pins'      => array_merge($existing_pins,$queue['pins']),
+            'pins'      => array_merge($existing_pins,$new_pins),
             'bookmark'  => $queue['bookmark']
         );
 
@@ -251,7 +253,7 @@ class Pinim_Board{
     function get_cached_pins(){
         $board_pins = array();
  
-        if ($all_pins = pinim_tool_page()->get_all_cached_pins()){
+        if ($all_pins = pinim_tool_page()->get_all_cached_pins_raw()){
             
             foreach($all_pins as $pin){
                 if ( $this->board_id=='likes' ){
@@ -274,7 +276,7 @@ class Pinim_Board{
      */
     
     function get_pins($reset = false){
-        
+
         $error = null;
         
         if (!isset($this->pins)){
@@ -320,15 +322,8 @@ class Pinim_Board{
             $board_queue = $this->get_pins_queue(); //reload queue
 
             if (isset($board_queue['pins'])){
-                $board_pins = $board_queue['pins'];
-                
-                foreach ((array)$board_queue['pins'] as $pin_raw){
-                    
-                    $this->pins[] = new Pinim_Pin($pin_raw['id']);
-
-                }
+                $this->pins = $board_queue['pins'];
             }
-
 
         }
 
@@ -359,47 +354,7 @@ class Pinim_Board{
 
         return $link;
     }
-    
-    
-    function get_link_action_import($board_id = null){
-        //Refresh cache
-        $link_args = array(
-            'step'      => 'boards-settings',
-            'action'    => 'boards_import_pins',
-            'board_ids'  => $this->board_id,
-            'pins_filter'    => 'pending',
-            'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
-        );
 
-        $link = sprintf(
-            '<a href="%1$s">%2$s</a>',
-            pinim_get_tool_page_url($link_args),
-            __('Import Pins','pinim')
-
-        );
-
-        return $link;
-    }
-    
-    function get_link_action_update($board_id = null){
-        //Refresh cache
-        $link_args = array(
-            'step'          => 'boards-settings',
-            'action'        => 'boards_import_pins',
-            'board_ids'     => $this->board_id,
-            'pins_filter'    => 'processed',
-            'paged'         => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
-        );
-
-        $link = sprintf(
-            '<a href="%1$s">%2$s</a>',
-            pinim_get_tool_page_url($link_args),
-            __('Update pins','pinim')
-
-        );
-
-        return $link;
-    }
     
     function get_remote_url(){
         $url = pinim()->pinterest_url.$this->get_datas('url');
@@ -491,19 +446,11 @@ class Pinim_Boards_Table extends WP_List_Table {
 
     function column_title($board){
 
-
         //Build row actions
         $actions = array(
             'view'                        => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$board->get_remote_url(),__('View on Pinterest','pinim'),'view'),
         );
 
-        //import link
-        if ( pinim_tool_page()->get_screen_boards_filter()=='completed' ){
-            $actions['single_board_update_pins']    = $board->get_link_action_update();
-        }else{
-            $actions['single_board_import_pins']    = $board->get_link_action_import();
-        }
-        
         if ($board->board_id == 'likes'){
             $title = '<i class="fa fa-heart"></i> '.$board->get_datas('name');
         }else{
@@ -644,11 +591,6 @@ class Pinim_Boards_Table extends WP_List_Table {
         }else{
             
             $percent = $board->get_pc_imported_pins();
-            $imported = $board->get_count_imported_pins();
-
-            if ($percent>=100){
-                $imported = '<strong>'.$imported.'</strong>';
-            }
             $pc_imported = floor($percent);
 
             $pc_status_classes = array('pinim-pc-bar-fill');
@@ -664,7 +606,9 @@ class Pinim_Boards_Table extends WP_List_Table {
             }
 
             $pc_status = pinim_get_classes($pc_status_classes);
-            return sprintf('<span class="pinim-pc-bar"><span %1$s style="width:%2$s"><span class="pinim-pc-bar-text">%2$s</span></span></span>',$pc_status,$pc_imported.'%');
+            $imported = $board->get_count_imported_pins();
+            $text_bar = $imported.'/'.$board->get_datas('pin_count');
+            return sprintf('<span class="pinim-pc-bar"><span %1$s style="width:%2$s"><span class="pinim-pc-bar-text">%3$s</span></span></span>',$pc_status,$pc_imported.'%',$text_bar);
 
 
         }
@@ -812,74 +756,6 @@ protected function get_views() {
                 'advanced'        => $link_advanced,
             );
 	}
-   
-	protected function get_views_OLD() { //TO FIX remove ?
-
-            $boards_data = pinim_tool_page()->get_session_data('user_boards');
-
-            $link_args = array(
-                'step'          => 'boards-settings',   
-            );
-            
-            $link_active_args = $link_args;
-            $link_active_args['boards_filter'] = 'pending';
-            $link_active_classes = array();
-            $pending_count = pinim_tool_page()->get_boards_count_pending();
-            
-            $link_disabled_args = $link_args;
-            $link_disabled_args['boards_filter'] = 'completed';
-            $link_disabled_classes = array();
-            $completed_count = pinim_tool_page()->get_boards_count_completed();
-            
-            $link_all_args = $link_args;
-            $link_all_args['boards_filter'] = 'waiting';
-            $link_all_classes = array();
-            $waiting_count = pinim_tool_page()->get_boards_count_waiting();
-
-            //
-
-            switch (pinim_tool_page()->get_screen_boards_filter()){
-                case 'pending':
-                    $link_active_classes[] = 'current';
-                break;
-                case 'waiting':
-                    $link_all_classes[] = 'current';
-                break;
-                case 'completed':
-                    $link_disabled_classes[] = 'current';
-                break;
-            }
-            
-            $link_all = sprintf(
-                __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-                pinim_get_tool_page_url($link_all_args),
-                pinim_get_classes($link_all_classes),
-                __('All','pinim'),
-                $waiting_count
-            );
-            
-            $link_active = sprintf(
-                __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-                pinim_get_tool_page_url($link_active_args),
-                pinim_get_classes($link_active_classes),
-                __('Active','pinim'),
-                $pending_count
-            );
-            
-            $link_disabled = sprintf(
-                __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-                pinim_get_tool_page_url($link_disabled_args),
-                pinim_get_classes($link_disabled_classes),
-                __('Disabled','pinim'),
-                $completed_count
-            );
-
-		return array(
-                    'all'       => $link_all,
-                    'active'        => $link_active,
-                    'completed'     => $link_disabled
-                );
-	}
 
 	/**
 	 * Display the list of views available on this table.
@@ -1014,7 +890,7 @@ protected function get_views() {
          */
         function usort_reorder($a,$b){
 
-            $orderby_default = 'title';
+            $orderby_default = 'pin_count_imported';
             $order_default = 'asc';
 
             $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : $orderby_default;
