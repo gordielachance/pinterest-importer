@@ -552,15 +552,14 @@ class Pinim_Tool_Page {
 
                         //cache pins
                         if ( $board->get_options('active') ){
-                            $board_pins = $board->get_pins(true);
+                            $board_pins = $board->get_pins();
+                            $board_pins = null;
 
                             if (is_wp_error($board_pins)){                                
                                 $board_error[$board->board_id]=sprintf(__('Board #%1$s: ','pinim'),$board->board_id).$board_pins->get_error_message();
                                 add_settings_error('pinim_form_boards', 'cache_single_board_pins_'.$board->board_id, $board_pins->get_error_message());
                             }
                         }
-
-
 
                         $is_queue_complete = $board->is_queue_complete();
                         $is_fully_imported = $board->is_fully_imported();
