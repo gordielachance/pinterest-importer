@@ -311,7 +311,6 @@ class Pinim_Board{
                     $board_queue = $error->get_error_data($error_code);
                     $this->set_pins_queue($board_queue);
 
-                    
                 }
 
                 $this->set_pins_queue($board_queue);
@@ -326,8 +325,6 @@ class Pinim_Board{
                 foreach ((array)$board_queue['pins'] as $pin_raw){
                     
                     $this->pins[] = new Pinim_Pin($pin_raw['id']);
-            
-
 
                 }
             }
