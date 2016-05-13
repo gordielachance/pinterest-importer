@@ -8,6 +8,9 @@ jQuery(document).ready(function($){
        if ( new_checkbox.is(":checked") ){
            row.addClass('is-new-board');
        }
+       if ( row.find('.pinim-pc-bar').length > 0 ){ //has a progres bar = is cached
+           row.addClass('is-cached');
+       }
        
     });
     

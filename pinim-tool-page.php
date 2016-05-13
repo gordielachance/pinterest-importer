@@ -305,7 +305,10 @@ class Pinim_Tool_Page {
                             $success_count = $bulk_count-$errors_count;
                             
                             if ($success_count){
-                                add_settings_error('pinim', 'import_pins', sprintf(__( '%1$s Pins successfully imported', 'pinim' ),$success_count), 'updated');
+                                add_settings_error('pinim', 'import_pins', 
+                                    sprintf( _n( '%s pin successfully imported', '%s pins successfully imported', $success_count ), $success_count ),
+                                    'updated'
+                                );
                                 //refresh pins list
                                 $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
                             }
