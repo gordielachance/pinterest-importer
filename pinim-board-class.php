@@ -1028,7 +1028,7 @@ protected function get_views() {
                     $result = strcmp($a->get_datas('name'), $b->get_datas('name'));
                 break;
                 case 'pin_count_remote':
-                    $result = strcmp($a->get_datas('pin_count'), $b->get_datas('pin_count'));
+                    $result = $a->get_datas('pin_count') - $b->get_datas('pin_count');
                 break;
                 case 'pin_count_imported':
                     $result = strcmp( $a->get_pc_imported_pins(), count( $b->get_pc_imported_pins() ) );
