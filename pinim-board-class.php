@@ -1031,7 +1031,17 @@ protected function get_views() {
                     $result = $a->get_datas('pin_count') - $b->get_datas('pin_count');
                 break;
                 case 'pin_count_imported':
-                    $result = strcmp( $a->get_pc_imported_pins(), count( $b->get_pc_imported_pins() ) );
+                    
+                    /* TO FIX
+                     * for boards that have not been cached yet, set percentage to -1 so 
+                     * boards with 0 pc are ordered correctly
+                     */
+                    $curr_pc = -1;
+                    if ( $a->get_cached_pins() ) $curr_pc = $a->get_pc_imported_pins();
+                    
+                    $result = $curr_pc - $b->get_pc_imported_pins();
+
+                    
                 break;
             }
 
