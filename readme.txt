@@ -7,7 +7,7 @@ Tested up to: 4.5.2
 Stable tag: trunk
 License: GPLv2 or later
 
-Backup your Pinterest.com account by importing pins as Wordpress posts.  Supports boards, secret boards and likes.  Images are downloaded as Wordpress medias.
+Backup your Pinterest.com account by importing pins as Wordpress posts.  Supports boards, secret boards and likes.
 
 == Description ==
 
