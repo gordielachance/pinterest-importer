@@ -208,6 +208,10 @@ function pinim_get_boards_options($force_reload = false){
 
 }
 
+function pinim_classes($classes){
+    echo pinim_get_classes($classes);
+}
+
 function pinim_get_classes($classes){
     if (empty($classes)) return;
     return' class="'.implode(' ',$classes).'"';

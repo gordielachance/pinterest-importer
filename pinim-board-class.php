@@ -82,13 +82,14 @@ class Pinim_Board{
                 $new_input['categories'] = $input['category_custom'];
         }
 
-        //(force) reloading boards settings...
-        $boards_settings = (array)pinim_get_boards_options(true);
+        
+        if ( $boards_settings = pinim_get_boards_options(true) ){ //(force) reloading boards settings...
+            //remove previous settings if they exists
+            foreach ((array)$boards_settings as $key => $single_board_settings){
 
-        //remove previous settings if they exists
-        foreach ((array)$boards_settings as $key => $single_board_settings){
-            if ($single_board_settings['id'] == $new_input['id']){
-                unset($boards_settings[$key]);
+                if ($single_board_settings['id'] == $new_input['id']){
+                    unset($boards_settings[$key]);
+                }
             }
         }
 
@@ -434,10 +435,12 @@ class Pinim_Boards_Table extends WP_List_Table {
         if ($board->board_id == 'likes'){
             $title = '<i class="fa fa-heart"></i> '.$board->get_datas('name');
         }else{
-            $title = $board->get_datas('name');
+            $title = sprintf('%1$s <span class="item-id">(id:%2$s)</span>',$board->get_datas('name'),$board->board_id);
         }
         
         return $title.$this->row_actions($actions);
+
+        
     }
 
     /** ************************************************************************
@@ -460,9 +463,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         $board_active = false;
         
-        if ( empty($board->get_options() ) ){ //no options saved, set as active
-            $board_active = true;
-        }else {
+        if ( !empty($board->get_options() ) ){ //no options saved, set as active
             $board_active = $board->get_options('active');
         }
         
@@ -560,12 +561,7 @@ class Pinim_Boards_Table extends WP_List_Table {
     }
     
     function column_pin_count_imported($board){
-        
-        //TO FIX
-        if ($this->active){
-            die();
-        }
-        
+
         if ( !$board->get_cached_pins() ){
             printf('<em>%1$s</em>',__('Not yet cached','pinim') );
         }else{
@@ -613,17 +609,14 @@ class Pinim_Boards_Table extends WP_List_Table {
      **************************************************************************/
 
     function get_columns(){
-        
-        $has_boards_options = pinim_get_boards_options();
- 
+
         $columns = array(
-            'cb'        => sprintf('<input type="checkbox" %s/>',checked( empty($has_boards_options), true, false )), //Render a checkbox instead of text
+            'cb'                    => '<input type="checkbox" />', //Render a checkbox instead of text
             'thumbnail'             => '',
             'title'                 => __('Board Title','pinim'),
             'details'               => __('Details','pinim'),
             'category'              => __('Category','pinim'),
             'private'               => __('Private','pinim'),
-            'board_id'              => __('ID','pinim'),
             'pin_count_remote'      => __('Board Pins','pinim'),
             'pin_count_imported'    => __('Status','pinim'),
             'new_board'                => __('New','pinim'),
@@ -698,8 +691,6 @@ class Pinim_Boards_Table extends WP_List_Table {
     protected function get_views() {
 
         $link_simple_classes = $link_advanced_classes = array();
-
-        //TO FIX remove ?
 
         switch (pinim_tool_page()->get_screen_boards_filter()){
             case 'simple':

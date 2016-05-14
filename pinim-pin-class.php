@@ -496,7 +496,7 @@ class Pinim_Pins_Table extends WP_List_Table {
         
         
         //Return the title contents
-        $title = sprintf('%1$s <span style="color:silver">(id:%2$s)</span>%3$s',
+        $title = sprintf('%1$s <span class="item-id">(id:%2$s)</span>%3$s',
             /*$1%s*/ $title,
             /*$2%s*/ $pin->pin_id,
             /*$3%s*/ $this->row_actions($actions)

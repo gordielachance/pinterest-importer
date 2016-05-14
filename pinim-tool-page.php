@@ -489,7 +489,7 @@ class Pinim_Tool_Page {
                         if ( !$boards_options = pinim_get_boards_options() ){
                             add_settings_error('pinim_form_boards', 'activate_boards', __('Please select the boards you want the plugin to handle.  Those will be automatically cached next time.','pinim'),'updated inline' );
                         }else{
-                            
+
                             //check if new boards have been detected since last time settings were saved
 
                             foreach ((array)$boards as $board){
@@ -501,8 +501,6 @@ class Pinim_Tool_Page {
 
                             }
 
-                            
-                            
                             if ($has_new_boards){ //new boards detected, user has to review them.  This was made to avoid to much pins caching.
                                 add_settings_error('pinim_form_boards', 'new_boards', __('Some new boards have been detected since last time.  Please review your boards settings.','pinim'),'updated inline' );
                                 
@@ -661,7 +659,7 @@ class Pinim_Tool_Page {
                     $donate_link = '<a href="'.pinim()->donation_url.'" target="_blank" href=""><i class="fa fa-usd"></i> '.__('make a donation','pinim').'</a>';
                     ?>
                     <p class="description" id="header-links">
-                        <?php printf(__('<i class="fa fa-pinterest-p"></i>roudly already imported %1$s pins !  Happy with that ? %2$s and %3$s would help!  A lot of hours were spent to on this little piece of code !','pinim'),'<strong>'.$pins_count.'</strong>',$rate_link,$donate_link);?>
+                        <?php printf(__('<i class="fa fa-pinterest-p"></i>roudly already imported %1$s pins !  Happy with that ? %2$s and %3$s would help!','pinim'),'<strong>'.$pins_count.'</strong>',$rate_link,$donate_link);?>
                     </p>
                     <?php
                 }
@@ -677,12 +675,14 @@ class Pinim_Tool_Page {
             $content_classes = array('pinim_tab_content');
             $content_classes[] = 'pinim_tab_content-'.$this->current_step;
             
+            $form_classes = array('pinim-form');
+            
             ?>
             
             <h2 class="nav-tab-wrapper">
                 <?php $this->importer_page_tabs($this->current_step); ?>
             </h2>
-            <div<?php echo pinim_get_classes($content_classes);?>>
+            <div<?php pinim_classes($content_classes);?>>
                 
                 <?php
                      switch ($this->current_step){
@@ -697,7 +697,7 @@ class Pinim_Tool_Page {
                             ?>
 
                             <?php $this->pinim_form_login_desc();?>
-                            <form id="pinim-form-login" class="pinim-form" action="<?php echo pinim_get_tool_page_url();?>" method="post">
+                            <form id="pinim-form-login"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_tool_page_url();?>" method="post">
                                 <div id="pinim_login_box">
                                     <p id="pinim_login_icon"><i class="fa fa-pinterest" aria-hidden="true"></i></p>
                                     <?php settings_errors('pinim_form_login');?>
@@ -711,8 +711,11 @@ class Pinim_Tool_Page {
                          break;
 
                          case 'boards-settings':
+                             
+                            $form_classes[] = 'boards-view-'.pinim_tool_page()->get_screen_boards_filter();
+                             
                             ?>
-                            <form id="pinim-form-boards" class="pinim-form" action="<?php echo pinim_get_tool_page_url();?>" method="post">
+                            <form id="pinim-form-boards"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_tool_page_url();?>" method="post">
                                 <div class="tab-description">
                                     <p>
                                         <?php _e("This is the list of all the boards we've fetched from your profile, including your likes.","pinim");?>
@@ -720,6 +723,10 @@ class Pinim_Tool_Page {
                                     <p>
                                         <?php _e("Before being able to import pins, you've got to select the boards you want to enable, then save the boards settings.","pinim");?>
                                     </p>
+                                    <p>
+                                        <?php _e("Enabling too much boards, or boards with a large amount of pins will slow the plugin, because we need to query informations for each pin.","pinim");?>
+                                    </p>
+                                    
                                 </div>
                                 <?php settings_errors('pinim_form_boards');?>
                                 <input type="hidden" name="step" value="<?php echo $this->current_step;?>" />
@@ -761,7 +768,7 @@ class Pinim_Tool_Page {
                              
                             ?>
                             <?php settings_errors('pinim_form_pins');?>
-                            <form id="pinim-form-pins" class="pinim-form" action="<?php echo pinim_get_tool_page_url();?>" method="post">
+                            <form id="pinim-form-pins"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_tool_page_url();?>" method="post">
                                 <?php
                                 $this->table_pins->views();
                                 $this->table_pins->display();
@@ -777,7 +784,7 @@ class Pinim_Tool_Page {
                             settings_errors('spiff_option_group');
                              
                             ?>
-                            <form method="post" action="options.php">
+                            <form<?php pinim_classes($form_classes);?> method="post" action="options.php">
                                 <?php
 
                                 // This prints out all hidden setting fields
