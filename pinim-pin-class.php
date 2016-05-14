@@ -4,6 +4,14 @@ if(!class_exists('WP_List_Table')){
     require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 }
 
+
+// Include the WP_Posts_List_Table class
+ require_once ( ABSPATH . 'wp-admin/includes/class-wp-posts-list-table.php' );
+
+class Pinim_Posts_Table extends WP_Posts_List_Table {
+}
+
+
 class Pinim_Pin{
     
     var $pin_id;
