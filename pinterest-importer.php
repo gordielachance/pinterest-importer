@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: Pinterest Importer
-Description: Backup your Pinterest.com account by imports pins as Wordpress posts.  Supports boards, secret boards and likes.  Images are downloaded as Wordpress medias.
-Version: 0.2.8
+Description: Backup your Pinterest.com account by importing pins as Wordpress posts.  Supports boards, secret boards and likes.  Images are downloaded as Wordpress medias.
+Version: 0.3.0
 Author: G.Breant
 Author URI: http://sandbox.pencil2d.org
 Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
@@ -16,7 +16,7 @@ class PinIm {
     /**
     * @public string plugin version
     */
-    public $version = '0.2.8';
+    public $version = '0.3.0';
 
     /**
     * @public string plugin DB version

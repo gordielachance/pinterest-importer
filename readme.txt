@@ -1,17 +1,17 @@
 === Pinterest Importer ===
 Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
-Tags: importer,Pinterest,pins
+Tags: importer,Pinterest,pins,backup
 Requires at least: 3.5
-Tested up to: 4.4.2
+Tested up to: 4.5.2
 Stable tag: trunk
 License: GPLv2 or later
 
-Backup your Pinterest.com account by imports pins as Wordpress posts.  Supports boards, secret boards and likes.  Images are downloaded as Wordpress medias.
+Backup your Pinterest.com account by importing pins as Wordpress posts.  Supports boards, secret boards and likes.  Images are downloaded as Wordpress medias.
 
 == Description ==
 
-Pinterest Importer allows you to connect to your Pinterest.com account; to fetch all your pins (including from secret boards); then to import them into Wordpress.
+Pinterest Importer allows you to connect to your Pinterest.com account; to grab all your pins (including from secret boards); and to import them as Wordpress posts.
 
 The difference with other plugins is that it is not based on the (very limited) official Pinterest API.  
 This means that you can make a full backup (instead of getting only the last x pins); but it also means the plugin may broke one day or another.
@@ -19,13 +19,12 @@ Better use it quick !
 
 * Nice GUI
 * Get pins from public boards, secret boards, and likes
-* Set import options for each of your boards (which category to use, etc)
-* Import original HD images from pins
-* Set pin creation date as post date
 * Supports both image & video pins; and set corresponding post format
-* Handles hashtags,which are converted to post tags
-* May be run several times as existing pins will not be imported again
-* Save the original Pin informations (pin ID, source, etc) as post metas (with prefix _pinterest-)
+* Import original HD images from pins
+* Can be used on an ongoing basis : pins will not be imported several times
+* Set pin creation date as post date
+* Handles hashtags, which are converted to post tags
+* Keep the original pin informations (pin ID, source, etc) attached to the post (stored as post metas)
 
 = Donate! =
 It truly took me a LOT of time to code this plugin.
@@ -38,10 +37,8 @@ This plugin requires at least php 5.3.6 with the [exif extension enabled](http:/
 
 1. Go to Tools -> Pinterest Importer.
 2. Select "My Account" tab; and login to Pinterest
-3. Select the "Boards Settings" tab > "Needs cache refresh", check the boards you want to import the pins from; and click/select "Cache Pins".  This will query Pinterest for your pins data (can take some time).
-4. Under the "Boards Settings" tab > "Pending" (which lists the boards that have pins cached), check the boards you want to import the pins from; and click/select "Import Pins".
-4. Under the "Import Pins" tab > "Pending" (which lists the pins that have not yet been imported), check the pins you want to import; and click/select "Import Pins".
-5. Enjoy !
+3. Select the "Boards Settings" tab and choose the boards you want to backup.
+4. Enjoy !
 
 = Contributors =
 [Contributors are listed here](https://github.com/gordielachance/pinterest-importer/contributors)
@@ -64,12 +61,21 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 
 == Screenshots ==
 
-1. Boards settings
+1. Login screen
+2. Boards Settings
+3. Pending Pins
+4. Processed Pins
+5. Plugin options
 
 
 == Changelog ==
-= TO FIX =
-* use some ajax functions (populate cache etc)
+= 0.3.0 =
+* Major release !
+* Improved GUI
+* Lots of bug fixes
+* Options page
+= 0.2.8 =
+* Fixed "Error getting App Version"
 = 0.2.7 =
 * Fixed "Error getting App Version", thanks to markamp.
 = 0.2.6 =
@@ -104,6 +110,10 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 = 0.1 ==
 * First release
 
+== TO DO ==
+* use some ajax functions (Pinterest queries, etc.)
+* allow to fetch pins from any Pinterest board
+* bug when creating 'pinim_boards_settings' : last board settings are not saved, so it is detected as new board when the page refreshes.
 
 == Upgrade Notice ==
 
