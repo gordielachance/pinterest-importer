@@ -1,35 +1,41 @@
 @import "compass/css3";
 
 .tools_page_pinim {
-  #header-links {
-    margin-bottom: 2em;
-    a {
-      text-decoration: none;
-    }
-  }
-  
-  .tab-description{
-      margin:2em;
-      p{
-          font-size:1.1em;
+    #header-links {
+      margin-bottom: 2em;
+      font-size:1.1em;
+      a {
+        text-decoration: none;
       }
-      
-  }
+    }
+  
+    .tab-description{
+        margin:2em;
+        p{
+            font-size:1.1em;
+        }
+
+    }
 
 }
 
 #user-info{
     height:3em;
-    position:relative;
     line-height:3em;
-    #user-info-username{
-        vertical-align: middle;
-        img{
-            height:100%;
-            width:auto;
-            float:left;
-            padding-right:1em;
-        }
+    position:relative;
+    text-align:right;
+    
+    img{
+        //TO FIX weird behaviour, should be max-height;100% but is not working !
+        //max-height:100%;
+        max-height:2em;
+        width:auto;
+        padding-right:0.5em;
+        vertical-align:middle;
+    }
+    
+    span{
+        display:inline-block;
     }
 }
 
@@ -129,26 +135,34 @@
     width:100%;
     height:1.3em;
     line-height:1.3em;
+    
     .pinim-pc-bar-fill{
         display:block;
-        background-color:orange;
         height:100%;
         text-align:left;
         @include transition(all 0.5s ease-out);
+        position:relative;
+        .pinim-pc-bar-fill-color{
+            width:100%;
+            height:100%;
+            position: absolute;
+            &.pinim-pc-bar-fill-yellow{
+                background-color:#FFE000;
+            }
+            &.pinim-pc-bar-fill-red{
+                background-color:red;
+            }
+        }
         
         .pinim-pc-bar-text{
             position:absolute;
             font-size: 0.8em;
             padding-left:1em;
         }
-        
-        &.complete{
-            background-color:#FFE000;
-            .pinim-pc-bar-text{
-                display:none;
-            }
-        }
-        
+  
+    }
+    
+    &.complete{
     }
     
 }

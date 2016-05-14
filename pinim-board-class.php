@@ -593,7 +593,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             $percent = $board->get_pc_imported_pins();
             $pc_imported = floor($percent);
 
-            $pc_status_classes = array('pinim-pc-bar-fill');
+            $pc_status_classes = array('pinim-pc-bar');
 
 
             switch($percent){
@@ -607,8 +607,9 @@ class Pinim_Boards_Table extends WP_List_Table {
 
             $pc_status = pinim_get_classes($pc_status_classes);
             $imported = $board->get_count_imported_pins();
+            $red_opacity = (100 - $percent) / 100;
             $text_bar = $imported.'/'.$board->get_datas('pin_count');
-            return sprintf('<span class="pinim-pc-bar"><span %1$s style="width:%2$s"><span class="pinim-pc-bar-text">%3$s</span></span></span>',$pc_status,$pc_imported.'%',$text_bar);
+            return sprintf('<span %1$s><span class="pinim-pc-bar-fill" style="width:%2$s"><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-yellow"></span><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-red" style="opacity:%3$s"></span><span class="pinim-pc-bar-text">%4$s</span></span>',$pc_status,$pc_imported.'%',$red_opacity,$text_bar);
 
 
         }
@@ -712,70 +713,70 @@ class Pinim_Boards_Table extends WP_List_Table {
         <?php
     }
     
-	/**
-	 * Get an associative array ( id => link ) with the list
-	 * of views available on this table.
-	 *
-	 * @since 3.1.0
-	 * @access protected
-	 *
-	 * @return array
-	 */
-    
-protected function get_views() {
+    /**
+     * Get an associative array ( id => link ) with the list
+     * of views available on this table.
+     *
+     * @since 3.1.0
+     * @access protected
+     *
+     * @return array
+     */
 
-            $link_simple_classes = $link_advanced_classes = array();
-            
-            //TO FIX remove ?
-            
-            switch (pinim_tool_page()->get_screen_boards_filter()){
-                case 'simple':
-                    $link_simple_classes[] = 'current';
-                break;
-                case 'advanced':
-                    $link_advanced_classes[] = 'current';
-                break;
+    protected function get_views() {
+
+        $link_simple_classes = $link_advanced_classes = array();
+
+        //TO FIX remove ?
+
+        switch (pinim_tool_page()->get_screen_boards_filter()){
+            case 'simple':
+                $link_simple_classes[] = 'current';
+            break;
+            case 'advanced':
+                $link_advanced_classes[] = 'current';
+            break;
+        }
+
+        $link_simple = sprintf(
+            __('<a href="%1$s"%2$s>%3$s</a>'),
+            pinim_get_tool_page_url(array('step'=>'boards-settings')),
+            pinim_get_classes($link_simple_classes),
+            __('Simple','pinim')
+        );
+
+        $link_advanced = sprintf(
+            __('<a href="%1$s"%2$s>%3$s</a>'),
+            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_view'=>'advanced')),
+            pinim_get_classes($link_advanced_classes),
+            __('Advanced','pinim')
+        );
+
+        return array(
+            'simple'       => $link_simple,
+            'advanced'        => $link_advanced,
+        );
+    }
+
+    /**
+     * Display the list of views available on this table.
+     *
+     * @since 3.1.0
+     * @access public
+     */
+    public function views() {
+            $views = $this->get_views();
+
+            if ( empty( $views ) )
+                    return;
+
+            echo "<ul class='subsubsub'>\n";
+            foreach ( $views as $class => $view ) {
+                    $views[ $class ] = "\t<li class='$class'>$view";
             }
-            
-            $link_simple = sprintf(
-                __('<a href="%1$s"%2$s>%3$s</a>'),
-                pinim_get_tool_page_url(array('step'=>'boards-settings')),
-                pinim_get_classes($link_simple_classes),
-                __('Simple','pinim')
-            );
-            
-            $link_advanced = sprintf(
-                __('<a href="%1$s"%2$s>%3$s</a>'),
-                pinim_get_tool_page_url(array('step'=>'boards-settings','boards_view'=>'advanced')),
-                pinim_get_classes($link_advanced_classes),
-                __('Advanced','pinim')
-            );
-            
-            return array(
-                'simple'       => $link_simple,
-                'advanced'        => $link_advanced,
-            );
-	}
-
-	/**
-	 * Display the list of views available on this table.
-	 *
-	 * @since 3.1.0
-	 * @access public
-	 */
-	public function views() {
-		$views = $this->get_views();
-
-		if ( empty( $views ) )
-			return;
-
-		echo "<ul class='subsubsub'>\n";
-		foreach ( $views as $class => $view ) {
-			$views[ $class ] = "\t<li class='$class'>$view";
-		}
-		echo implode( " |</li>\n", $views ) . "</li>\n";
-		echo "</ul>";
-	}
+            echo implode( " |</li>\n", $views ) . "</li>\n";
+            echo "</ul>";
+    }
 
 
     /** ************************************************************************
@@ -891,7 +892,7 @@ protected function get_views() {
         function usort_reorder($a,$b){
 
             $orderby_default = 'pin_count_imported';
-            $order_default = 'asc';
+            $order_default = 'desc';
 
             $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : $orderby_default;
             $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : $order_default;

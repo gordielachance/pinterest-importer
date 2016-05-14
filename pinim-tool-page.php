@@ -44,36 +44,28 @@ class Pinim_Tool_Page {
         
     }
     
-    function step(){
-        
-        //1  login page
-        //2  cache board page + ajax redirect - EXCEPT IF IS FIRST LOGIN, board setup first
-        //3  import pins page + details if any
-        
+    function can_show_step($slug){
+        switch($slug){
+            case 'pinterest-login':
+                if ( !$this->get_session_data('user_datas') ) return true;
+            break;
+            case 'boards-settings':
+                if ( !$this->can_show_step('pinterest-login') ) return true;
+            break;
+            case 'pins-list':
+                if ( $this->get_all_cached_pins_raw(true) || $this->existing_pin_ids ) return true;
+            break;
+        }
     }
     
     function init_tool_page(){
         if (!pinim_is_tool_page()) return false;
-        
-        /*
-        //dependencies
-        if ( !is_plugin_active( 'wp-session-manager/wp-session-manager.php' ) ) {
-            $dep_install_url = admin_url( 'plugin-install.php?tab=search&s=WP+Session+Manager' );
-            $dep_link = '<a href="https://wordpress.org/plugins/wp-session-manager" target="_blank">WP Session Manager</a>';
-            $message = sprintf(__( 'Pinterest Importer requires the plugin %1$s by Eric Mann to be installed. Click <a href="%2$s">here</a> !', 'pinim' ),$dep_link,$dep_install_url);
-            add_settings_error('pinim', 'require_wp_session_manager', $message);
-            return;
-        }else{
-            $this->session = WP_Session::get_instance();
-        }
-         */
 
         $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
         $this->bridge = new Pinim_Bridge;
         $step = pinim_get_tool_page_step();
         
         if($step!==false){
-            
             $this->current_step = $step;
             
         }else{
@@ -489,7 +481,15 @@ class Pinim_Tool_Page {
         $board_ids = array();
 
         switch ($this->current_step){
+            
             case 'pins-list':
+                
+                //we should not be here !
+                if ( !$this->can_show_step('pins-list') ){
+                    $url = pinim_get_tool_page_url(array('step'=>'pinterest-login'));
+                    wp_redirect( $url );
+                    die();
+                }
                 
                 $pins = array();
 
@@ -525,20 +525,29 @@ class Pinim_Tool_Page {
                 $this->table_pins->prepare_items();
 
             break;
+            
             case 'boards-settings': //boards settings
+                
+                //we should not be here !
+                if ( !$this->can_show_step('boards-settings') ){
+                    $url = pinim_get_tool_page_url(array('step'=>'pinterest-login'));
+                    wp_redirect( $url );
+                    die();
+                }
 
-                $boards = $boards_data = array();
+                $boards = array();
                 $has_new_boards = false;
 
                 //load boards
                 $boards = $this->get_boards();
 
-                if (is_wp_error($boards)){
+                if ( is_wp_error($boards) ){
                     
                     add_settings_error('pinim_form_boards', 'get_boards', $boards->get_error_message());
+                    $boards = array(); //reset boards
                     
                 }else{
-                    
+
                     if( empty($boards) ){
                         
                         add_settings_error('pinim_form_boards', 'no_boards', __('No boards found.  Have you logged in ?','pinim') );
@@ -600,13 +609,11 @@ class Pinim_Tool_Page {
                         }
                         
                     }
-                    
 
-                    
                 }
 
-                $this->table_board = new Pinim_Boards_Table($boards);
-                $this->table_board->prepare_items();
+                $this->table_boards = new Pinim_Boards_Table($boards);
+                $this->table_boards->prepare_items();
 
             break;
         }
@@ -673,11 +680,11 @@ class Pinim_Tool_Page {
                 $pins_count = count($this->existing_pin_ids);
                 if ($pins_count > 1){
                     $rate_link_wp = 'https://wordpress.org/support/view/plugin-reviews/pinterest-importer?rate#postform';
-                    $rate_link = '<a href="'.$rate_link_wp.'" target="_blank" href=""><i class="fa fa-star"></i> '.__('Reviewing it','pinim').'</a>';
+                    $rate_link = '<a href="'.$rate_link_wp.'" target="_blank" href=""><i class="fa fa-star"></i> '.__('Reviewing the plugin','pinim').'</a>';
                     $donate_link = '<a href="'.pinim()->donation_url.'" target="_blank" href=""><i class="fa fa-usd"></i> '.__('make a donation','pinim').'</a>';
                     ?>
                     <p class="description" id="header-links">
-                        <?php printf(__('<i class="fa fa-pinterest-p"></i>roudly already imported %1$s pins !  Happy with it ? %2$s and %3$s would help a lot!','pinim'),'<strong>'.$pins_count.'</strong>',$rate_link,$donate_link);?>
+                        <?php printf(__('<i class="fa fa-pinterest-p"></i>roudly already imported %1$s pins !  Happy with that ? %2$s and %3$s would help!  A lot of hours were spent to on this little piece of code !','pinim'),'<strong>'.$pins_count.'</strong>',$rate_link,$donate_link);?>
                     </p>
                     <?php
                 }
@@ -730,14 +737,12 @@ class Pinim_Tool_Page {
                             <?php _e("Before being able to import pins, you've got to select the boards you want to enable, then save your boards settings.","pinim");?>
                         </p>
                     </div>
+                            <?php settings_errors('pinim_form_boards');?>
+                            <h3><?php _e('My boards','pinim');?></h3>
                             <?php
-                            
-                            settings_errors('pinim_form_boards');
+                            $this->table_boards->views();
+                            $this->table_boards->display();
 
-                            $this->table_board->views();
-
-                            $this->table_board->display();
-        
                             $form_content = ob_get_clean();
                             
                         break;
@@ -781,13 +786,15 @@ class Pinim_Tool_Page {
     }
     
     function importer_page_tabs( $active_tab = '' ) {
+        
+            $tabs = array();
             $tabs_html    = '';
             $idle_class   = 'nav-tab';
             $active_class = 'nav-tab nav-tab-active';
             $has_user_datas = (null !== $this->get_session_data('user_datas'));
 
             //Pinterest login
-            if (!$has_user_datas){
+            if ( $this->can_show_step('pinterest-login') ){
                 $tabs['pinterest-login'] = array(
                     'href' => pinim_get_tool_page_url(array('step'=>'pinterest-login')),
                         'name' => __( 'My Account', 'pinim' )
@@ -795,7 +802,7 @@ class Pinim_Tool_Page {
             }
             
             //boards
-            if ($this->get_session_data('user_boards')){ //we've got a boards cache
+            if ( $this->can_show_step('boards-settings') ){
                 $tabs['boards-settings'] = array(
                     'href' => pinim_get_tool_page_url(array('step'=>'boards-settings')),
                     'name' => sprintf( __( 'Boards Settings', 'pinim' ) )
@@ -804,7 +811,7 @@ class Pinim_Tool_Page {
 
             
             //pins
-            if ( $this->get_all_cached_pins_raw(true) || $this->existing_pin_ids ){
+            if ( $this->can_show_step('pins-list') ){
                 $tabs['pins-list'] = array(
                     'href' => pinim_get_tool_page_url(array('step'=>'pins-list')),
                     'name' => __( 'Pins list', 'pinim' )
@@ -812,7 +819,7 @@ class Pinim_Tool_Page {
             }
 
             // Loop through tabs and build navigation
-            foreach ($tabs as $slug=>$tab_data ) {
+            foreach ((array)$tabs as $slug=>$tab_data ) {
                     $is_current = (bool) ( $slug == $active_tab );
                     $tab_class  = $is_current ? $active_class : $idle_class;
                     $tabs_html .= '<a href="' . esc_url( $tab_data['href'] ) . '" class="' . esc_attr( $tab_class ) . '">' . esc_html( $tab_data['name'] ) . '</a>';
@@ -919,7 +926,7 @@ class Pinim_Tool_Page {
                             'url'   => $user_datas['image_medium_url']
                         )
                     ),
-                    'url'           => '/'.$user_datas['username'].'/likes'
+                    'url'           => '/'.$user_datas['username'].'/likes',
                 );
                 $user_boards[] = $likes_board;
             }
