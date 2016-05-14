@@ -427,33 +427,6 @@ class Pinim_Tool_Page {
                 //clear pins selection
                 unset($_REQUEST['pin_ids']);
                 unset($_POST['pinim_form_pins']);
-                
-                //switch view
-                switch ( $this->get_screen_pins_filter() ){
-                    case 'pending':
-                        if ($pins_ids = $this->get_requested_pins_ids()){
-                            $pins_ids = array_diff($pins_ids, $this->existing_pin_ids);
-                        }
-                    break;
-                    case 'processed':
-                        $pins_ids = $this->existing_pin_ids;
-                    break;
-                }
-
-                //populate pins
-                foreach ((array)$pins_ids as $pin_id){
-                    $pins[] = new Pinim_Pin($pin_id);
-                }
-                
-                //populate processed posts
-                if ( $this->get_screen_pins_filter() == 'processed' ){
-                    foreach ((array)$pins as $pin){
-                        $pin->get_post();
-                    }
-                }
-                
-                $this->table_pins = new Pinim_Pins_Table($pins);
-                $this->table_pins->prepare_items();
 
             break;
             
@@ -770,8 +743,49 @@ class Pinim_Tool_Page {
                             <?php settings_errors('pinim_form_pins');?>
                             <form id="pinim-form-pins"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_tool_page_url();?>" method="post">
                                 <?php
-                                $this->table_pins->views();
-                                $this->table_pins->display();
+                                
+                                //switch view
+                                switch ( $this->get_screen_pins_filter() ){
+                                    case 'pending':
+                                        if ($pins_ids = $this->get_requested_pins_ids()){
+                                            $pins_ids = array_diff($pins_ids, $this->existing_pin_ids);
+
+                                            //populate pins
+                                            foreach ((array)$pins_ids as $pin_id){
+                                                $pins[] = new Pinim_Pin($pin_id);
+                                            }
+
+                                            $table_pins = new Pinim_Pins_Table($pins);
+                                            $table_pins->prepare_items();
+                                            $table_pins->views();
+                                            $table_pins->display();
+                                        }
+                                    break;
+                                    case 'processed':
+                                        
+                                        $pins_ids = $this->existing_pin_ids;
+
+                                        //populate pins
+                                        foreach ((array)$pins_ids as $pin_id){
+                                            $pins[] = new Pinim_Pin($pin_id);
+                                        }
+
+                                        //populate processed posts
+                                        if ( $this->get_screen_pins_filter() == 'processed' ){
+                                            foreach ((array)$pins as $pin){
+                                                $pin->get_post();
+                                            }
+                                        }
+                                        
+                                        $table_pins = new Pinim_Pins_Table($pins);
+                                        $table_pins->prepare_items();
+                                        $table_pins->views();
+                                        $table_pins->display();
+                                        
+                                        
+                                    break;
+                                }                                
+
                                 ?>
                                 <input type="hidden" name="step" value="<?php echo $this->current_step;?>" />
                             </form>
