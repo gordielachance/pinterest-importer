@@ -5,11 +5,8 @@ class Pinim_Tool_Page {
     var $options_page;
     var $current_step = 0;
     var $existing_pin_ids = array();
-    var $screen_boards_filter = null;
-    var $screen_pins_filter = null;
     var $bridge = null;
     var $session = null;
-
     var $all_action_str = array(); //text on all pins | boards actions
     
     /**
@@ -30,15 +27,13 @@ class Pinim_Tool_Page {
     function init(){
 
         $this->all_action_str = array(
-            'cache_all_pins'        =>__( 'Cache All Pins','pinim' ),
             'import_all_pins'       =>__( 'Import All Pins','pinim' ),
-            'update_all_pins'       =>__( 'Update All Pins','pinim' ),
-            'update_all_boards'     =>__( 'Update All Boards Settings','pinim' )
+            'update_all_pins'       =>__( 'Update All Pins','pinim' )
         );
 
         add_action( 'admin_init', array( $this, 'init_tool_page' ) );
-        add_action( 'admin_init', array( $this, 'reduce_settings_errors' ) );
-        add_action( 'admin_init', array( $this, 'settings_page_init' ) );
+        //add_action( 'admin_init', array( $this, 'reduce_settings_errors' ) );
+        add_action( 'admin_init', array( $this, 'settings_init' ) );
         add_action( 'admin_menu',array(&$this,'admin_menu'),10,2);
         
         add_action( 'admin_init', array( $this, 'register_session' ), 1);
@@ -47,38 +42,43 @@ class Pinim_Tool_Page {
         
     }
     
+    function can_show_step($slug){
+        switch($slug){
+            case 'pinterest-login':
+                if ( !$this->get_session_data('user_datas') ) return true;
+            break;
+            case 'boards-settings':
+                if ( $this->get_session_data('user_datas') ) return true;
+            break;
+            case 'pins-list':
+                if ( $this->get_all_cached_pins_raw(true) || $this->existing_pin_ids ) return true;
+            break;
+            case 'pinim-options':
+                if( current_user_can( 'manage_options' ) ) return true;
+            break;
+        }
+    }
+    
     function init_tool_page(){
         if (!pinim_is_tool_page()) return false;
-        
-        /*
-        //dependencies
-        if ( !is_plugin_active( 'wp-session-manager/wp-session-manager.php' ) ) {
-            $dep_install_url = admin_url( 'plugin-install.php?tab=search&s=WP+Session+Manager' );
-            $dep_link = '<a href="https://wordpress.org/plugins/wp-session-manager" target="_blank">WP Session Manager</a>';
-            $message = sprintf(__( 'Pinterest Importer requires the plugin %1$s by Eric Mann to be installed. Click <a href="%2$s">here</a> !', 'pinim' ),$dep_link,$dep_install_url);
-            add_settings_error('pinim', 'require_wp_session_manager', $message);
-            return;
-        }else{
-            $this->session = WP_Session::get_instance();
-        }
-         */
 
         $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
         $this->bridge = new Pinim_Bridge;
         $step = pinim_get_tool_page_step();
         
         if($step!==false){
-            
             $this->current_step = $step;
-            $this->screen_boards_filter = $this->get_screen_boards_filter();
-            $this->screen_pins_filter = $this->get_screen_pins_filter();
             
         }else{
-            if ( $boards_data = $this->get_session_data('user_boards') ){ //check cache exists
-                $url = pinim_get_tool_page_url(array('step'=>1));
-                wp_redirect( $url );
-                die();
+            
+            if ( $boards_data = $this->get_session_data('user_boards') ){ //we've got a boards cache
+                $url = pinim_get_tool_page_url(array('step'=>'boards-settings'));
+            }else{
+                $url = pinim_get_tool_page_url(array('step'=>'pinterest-login'));
             }
+            
+            wp_redirect( $url );
+            die();
             
         }
 
@@ -109,38 +109,14 @@ class Pinim_Tool_Page {
     }
     
     function get_screen_boards_filter(){
-        
-        if ($this->screen_boards_filter) return $this->screen_boards_filter;
-        
-        //default
-        $status = 'pending';
-        
-        if (!$this->get_boards_count_pending()){
-            if (!$this->get_boards_count_waiting()){
-                $status = 'completed';
-            }else{
-                $status = 'waiting';
-            }
-        }
-
-        
-
-        if (isset($_REQUEST['boards_filter'])){
-            $status = $_REQUEST['boards_filter'];
-        }
-        
-        $this->screen_boards_filter = $status;
-
-        return $status;
+        return ( isset($_REQUEST['boards_view']) ? $_REQUEST['boards_view'] : 'simple');
     }
     
     function get_screen_pins_filter(){
 
-        if ($this->screen_pins_filter) return $this->screen_pins_filter;
-        
         //default
         $status = 'pending';
-        if (!pinim_tool_page()->get_pins_count_pending()){
+        if ( !pinim_tool_page()->get_pins_count_pending() || !pinim_tool_page()->get_all_cached_pins_raw(true) ){
             $status = 'processed';
         }
 
@@ -148,41 +124,44 @@ class Pinim_Tool_Page {
             $status = $_REQUEST['pins_filter'];
         }
 
-        $this->screen_pins_filter = $status;
-
         return $status;
     }
     
-    function save_step(){
+    function form_do_login($login=null,$password=null){
 
-        $input = null; //form datas, etc.
+        //try to auth
+        $logged = $this->do_bridge_login($login,$password);
+        if ( is_wp_error($logged) ) return $logged;
         
-        if ( isset($_POST['pinim_tool']) ) {
-            $input = $_POST['pinim_tool'];
-        }
+        //store login / password
+        $this->set_session_data('login',$login);
+        $this->set_session_data('password',$password);
 
-        $new_input = array();
+        //try to get user datas
+        $user_datas = $this->bridge->get_user_datas();
+        if (is_wp_error($user_datas)) return $user_datas;
+
+        //store user datas
+        $this->set_session_data('user_datas',$user_datas);
+
+        return true;
+        
+    }
+
+    
+    function save_step(){
 
         $user_id = get_current_user_id();
         $action = ( isset($_REQUEST['action']) ? $_REQUEST['action'] : null);
 
-        //SYSTEM
-        //clear boards cache
-        if ( isset($input['clear_cache']) && $input['clear_cache'] ){
-            $this->delete_session_data();
-            add_settings_error('pinim', 'clear_cache', __( 'Cache Successfully cleared', 'pinim' ), 'updated');
-            return;
-        }
-        
-
         switch ($this->current_step){
 
-            case 2://'fetch-pins':
+            case 'pins-list':
 
                 $pin_settings = array();
                 $pin_error_ids = array();
                 $skip_pin_import = array();
-                $bulk_pins = $this->get_requested_pins();
+                $bulk_pins_ids = $this->get_requested_pins_ids();
 
                 //check if a filter action is set
                 if ($all_pins_action = $this->get_all_pins_action()){
@@ -190,19 +169,37 @@ class Pinim_Tool_Page {
                 }
 
                 switch ($action) {
+                    
+                    case 'pins_delete_pins':
+
+                        foreach((array)$bulk_pins_ids as $key=>$pin_id){
+                            
+                            $pin = new Pinim_Pin($pin_id);
+                            $pin->get_post();
+                            
+                            if ( !current_user_can('delete_posts', $pin->post_id) ) continue;
+                            
+                            wp_delete_post( $pin->post_id );
+
+                        }
+                        
+                    break;
 
                     case 'pins_update_pins':
                         
-                        foreach((array)$bulk_pins as $key=>$pin){
+                        if ( !pinim()->get_options('enable_update_pins') ) break;
+                        
+                        foreach((array)$bulk_pins_ids as $key=>$pin_id){
 
                             //skip
                             
-                            if (!in_array($pin->pin_id,$this->existing_pin_ids)){
-                                $skip_pin_import[] = $pin->pin_id;
+                            if (!in_array($pin_id,$this->existing_pin_ids)){
+                                $skip_pin_import[] = $pin_id;
                                 continue;
                             }
 
                             //save pin
+                            $pin = new Pinim_Pin($pin_id);
                             $pin_saved = $pin->save(true);
                             if (is_wp_error($pin_saved)){
                                 $pins_errors[$pin->pin_id] = $pin_saved;
@@ -212,56 +209,58 @@ class Pinim_Tool_Page {
 
                         //errors
                         
-                        if (!empty($bulk_pins) && !empty($skip_pin_import)){
+                        if (!empty($bulk_pins_ids) && !empty($skip_pin_import)){
                             
                             //remove skipped pins from bulk
-                            foreach((array)$bulk_pins as $key=>$pin){
-                                if (!in_array($pin->pin_id,$skip_pin_import)) continue;
-                                unset($bulk_pins[$key]);
+                            foreach((array)$bulk_pins_ids as $key=>$pin_id){
+                                if (!in_array($pin_id,$skip_pin_import)) continue;
+                                unset($bulk_pins_ids[$key]);
                             }
                             
                             if (!$all_pins_action){
                             
-                                add_settings_error('pinim', 'pins_never_imported', 
+                                add_settings_error('pinim_form_pins', 'pins_never_imported', 
                                     sprintf(
                                         __( 'Some pins cannot be updated because they never have been imported.  Choose "%1$s" if you want import pins. (Pins: %2$s)', 'pinim' ),
                                         __('Import Pins','pinim'),
                                         implode(',',$skip_pin_import)
-                                        )
+                                    ),
+                                    'inline'
                                 );
                             }
                             
                         }
 
                         
-                        if (!empty($bulk_pins)){
+                        if (!empty($bulk_pins_ids)){
 
-                            $bulk_count = count($bulk_pins);
+                            $bulk_count = count($bulk_pins_ids);
                             $errors_count = (!empty($pins_errors)) ? count($pins_errors) : 0;
                             $success_count = $bulk_count-$errors_count;
                             
                             if ($success_count){
-                                add_settings_error('pinim', 'update_pins', sprintf(__( '%1$s Pins successfully updated', 'pinim' ),$success_count), 'updated');
+                                add_settings_error('pinim_form_pins', 'update_pins', sprintf( _n( '%s pin was successfully updated.', '%s pins were successfully updated.', $success_count,'pinim' ), $success_count ), 'updated inline');
                             }
                             
                             if (!empty($pins_errors)){
                                 foreach ((array)$pins_errors as $pin_id=>$pin_error){
-                                    add_settings_error('pinim', 'update_pin_'.$pin_id, $pin_error->get_error_message());
+                                    add_settings_error('pinim_form_pins', 'update_pin_'.$pin_id, $pin_error->get_error_message(),'inline');
                                 }
                             }
                         }
                     break;
                     case 'pins_import_pins':
 
-                        foreach((array)$bulk_pins as $key=>$pin){
+                        foreach((array)$bulk_pins_ids as $key=>$pin_id){
 
                             //skip
-                            if (in_array($pin->pin_id,$this->existing_pin_ids)){
-                                $skip_pin_import[] = $pin->pin_id;
+                            if (in_array($pin_id,$this->existing_pin_ids)){
+                                $skip_pin_import[] = $pin_id;
                                 continue;
                             }
 
                             //save pin
+                            $pin = new Pinim_Pin($pin_id);
                             $pin_saved = $pin->save();
                             if (is_wp_error($pin_saved)){
                                 $pins_errors[$pin->pin_id] = $pin_saved;
@@ -272,209 +271,113 @@ class Pinim_Tool_Page {
 
                         //errors
                         
-                        if (!empty($bulk_pins) && !empty($skip_pin_import)){
+                        if (!empty($bulk_pins_ids) && !empty($skip_pin_import)){
                             
                             //remove skipped pins from bulk
-                            foreach((array)$bulk_pins as $key=>$pin){
-                                if (!in_array($pin->pin_id,$skip_pin_import)) continue;
-                                unset($bulk_pins[$key]);
+                            foreach((array)$bulk_pins_ids as $key=>$pin_id){
+                                if (!in_array($pin_id,$skip_pin_import)) continue;
+                                unset($bulk_pins_ids[$key]);
                             }
                             
                             if (!$all_pins_action){
                                 
-                                add_settings_error('pinim', 'pins_already_imported', 
+                                add_settings_error('pinim_form_pins', 'pins_already_imported', 
                                     sprintf(
                                         __( 'Some pins have been skipped because they already have been imported.  Choose "%1$s" if you want update the existing pins. (Pins: %2$s)', 'pinim' ),
-                                        __('Update Pins','pinim'),
+                                        __('Update pins','pinim'),
                                         implode(',',$skip_pin_import)
-                                        )
+                                    ),
+                                    'inline'
                                 );
                             }
-                            
-
-                            
                         }
 
                         
-                        if (!empty($bulk_pins)){
+                        if (!empty($bulk_pins_ids)){
 
-                            $bulk_count = count($bulk_pins);
+                            $bulk_count = count($bulk_pins_ids);
                             $errors_count = (!empty($pins_errors)) ? count($pins_errors) : 0;
                             $success_count = $bulk_count-$errors_count;
                             
                             if ($success_count){
-                                add_settings_error('pinim', 'import_pins', sprintf(__( '%1$s Pins successfully imported', 'pinim' ),$success_count), 'updated');
+                                add_settings_error('pinim_form_pins', 'import_pins', 
+                                    sprintf( _n( '%s pin have been successfully imported.', '%s pins have been successfully imported.', $success_count,'pinim' ), $success_count ),
+                                    'updated inline'
+                                );
                                 //refresh pins list
                                 $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
                             }
                             
                             if (!empty($pins_errors)){
                                 foreach ((array)$pins_errors as $pin_id=>$pin_error){
-                                    add_settings_error('pinim', 'import_pin_'.$pin_id, $pin_error->get_error_message());
+                                    add_settings_error('pinim_form_pins', 'import_pin_'.$pin_id, $pin_error->get_error_message(),'inline');
                                 }
                             }
                         }
+                        
+                        //update screen filter
+                        $_REQUEST['pins_filter'] = 'processed';
 
                     break;
                 }
 
             break;
             
-            case 1://'boards-settings':
+            case 'boards-settings'://'boards-settings':
 
-            $board_settings = array();
-            $board_errors = array();
-            
-            if ( isset($input['boards']) ){
-                $board_settings = $input['boards'];
-            }
-                
-                //bulk boards
-                $bulk_boards = $this->get_requested_boards();
-                
-                //check if a filter action is set
-                if ($all_boards_action = $this->get_all_boards_action()){
-                    $action = $all_boards_action;
-                }
-                
+                $board_settings = array();
+                $board_errors = array();
 
-                switch ($action) {
-                    case 'boards_update_settings':
+                if ( !isset($_POST['pinim_form_boards']) ) return;
+
+                $form_data = $_POST['pinim_form_boards'];
+
+                foreach((array)$form_data as $board_data){
+
+                    $board_id = $board_data['id'];
+                    $board = new Pinim_Board($board_id);
+                    $board_saved = $board->set_options($board_data);
+
+                    if (is_wp_error($board_saved)){
                         
-                    foreach((array)$bulk_boards as $key=>$board){
-   
-                        $board_saved = $board->set_options($board_settings[$board->board_id]);
-
-                        if (is_wp_error($board_saved)){
-                            $board_errors[$board->board_id]=sprintf(__('Board #%1$s: ','pinim'),$board->board_id).$board_saved->get_error_message();
-                        }
-                        
-                        pinim()->user_boards_options=null; //force reload
-
+                        //TO FIX TO CHECK
+                        $board_errors[$board->board_id] = $board_saved->get_error_message();
                     }
 
-                    if (!empty($bulk_boards) && empty($board_errors)){
-                        add_settings_error('pinim', 'set_options_boards', __( 'Boards Successfully updated', 'pinim' ), 'updated');
-                    }else{
-                        $board_errors = array_unique($board_errors);
-                        foreach ($board_errors as $board_id=>$error){
-                            add_settings_error('pinim', 'set_options_board_'.$board_id, $board_errors);
-                        }
-                    }
-                    
-                    
-                        
-                    break;
-                    case 'boards_cache_pins':
-
-                        foreach((array)$bulk_boards as $board){
-                        
-                            $board_pins = $board->get_pins(true);
-
-                            if (is_wp_error($board_pins)){                                
-                                $board_error[$board->board_id]=sprintf(__('Board #%1$s: ','pinim'),$board->board_id).$board_pins->get_error_message();
-                                add_settings_error('pinim', 'cache_single_board_pins_'.$board->board_id, $board_pins->get_error_message());
-                            }
-                            
-                        }
-                        
-                        if ($bulk_boards && empty($board_error)){
-                            add_settings_error('pinim', 'cache_single_board_pins', __( 'Boards Pins successfully cached', 'pinim' ), 'updated');
-                        }else{
-                            $board_errors = array_unique($board_errors);
-                            foreach ($board_errors as $board_id=>$error){
-                                add_settings_error('pinim', 'set_options_board_'.$board_id, $board_errors);
-                            }
-                        }
-                    
-                    break;
-                    
-                    case 'boards_import_pins':
-                        
-                        $bulk_boards_ids = array();
-                        foreach ((array)$bulk_boards as $bulk_boards){
-                            $bulk_boards_ids[] = $bulk_boards->board_id;
-                        }
-                        
-                        //redirect to next step, and set selected board_ids.
-                        $url = pinim_get_tool_page_url(array('step'=>2,'board_ids'=>implode(',',$bulk_boards_ids)));
-                        wp_redirect( $url );
-                        die();
-                    break;
                 }
 
             break;
-            default: //login
-                
-                $is_form_submission = ( isset($input['login']) || isset($input['password']) );
-                
-                if (!$is_form_submission) return;
-                
-                //check sessions are enabled
-                if (!session_id()){
-                    add_settings_error('pinim', 'no_sessions', __("It seems that your host doesn't support PHP sessions.  This plugin will not work properly.  We'll try to fix this soon.","pinim"));
-                    return false;
+            case 'pinterest-login':
+
+                //logout
+                if ( $this->get_session_data() && isset($_REQUEST['logout']) ){
+                    $this->delete_session_data();
+                    add_settings_error('pinim_form_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated inline');
+                    return;
                 }
 
-                if ( !$this->bridge->is_logged_in ) {
+                if ( !isset($_POST['pinim_form_login']) ) return;
 
-                    //login
-                    if( isset( $input['login'] )  ){
-                        $new_input['login'] = $input['login']; 
-                    }
+                $login = ( isset($_POST['pinim_form_login']['username']) ? $_POST['pinim_form_login']['username'] : null);
+                $password = ( isset($_POST['pinim_form_login']['password']) ? $_POST['pinim_form_login']['password'] : null);
 
-                    //pwd
-                    if( isset( $input['password'] )  ){
-                        $new_input['password'] = $input['password']; 
-                    }
+                $logged = $this->form_do_login($login,$password);
 
-                    if ( !isset($new_input['login']) || !isset($new_input['password']) ){
-                        add_settings_error( 'pinim', 'do_login', __( "Missing login and/or password", 'pinim' ) );
-                        return;
-                    }
-                    
-                    //try to auth
-                    $logged = $this->do_bridge_login($new_input['login'],$new_input['password']);
-                    
-                    if ( is_wp_error($logged) ){
-                        add_settings_error('pinim', 'do_login', $logged->get_error_message() );
-                        return;
-                    }
-                    
-                    //store login / password
-                    $this->set_session_data('login',$new_input['login']);
-                    $this->set_session_data('password',$new_input['password']);
-                    
-                    //try to get user datas
-                    $user_datas = $this->bridge->get_user_datas();
-                    if (is_wp_error($user_datas)){
-                        add_settings_error('pinim', 'get_user_data', $user_datas->get_error_message() );
-                        return;
-                    }
+                if (is_wp_error($logged)){
+                    add_settings_error('pinim_form_login', 'do_login', $logged->get_error_message(),'inline' );
+                    return;
+                }
+                
+                
 
-                    //store user datas
-                    $this->set_session_data('user_datas',$user_datas);
-                    
-                    //try to populate boards
-                    $boards_data = $this->get_boards_data();
+                //redirect to next step
+                $args = array(
+                    'step'=>'boards-settings'
+                );
 
-                    if (is_wp_error($boards_data)){
-                        add_settings_error('pinim', 'get_boards_data', sprintf(__('Error while trying to get boards data : %1$s.','pinim'),$boards_data->get_error_message()));
-                        return;
-                    }
-
-                    
-                    //redirect to next step
-                    $args = array(
-                        'step'=>1
-                    );
-                    
-                    $url = pinim_get_tool_page_url($args);
-                    wp_redirect( $url );
-                    die();
-                    
-                    
-                }               
+                $url = pinim_get_tool_page_url($args);
+                wp_redirect( $url );
+                die();
 
             break;
         }
@@ -509,74 +412,140 @@ class Pinim_Tool_Page {
         $board_ids = array();
 
         switch ($this->current_step){
-            case 2: //pins settings
+            
+            case 'pins-list':
                 
-                //remove processed pins from request
-                unset($_REQUEST['pin_ids']);
-
-                if ($pins = $this->get_requested_pins()){
-
-                    foreach ((array)$pins as $key=>$pin){
-
-                        switch ( $this->get_screen_pins_filter() ){
-                            case 'pending':
-                                if (in_array($pin->pin_id,$this->existing_pin_ids)) unset($pins[$key]);
-                            break;
-                            case 'processed':
-                                if (!in_array($pin->pin_id,$this->existing_pin_ids)) unset($pins[$key]);
-                            break;
-                        }
-
-                    }
-                
-                }else{
-                    add_settings_error('pinim', 'pins-cache', __( 'No pins found.  Have you cached the boards pins ?', 'pinim'));
+                //we should not be here !
+                if ( !$this->can_show_step('pins-list') ){
+                    $url = pinim_get_tool_page_url(array('step'=>'pinterest-login'));
+                    wp_redirect( $url );
+                    die();
                 }
- 
+                
+                $pins = array();
+
+                //clear pins selection
+                unset($_REQUEST['pin_ids']);
+                unset($_POST['pinim_form_pins']);
+                
+                //switch view
+                switch ( $this->get_screen_pins_filter() ){
+                    case 'pending':
+                        if ($pins_ids = $this->get_requested_pins_ids()){
+                            $pins_ids = array_diff($pins_ids, $this->existing_pin_ids);
+                        }
+                    break;
+                    case 'processed':
+                        $pins_ids = $this->existing_pin_ids;
+                    break;
+                }
+
+                //populate pins
+                foreach ((array)$pins_ids as $pin_id){
+                    $pins[] = new Pinim_Pin($pin_id);
+                }
+                
+                //populate processed posts
+                if ( $this->get_screen_pins_filter() == 'processed' ){
+                    foreach ((array)$pins as $pin){
+                        $pin->get_post();
+                    }
+                }
+                
                 $this->table_pins = new Pinim_Pins_Table($pins);
                 $this->table_pins->prepare_items();
-                    
-                
 
             break;
-            case 1: //boards settings
+            
+            case 'boards-settings': //boards settings
                 
+                //we should not be here !
+                if ( !$this->can_show_step('boards-settings') ){
+                    $url = pinim_get_tool_page_url(array('step'=>'pinterest-login'));
+                    wp_redirect( $url );
+                    die();
+                }
+
                 $boards = array();
+                $has_new_boards = false;
 
-                if ( $boards_data = $this->get_session_data('user_boards') ){ //check cache exists
-                    foreach((array)$boards_data as $board_data){
-                        $boards[] = new Pinim_Board($board_data['id']);
-                    }
+                //load boards
+                $boards = $this->get_boards();
 
+                if ( is_wp_error($boards) ){
+                    
+                    add_settings_error('pinim_form_boards', 'get_boards', $boards->get_error_message(),'inline');
+                    $boards = array(); //reset boards
+                    
                 }else{
-                    
-                    $link_user_cache_args = array('step' => 0);
-                    $link_user_cache = pinim_get_tool_page_url($link_user_cache_args);
-                    
-                    add_settings_error('pinim', 'boards-cache', __( 'No boards found.  Have you logged in ?', 'pinim'));
-                }
 
-                foreach ((array)$boards as $key=>$board){
+                    if( empty($boards) ){
+                        
+                        add_settings_error('pinim_form_boards', 'no_boards', __('No boards found.  Have you logged in ?','pinim'),'inline' );
+                        
+                    }else{
+                        
+                        //no boards settings, first time plugin run ?
+                        if ( !$boards_options = pinim_get_boards_options() ){
+                            add_settings_error('pinim_form_boards', 'activate_boards', __('Please select the boards you want the plugin to handle.  Those will be automatically cached next time.','pinim'),'updated inline' );
+                        }else{
 
-                    $is_queue_complete = $board->is_queue_complete();
-                    $is_fully_imported = $board->is_fully_imported();
-                    
-                    switch ($this->get_screen_boards_filter()){
-                        case 'pending':
-                            if ($is_fully_imported) unset($boards[$key]);
-                        break;
-                        case 'waiting':
-                            if ($is_queue_complete) unset($boards[$key]);
-                        break;
-                        case 'completed':
-                            if (!$is_fully_imported) unset($boards[$key]);
-                        break;
+                            //check if new boards have been detected since last time settings were saved
+
+                            foreach ((array)$boards as $board){
+
+                                if ( empty($board->get_options()) ){
+                                    $has_new_boards = true;
+                                    break;
+                                }
+
+                            }
+
+                            if ($has_new_boards){ //new boards detected, user has to review them.  This was made to avoid to much pins caching.
+                                add_settings_error('pinim_form_boards', 'new_boards', __('Some new boards have been detected since last time.  Please review your boards settings.','pinim'),'updated inline' );
+                                
+                            }else{ //no new boards detected, cache pins and display import link
+                                
+                                foreach((array)$boards as $board){
+
+                                    //cache pins
+                                    if ( $board->get_options('active') ){
+                                        $board_pins = $board->get_pins();
+
+                                        if (is_wp_error($board_pins)){    
+                                            //TO FIX TO CHECK
+                                            $board_error[$board->board_id]=sprintf(__('Board #%1$s: ','pinim'),$board->board_id).$board_pins->get_error_message();
+                                            add_settings_error('pinim_form_boards', 'cache_single_board_pins_'.$board->board_id, $board_pins->get_error_message(),'inline');
+                                        }
+                                    }
+
+                                }
+
+                                //display feedback with import links
+                                
+                                if ( $pending_count = pinim_tool_page()->get_pins_count_pending() ){
+                                    
+                                    $feedback =  array( __("We're ready to process !","pinim") );
+                                    $feedback[] = sprintf( _n( '%s new pin was found in the selected boards.', '%s new pins were found in the selected boards.', $pending_count, 'pinim' ), $pending_count );
+                                    $feedback[] = sprintf( __('You can <a href="%1$s">import them all</a>, or go to the <a href="%2$s">Pins list</a> for advanced control.',"pinim"),
+                                                pinim_get_tool_page_url(array('step'=>'pins-list','all_pins_action'=>$this->all_action_str['import_all_pins'])),
+                                                pinim_get_tool_page_url(array('step'=>'pins-list'))
+                                    );
+
+                                    add_settings_error('pinim_form_boards','ready_to_import',implode('  ',$feedback),'updated inline');
+                                    
+                                }
+
+                            }
+
+                        }
+                        
                     }
 
                 }
 
-                $this->table_board = new Pinim_Boards_Table($boards);
-                $this->table_board->prepare_items();
+                $this->table_boards = new Pinim_Boards_Table($boards);
+                $this->table_boards->prepare_items();
 
             break;
         }
@@ -586,82 +555,94 @@ class Pinim_Tool_Page {
         $this->options_page = add_submenu_page('tools.php', __('Pinterest Importer','pinim'), __('Pinterest Importer','pinim'), 'manage_options', 'pinim', array($this, 'importer_page'));
     }
     
-    function dummy_sanitize( $input ){
-        /*
-         * Do nothing here.  We use our own hooked function save_step() at init, this one is not necessary.
-         */
-        return false;
-    }
+    function settings_sanitize( $input ){
+        $new_input = array();
 
-    function settings_page_init(){
+        if( isset( $input['reset_options'] ) ){
+            
+            $new_input = pinim()->options_default;
+            
+        }else{ //sanitize values
 
-        register_setting(
-             'pinim', // Option group
-             'pinim_tool', // Option name
-             array( $this, 'dummy_sanitize' ) // Sanitize
-         );
+            //boards per page
+            if ( isset ($input['boards_per_page']) && ctype_digit($input['boards_per_page']) ){
+                $new_input['boards_per_page'] = $input['boards_per_page'];
+            }
+            
+            //boards per page
+            if ( isset ($input['pins_per_page']) && ctype_digit($input['pins_per_page']) ){
+                $new_input['pins_per_page'] = $input['pins_per_page'];
+            }
+            
+        }
         
-        switch($this->current_step){
-
-            case 0://authentification
-
-                add_settings_section(
-                     'settings_general', // ID
-                     __('Pinterest authentification','pinim'), // Title
-                     array( $this, 'section_general_desc' ), // Callback
-                     'pinim-user-auth' // Page
-                );
-                
-                add_settings_field(
-                    'login', 
-                    __('Email/Username','pinim'), 
-                    array( $this, 'login_field_callback' ), 
-                    'pinim-user-auth', 
-                    'settings_general'
-                );
-
-                add_settings_field(
-                    'password', 
-                    __('Password','pinim'), 
-                    array( $this, 'password_field_callback' ), 
-                    'pinim-user-auth', 
-                    'settings_general'
-                ); 
-                
-                if ( $user_datas = $this->get_session_data('user_datas') ){
-                    
-                    add_settings_field(
-                         'status', 
-                         __('Account','pinim'), 
-                         array( $this, 'status_field_callback' ), 
-                        'pinim-user-auth', 
-                        'settings_general'
-                    );
-                    
-                }
-
-                
-                if($this->get_session_data()){
-                    
-                    add_settings_section(
-                        'settings_system', // ID
-                        __('System','pinim'), // Title
-                        array( $this, 'section_system_desc' ), // Callback
-                        'pinim-user-auth' // Page
-                    );
-
-                    add_settings_field(
-                        'delete_user_boards_data', 
-                        __('Delete session','pinim'), 
-                        array( $this, 'delete_session_callback' ), 
-                        'pinim-user-auth', 
-                        'settings_system'
-                    );
-                 }
-
-            break;
+        //remove default values
+        foreach($input as $slug => $value){
+            $default = pinim()->get_default_option($slug);
+            if ($value == $default) unset ($input[$slug]);
         }
 
+        $new_input = array_filter($new_input);
+
+        return $new_input;
+        
+        
+    }
+
+    function settings_init(){
+
+        register_setting(
+            'pinim_option_group', // Option group
+            PinIm::$meta_name_options, // Option name
+            array( $this, 'settings_sanitize' ) // Sanitize
+         );
+        
+        add_settings_section(
+            'settings_general', // ID
+            __('General','pinim'), // Title
+            array( $this, 'pinim_settings_general_desc' ), // Callback
+            'pinim-settings-page' // Page
+        );
+
+        add_settings_field(
+            'boards_per_page', 
+            __('Boards per page','pinim'), 
+            array( $this, 'boards_per_page_field_callback' ), 
+            'pinim-settings-page', // Page
+            'settings_general' //section
+        );
+        
+        add_settings_field(
+            'pins_per_page', 
+            __('Pins per page','pinim'), 
+            array( $this, 'pins_per_page_field_callback' ), 
+            'pinim-settings-page', // Page
+            'settings_general' //section
+        );
+
+        add_settings_field(
+            'enable_update_pins', 
+            __('Enable pin updating','pinim'), 
+            array( $this, 'update_pins_field_callback' ), 
+            'pinim-settings-page', // Page
+            'settings_general' //section
+        );
+        
+        add_settings_section(
+            'settings_system', // ID
+            __('System','pinim'), // Title
+            array( $this, 'pinim_settings_system_desc' ), // Callback
+            'pinim-settings-page' // Page
+        );
+        
+        add_settings_field(
+            'reset_options', 
+            __('Reset Options','pinim'), 
+            array( $this, 'reset_options_callback' ), 
+            'pinim-settings-page', // Page
+            'settings_system'//section
+        );
+        
  
     }
 
@@ -674,84 +655,199 @@ class Pinim_Tool_Page {
                 $pins_count = count($this->existing_pin_ids);
                 if ($pins_count > 1){
                     $rate_link_wp = 'https://wordpress.org/support/view/plugin-reviews/pinterest-importer?rate#postform';
-                    $rate_link = '<a href="'.$rate_link_wp.'" target="_blank" href=""><i class="fa fa-star"></i> '.__('Reviewing it','pinim').'</a>';
+                    $rate_link = '<a href="'.$rate_link_wp.'" target="_blank" href=""><i class="fa fa-star"></i> '.__('Reviewing the plugin','pinim').'</a>';
                     $donate_link = '<a href="'.pinim()->donation_url.'" target="_blank" href=""><i class="fa fa-usd"></i> '.__('make a donation','pinim').'</a>';
                     ?>
                     <p class="description" id="header-links">
-                        <?php printf(__('<i class="fa fa-pinterest-p"></i>roudly already imported %1$s pins !  Happy with it ? %2$s and %3$s would help a lot!','pinim'),'<strong>'.$pins_count.'</strong>',$rate_link,$donate_link);?>
+                        <?php printf(__('<i class="fa fa-pinterest-p"></i>roudly already imported %1$s pins !  Happy with that ? %2$s and %3$s would help!','pinim'),'<strong>'.$pins_count.'</strong>',$rate_link,$donate_link);?>
                     </p>
                     <?php
                 }
             ?>
+                    
+            <?php $this->user_infos_block();?>
             
-            <?php settings_errors('pinim'); ?>
+            <?php 
+            
+            //general notices
+            settings_errors('pinim'); 
+            
+            $content_classes = array('pinim_tab_content');
+            $content_classes[] = 'pinim_tab_content-'.$this->current_step;
+            
+            $form_classes = array('pinim-form');
+            
+            ?>
             
             <h2 class="nav-tab-wrapper">
                 <?php $this->importer_page_tabs($this->current_step); ?>
             </h2>
-                    <?php
+            <div<?php pinim_classes($content_classes);?>>
+                
+                <?php
+                     switch ($this->current_step){
 
-                    switch ($this->current_step){
-                        case 2: //fetch pins
+                         case 'pinterest-login':
+
+                            //check sessions are enabled
+                            if (!session_id()){
+                                add_settings_error('pinim_form_login', 'no_sessions', __("It seems that your host doesn't support PHP sessions.  This plugin will not work properly.  We'll try to fix this soon.","pinim"),'inline');
+                            }
+
                             ?>
-                            <form id="pinim-form" method="post" action="">
+
+                            <?php $this->pinim_form_login_desc();?>
+                            <form id="pinim-form-login"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_tool_page_url();?>" method="post">
+                                <div id="pinim_login_box">
+                                    <p id="pinim_login_icon"><i class="fa fa-pinterest" aria-hidden="true"></i></p>
+                                    <?php settings_errors('pinim_form_login');?>
+                                    <?php $this->login_field_callback();?>
+                                    <?php $this->password_field_callback();?>
+                                    <input type="hidden" name="step" value="<?php echo $this->current_step;?>" />
+                                    <?php submit_button(__('Login to Pinterest','pinim'));?>
+                                </div>
+                            </form>
+                            <?php
+                         break;
+
+                         case 'boards-settings':
+                             
+                            $form_classes[] = 'boards-view-'.pinim_tool_page()->get_screen_boards_filter();
+                             
+                            ?>
+                            <form id="pinim-form-boards"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_tool_page_url();?>" method="post">
+                                <div class="tab-description">
+                                    <p>
+                                        <?php _e("This is the list of all the boards we've fetched from your profile, including your likes.","pinim");?>
+                                    </p>
+                                    <p>
+                                        <?php _e("Before being able to import pins, you've got to select the boards you want to enable, then save the boards settings.","pinim");?>
+                                    </p>
+                                    <p>
+                                        <?php _e("Enabling too much boards, or boards with a large amount of pins will slow the plugin, because we need to query informations for each pin.","pinim");?>
+                                    </p>
+                                    
+                                </div>
+                                <?php settings_errors('pinim_form_boards');?>
+                                <input type="hidden" name="step" value="<?php echo $this->current_step;?>" />
+                                <?php submit_button(__('Save boards settings','pinim'));?>
+
+                                <h3><?php _e('My boards','pinim');?></h3>
+                                <?php
+                                $this->table_boards->views();
+                                $this->table_boards->display();                            
+                                ?>
+                                <?php
+                                /*
+                                <h3><?php _e('Followed boards','pinim');?></h3>
+                                <?php
+
+                                $this->table_boards->views();
+                                $this->table_boards->display();
+
+                                ?>
+                                <h3><?php _e('Follow new board','pinim');?></h3>
+                                <div id="follow-new-board" class="tab-description">
+                                    <p>
+                                        <?php _e("Enter the URL of a board you would like to follow.","pinim");?>
+                                    </p>
+                                    <p id="follow-new-board-new">
+                                        <input type="text" name="pinim_form_boards_followed[new]" placeholder="<?php _e('Board URL','pinim');?>" />
+                                    </p>
+                                </div>
+                                 * 
+                                 */
+                                ?>
+                            </form>
+                            <?php
+
+                         break;
+
+
+                         case 'pins-list':
+                             
+                            ?>
+                            <?php settings_errors('pinim_form_pins');?>
+                            <form id="pinim-form-pins"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_tool_page_url();?>" method="post">
                                 <?php
                                 $this->table_pins->views();
                                 $this->table_pins->display();
                                 ?>
-                            </form>
-                            <?php
-                            break;
-                        case 1: //'boards-settings'
-                            ?>
-                            <form id="pinim-form" method="post" action="">
-                                <?php
-                                $this->table_board->views();
-                                $this->table_board->display();
-                                ?>
-                            </form>
-                            <?php
-                        break;
-                        default: //login
-                            ?>
-                            <form id="pinim-form" method="post" action="options.php">
-                                <?php
-                                // This prints out all hidden setting fields
-                                settings_fields( 'pinim' );
-
-                                ?>
                                 <input type="hidden" name="step" value="<?php echo $this->current_step;?>" />
+                            </form>
+                            <?php
+
+                         break;
+
+                         case 'pinim-options':
+
+                            settings_errors('spiff_option_group');
+                             
+                            ?>
+                            <form<?php pinim_classes($form_classes);?> method="post" action="options.php">
                                 <?php
 
-                                do_settings_sections( 'pinim-user-auth' );
+                                // This prints out all hidden setting fields
+                                settings_fields( 'pinim_option_group' );   
+                                do_settings_sections( 'pinim-settings-page' );
                                 submit_button();
-
-
+                                
                                 ?>
                             </form>
                             <?php
-                            
-                            
-                            
-                        break;
-                    }
-                    
+                         break;
+                     }
+                 ?>
                 
-                ?>
-            
+            </div>
         </div>
         <?php
     }
     
     function importer_page_tabs( $active_tab = '' ) {
+        
+            $tabs = array();
             $tabs_html    = '';
             $idle_class   = 'nav-tab';
             $active_class = 'nav-tab nav-tab-active';
-            $tabs         = $this->importer_page_get_tabs( $active_tab );
+            $has_user_datas = (null !== $this->get_session_data('user_datas'));
+
+            //login
+            if ( $this->can_show_step('pinterest-login') ){
+                $tabs['pinterest-login'] = array(
+                    'href' => pinim_get_tool_page_url(array('step'=>'pinterest-login')),
+                        'name' => __( 'My Account', 'pinim' )
+                );
+            }
+            
+            //boards
+            if ( $this->can_show_step('boards-settings') ){
+                $tabs['boards-settings'] = array(
+                    'href' => pinim_get_tool_page_url(array('step'=>'boards-settings')),
+                    'name' => sprintf( __( 'Boards Settings', 'pinim' ) )
+                );
+            }
+
+            
+            //pins
+            if ( $this->can_show_step('pins-list') ){
+                $tabs['pins-list'] = array(
+                    'href' => pinim_get_tool_page_url(array('step'=>'pins-list')),
+                    'name' => __( 'Pins list', 'pinim' )
+                );
+            }
+            
+            //login
+            if ( $this->can_show_step('pinim-options') ){
+                $tabs['pinim-options'] = array(
+                    'href' => pinim_get_tool_page_url(array('step'=>'pinim-options')),
+                        'name' => __( 'Plugin options', 'pinim' )
+                );
+            }
 
             // Loop through tabs and build navigation
-            foreach ( array_values( $tabs ) as $key=>$tab_data ) {
-                    $is_current = (bool) ( $key == $active_tab );
+            foreach ((array)$tabs as $slug=>$tab_data ) {
+                    $is_current = (bool) ( $slug == $active_tab );
                     $tab_class  = $is_current ? $active_class : $idle_class;
                     $tabs_html .= '<a href="' . esc_url( $tab_data['href'] ) . '" class="' . esc_attr( $tab_class ) . '">' . esc_html( $tab_data['name'] ) . '</a>';
             }
@@ -759,131 +855,153 @@ class Pinim_Tool_Page {
             echo $tabs_html;
     }
     
-    /**
-     * Get the data for the tabs in the admin area.
-     *
-     * @param string $active_tab Name of the tab that is active. Optional.
-     */
-    function importer_page_get_tabs( $active_tab = '' ) {
-            $tabs = array(
-                    '0' => array(
-                            'href' => pinim_get_tool_page_url(array('step'=>0)),
-                            'name' => __( 'Authentification', 'pinim' )
-                    )
-            );
-            
-            $tabs[1] = array(
-                    'href' => pinim_get_tool_page_url(array('step'=>1)),
-                    'name' => __( 'Boards Settings', 'pinim' )
-            );
-            $tabs[2] = array(
-                    'href' => pinim_get_tool_page_url(array('step'=>2)),
-                    'name' => __( 'Import Pins', 'pinim' )
-            );
-            
-            return $tabs;
+    function pinim_settings_general_desc(){
+        
+    }
+
+    function pinim_form_login_desc(){
+        $session_cache = session_cache_expire();
+        echo '<div class="tab-description"><p>'.sprintf(__('Your login, password and datas retrieved from Pinterest will be stored for %1$s minutes in a PHP session. It is not stored in the database.','pinim'),$session_cache)."</p></div>";
     }
     
-    function section_general_desc(){
-        $session_cache = session_cache_expire();
-        echo '<p class="description">'.sprintf(__('Your login, password and datas retrieved from Pinterest will be stored for %1$s minutes in a PHP session. It is not stored in the database.','pinim'),$session_cache)."</p>";
+    function pinim_settings_system_desc(){
+        
+    }
+    
+    function reset_options_callback(){
+        printf(
+            '<input type="checkbox" name="%1$s[reset_options]" value="on"/> %2$s',
+            PinIm::$meta_name_options,
+            __("Reset options to their default values.","pinim")
+        );
+    }
+    
+    function boards_per_page_field_callback(){
+        $option = (int)pinim()->get_options('boards_per_page');
+
+        printf(
+            '<input type="number" name="%1$s[boards_per_page]" size="3" value="%2$s" /> %3$s',
+            PinIm::$meta_name_options,
+            $option,
+            '<small>'.__("0 = display all boards.","pinim").'</small>'
+        );
+        
+    }
+    
+    function pins_per_page_field_callback(){
+        $option = (int)pinim()->get_options('pins_per_page');
+
+        printf(
+            '<input type="number" name="%1$s[pins_per_page]" size="3" min="10" value="%2$s" /><br/>',
+            PinIm::$meta_name_options,
+            $option
+        );
+        
+    }
+    
+    function update_pins_field_callback(){
+        $option = pinim()->get_options('enable_update_pins');
+
+        $disabled = true;
+        
+        $desc = __('Enable pin updating, which will add links to reload the content of a pin that already has been imported.','pinim');
+        $desc .= '  <small>'.__('(Not yet implemented)','pinim').'</small>';
+        
+        printf(
+            '<input type="checkbox" name="%1$s[playlist_link]" value="on" %2$s %3$s/> %4$s',
+            PinIm::$meta_name_options,
+            checked( (bool)$option, true, false ),
+            disabled( $disabled , true, false),
+            $desc
+        );
     }
     
     function login_field_callback(){
         $option = $this->get_session_data('login');
         $has_user_datas = (null !== $this->get_session_data('user_datas'));
         $disabled = disabled($has_user_datas, true, false);
-        printf(
-            '<input type="text" name="%1$s[login]" value="%2$s"%3$s/>',
-            'pinim_tool',
+        $el_id = 'pinim_form_login_username';
+        $el_txt = __('Username or Email');
+        $input = sprintf(
+            '<input type="text" id="%1$s" name="%2$s[username]" value="%3$s"%4$s/>',
+            $el_id,
+            'pinim_form_login',
             $option,
             $disabled
         );
+        
+        printf('<p><label for="%1$s">%2$s</label>%3$s</p>',$el_id,$el_txt,$input);
+        
     }
     
     function password_field_callback(){
         $option = $this->get_session_data('password');
         $has_user_datas = (null !== $this->get_session_data('user_datas'));
         $disabled = disabled($has_user_datas, true, false);
-        printf(
-            '<input type="password" name="%1$s[password]" value="%2$s"%3$s/>',
-            'pinim_tool',
+        $el_id = 'pinim_form_login_username';
+        $el_txt = __('Password');
+        
+        $input = sprintf(
+            '<input type="password" id="%1$s" name="%2$s[password]" value="%3$s"%4$s/>',
+            $el_id,
+            'pinim_form_login',
             $option,
             $disabled
         );
+        
+        printf('<p><label for="%1$s">%2$s</label>%3$s</p>',$el_id,$el_txt,$input);
     }
     
-    function status_field_callback(){
+    function user_infos_block(){
+        
+        $user_icon = $user_text = $user_stats = null;
 
-        if ( $user_datas = $this->get_session_data('user_datas') ){
-            if (isset($user_datas['image_medium_url'])){
-                $image = $user_datas['image_medium_url'];
-                printf(
-                    '<img src="%1$s"/>',
-                    $image
-                );
-            }
+        if ( !$user_datas = $this->get_session_data('user_datas') ) return;
+
+        if (isset($user_datas['image_medium_url'])){
+            $user_icon = $user_datas['image_medium_url'];
         }
         
         //names
-        printf(
-            '<p><strong>%1$s (%2$s)</strong></p>',
-            $user_datas['username'],
-            $user_datas['full_name']
-        );
+        $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$user_datas['username'].'</strong>');
         
         $list = array();
         
         //public boards
         $list[] = sprintf(
-            '<li>'.__('%1$s public boards','pinim').'</li>',
+            '<span>'.__('%1$s public boards','pinim').'</span>',
             '<strong>'.$user_datas['board_count'].'</strong>'
         );
         
         //public boards
         $list[] = sprintf(
-            '<li>'.__('%1$s private boards','pinim').'</li>',
+            '<span>'.__('%1$s private boards','pinim').'</span>',
             '<strong>'.$user_datas['secret_board_count'].'</strong>'
         );
         
         //likes
         $list[] = sprintf(
-            '<li>'.__('%1$s likes','pinim').'</li>',
+            '<span>'.__('%1$s likes','pinim').'</span>',
             '<strong>'.$user_datas['like_count'].'</strong>'
         );
         
-        echo "<ul>".implode("\n",$list)."</ul>";
+        $user_stats = implode(",",$list);
         
-        //print_r($user_datas);
+        $logout_link = pinim_get_tool_page_url(array('step'=>'pinterest-login','logout'=>true));
+        
+        printf('<div id="user-info"><span id="user-info-username"><img src="%1$s"/>%2$s</span> <small id="user-info-stats">(%3$s)</small> — <a id="user-logout-link" href="%4$s">%5$s</a></div>',$user_icon,$user_text,$user_stats,$logout_link,__('Logout','pinim'));
 
     }
-    
-    function section_system_desc(){
-        ?><p class="description">
-            <?php
-            _e('Delete session to reset the cache.  It will clear the temporary datas fetched from Pinterest but have no effects on pins already imported.','pinim');
-            ?>
-        </p>
-        <?php
-    }
-    
-    function delete_session_callback(){
 
-            printf(
-                '<p><input type="checkbox" name="%1$s[clear_cache]" value="on"/> %2$s</p>',
-                'pinim_tool',
-                __('Logout and delete cache','pinim')
-            );
-    }
-    
-    function get_boards_data(){
+    function get_boards_raw(){
 
         $user_boards = null;
 
         if (!$user_boards = $this->get_session_data('user_boards')){ //already populated
             
+            //user boards
+            
             $logged = $this->do_bridge_login();
-
             $user_boards = $this->bridge->get_user_boards();
 
             if (is_wp_error($user_boards)){
@@ -902,7 +1020,7 @@ class Pinim_Tool_Page {
                             'url'   => $user_datas['image_medium_url']
                         )
                     ),
-                    'url'           => '/'.$user_datas['username'].'/likes'
+                    'url'           => '/'.$user_datas['username'].'/likes',
                 );
                 $user_boards[] = $likes_board;
             }
@@ -912,6 +1030,23 @@ class Pinim_Tool_Page {
         }
 
         return $user_boards;
+    }
+    
+    function get_boards(){
+        
+        $boards_data = $this->get_boards_raw();
+        if (is_wp_error($boards_data)) return $boards_data;
+
+        foreach((array)$boards_data as $board_data){
+
+            $board_id = $board_data['id'];
+            $board = new Pinim_Board($board_id);
+            $boards[] = $board;
+
+        }
+        
+        return $boards;
+        
     }
     
     function get_all_pins_action(){
@@ -941,13 +1076,6 @@ class Pinim_Tool_Page {
         //filter buttons
         if (isset($_REQUEST['all_boards_action'])){
             switch ($_REQUEST['all_boards_action']){
-                //step 1
-                case $this->all_action_str['update_all_boards']: //Update all boards settings
-                    $action = 'boards_update_settings';
-                break;
-                case $this->all_action_str['cache_all_pins']: //Cache All Pins
-                    $action = 'boards_cache_pins';
-                break;
                 case $this->all_action_str['import_all_pins']: //Import All Pins
                     $action = 'boards_import_pins';
                 break;
@@ -957,92 +1085,38 @@ class Pinim_Tool_Page {
         return $action;
     }
 
-    function get_requested_boards_ids(){
-        $bulk_boards_ids = array();
-        $bulk_boards = array();
 
-        if (isset($_POST['pinim_tool'])){
-            $input = $_POST['pinim_tool'];
-        }
-
-        if ( isset($input['boards']) ) { 
-
-            $board_settings = $input['boards'];
-
-            foreach((array)$board_settings as $board){
-                if ( !$this->get_all_boards_action() && !isset($board['bulk']) ) continue;
-                    $bulk_boards_ids[] = $board['id'];
-            }
-
-        }elseif ( isset($_REQUEST['board_ids']) ) {
-            $bulk_boards_ids = explode(',',$_REQUEST['board_ids']);
-        }
-
-
-
-        return $bulk_boards_ids;
-    }
-
-    function get_requested_boards(){
-
-        $bulk_boards_ids = $this->get_requested_boards_ids();
-        $bulk_boards = array();
-
-        foreach ((array)$bulk_boards_ids as $bulk_board_id){
-            $bulk_boards[] = new Pinim_Board($bulk_board_id);
-        }
-        return $bulk_boards;
-    }
 
     function get_requested_pins_ids(){
+
+        
         $bulk_pins_ids = array();
 
-        if (isset($_POST['pinim_tool'])){
-            $input = $_POST['pinim_tool'];
-        }
-
         //bulk pins
-        if ( isset($input['pins']) ) {
+        if ( isset($_POST['pinim_form_pins']) ) {
 
-            $pin_settings = $input['pins'];
+            $form_pins = $_POST['pinim_form_pins'];
+            
+            //remove items that are not checked
+            $form_pins = array_filter(
+                $_POST['pinim_form_pins'],
+                function ($e) {
+                    return isset($e['bulk']);
+                }
+            ); 
 
-            foreach((array)$pin_settings as $pin){
-                if (!isset($pin['bulk'])) continue;
-                    $bulk_pins_ids[] = $pin['id'];
+            foreach((array)$form_pins as $pin){
+                $bulk_pins_ids[] = $pin['id'];
             }
 
         }elseif ( isset($_REQUEST['pin_ids']) ) {
-
             $bulk_pins_ids = explode(',',$_REQUEST['pin_ids']);
-
         }
 
-        if ( (!$bulk_pins_ids) && ( $requested_boards = pinim_tool_page()->get_requested_boards() ) ) {
-            //get board queues
-            foreach ((array)$requested_boards as $board){
-
-                $board_datas = $board->get_datas();
-
-                if ( is_wp_error($board_datas) ){
-                    add_settings_error('pinim', 'get_datas_board_'.$board->board_id, $board_datas->get_error_message());
-                    continue;
-                }else{
-                    $cached_pins = $board->get_cached_pins();
-
-                    if ( empty($cached_pins) || is_wp_error($cached_pins) ){
-                        $board_error_ids[]=$board->board_id;
-                        $link_pins_cache = $board->get_link_action_cache();
-                        add_settings_error('pinim', 'get_queue_board_'.$board->board_id, sprintf(__( 'No pins found for %1$s.  Please %2$s.', 'pinim' ),'<em>'.$board->get_datas('name').'</em>',$link_pins_cache));
-                    }else{
-
-                        foreach((array)$cached_pins as $raw_pin ){
-                            $bulk_pins_ids[] = $raw_pin['id'];
-                        }
-
-                    }
-                }
-
-
+        if ( (!$bulk_pins_ids) && ( $all_pins = pinim_tool_page()->get_all_cached_pins_raw(true) ) ) {
+            
+            foreach((array)$all_pins as $pin){
+                $bulk_pins_ids[] = $pin['id'];
             }
 
         }
@@ -1050,34 +1124,21 @@ class Pinim_Tool_Page {
         return $bulk_pins_ids;
     }
 
-    function get_requested_pins(){
-        $pins = array();
-        $requested_pins_ids = $this->get_requested_pins_ids();
-
-        foreach ((array)$requested_pins_ids as $key=>$pin_id){
-            $pin = new Pinim_Pin($pin_id);
-            $pins[] = $pin;
-        }
-        
-        if (!$requested_pins_ids){ //get all
-            $all_pins = $this->get_all_cached_pins();
-            foreach ($all_pins as $raw_pin){
-                $pin = new Pinim_Pin($raw_pin['id']);
-                $pins[] = $pin;
-            }
-        }
-
-        return $pins;
-    }
-
-    function get_all_cached_pins(){
+    function get_all_cached_pins_raw($only_active_boards = false){
 
         $pins = array();
 
         $queues = (array)$this->get_session_data('queues');
 
         foreach ((array)$queues as $board_id=>$queue){
-            if( isset($queue['pins']) ){
+
+            if ( isset($queue['pins']) ){
+                
+                if ( $only_active_boards ){
+                    $board = new Pinim_Board($board_id);
+                    if ( !$board->get_options('active') ) continue;
+                }
+
                 $pins = array_merge($pins,$queue['pins']);
             }
         }
@@ -1087,31 +1148,18 @@ class Pinim_Tool_Page {
     }
     
     function get_pins_count_pending(){
-        $count = 0;
-        
-        $pins = $this->get_requested_pins();
-        
-        $processed_count = $this->get_pins_count_processed();
-        
-        return count($pins) - $processed_count;
+        $pins_ids = $this->get_requested_pins_ids();
+        $pins_ids = array_diff($pins_ids, $this->existing_pin_ids);
+        return count($pins_ids);
     }
     
     function get_pins_count_processed(){
-        $count = 0;
-        
-        $pins = $this->get_requested_pins();
-        
-        foreach ((array)$pins as $pin){
-            if (in_array($pin->pin_id,pinim_tool_page()->existing_pin_ids)){
-                $count++;
-            }
-        }
-        return $count;
+        return count(pinim_tool_page()->existing_pin_ids);
     }
     
     function get_boards_count_pending(){
          $count = 0;
-         $boards_data = $this->get_session_data('user_boards');
+         $boards_data = $this->get_boards_raw();
 
         foreach((array)$boards_data as $board_data){
             $board = new Pinim_Board($board_data['id']);
@@ -1129,7 +1177,7 @@ class Pinim_Tool_Page {
 
     function get_boards_count_completed(){
         $count = 0;
-        $boards_data = $this->get_session_data('user_boards');
+        $boards_data = $this->get_boards_raw();
 
        foreach((array)$boards_data as $board_data){
            $board = new Pinim_Board($board_data['id']);
@@ -1145,7 +1193,7 @@ class Pinim_Tool_Page {
 
     function get_boards_count_waiting(){
         $count = 0;
-        $boards_data = $this->get_session_data('user_boards');
+        $boards_data = $this->get_boards_raw();
 
         $count = count($boards_data) - $this->get_boards_count_pending() - $this->get_boards_count_completed();
 

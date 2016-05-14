@@ -20,17 +20,15 @@ class Pinim_Pin{
     function __construct($pin_id){
 
         $this->pin_id = $pin_id;
-        $this->pin_datas_raw = $this->get_raw_datas();
-        $this->is_like = (isset($this->pin_datas_raw['is_like']));
-        $this->board_id = $this->pin_datas_raw['board']['id'];
-        $this->datas = $this->sanitize_raw_datas($this->pin_datas_raw);
-        
+        $this->datas = $this->get_raw_datas();
+        $this->is_like = (isset($this->datas['is_like']));
+        $this->board_id = $this->datas['board']['id'];
+
     }
     
     function get_raw_datas(){
 
-        $all_pins = pinim_tool_page()->get_all_cached_pins();
-
+        $all_pins = pinim_tool_page()->get_all_cached_pins_raw(true);
         //remove unecessary items
         $current_pin_id = $this->pin_id;
         $pins = array_filter(
@@ -39,19 +37,20 @@ class Pinim_Pin{
                 return $e['id'] == $current_pin_id;
             }
         );  
-        
+
         if (empty($pins)) return false;
         $pin = array_shift($pins);
+
         return $pin;
     }
-    
+
     function get_board(){
         
         if ( !isset($this->board) ){
-        
+
             if ($this->is_like){
                 $this->board = new Pinim_Board('likes');
-            }else{
+            }elseif($this->board_id){
                 $this->board = new Pinim_Board($this->board_id);
             }
 
@@ -60,23 +59,6 @@ class Pinim_Pin{
         return $this->board;
         
     }
-    /**
-     * When loading raw datas
-     * @param type $pin_datas
-     * @return type
-     */
-    function sanitize_raw_datas($pin_datas){
-
-        /*
-         * Hook/unhook filters here to sanitize raw datas
-         */
-        $pin_datas = apply_filters('pin_sanitize_raw_datas',$pin_datas);
-        //$pin_datas = array_filter($pin_datas);
-
-        return $pin_datas;
-    }
-
-
     /*
      * Get data from Pinterest
      */
@@ -98,6 +80,10 @@ class Pinim_Pin{
             if ($post_id = pinim_get_post_by_pin_id($this->pin_id)){
                 $this->post_id = $post_id;
                 $this->post = get_post($this->post_id);
+                
+                $this->datas = unserialize(pinim_get_pin_meta('log',$this->post_id,true));
+                $this->board_id = pinim_get_pin_meta('board_id',$this->post_id,true);
+                
             }
             
         }
@@ -108,11 +94,10 @@ class Pinim_Pin{
     function get_link_action_import(){
         //Refresh cache
         $link_args = array(
-            'step'      => 2,
+            'step'      => 'pins-list',
             'action'    => 'pins_import_pins',
             'pin_ids'  => $this->pin_id,
-            'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
-            //'boards_ids'    => ( isset($_REQUEST['board_ids']) ? $_REQUEST['board_ids'] : null)
+            //'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
         );
 
         $link = sprintf(
@@ -127,14 +112,15 @@ class Pinim_Pin{
     
     function get_link_action_update(){
         
+        if ( !pinim()->get_options('enable_update_pins') ) return;
+        
         if (!in_array($this->pin_id,pinim_tool_page()->existing_pin_ids)) return;
 
         $link_args = array(
-            'step'          => 2,
+            'step'          => 'pins-list',
             'action'        => 'pins_update_pins',
             'pin_ids'       => $this->pin_id,
-            'paged'         => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
-            'boards_ids'    => ( isset($_REQUEST['board_ids']) ? $_REQUEST['board_ids'] : null)
+            //'paged'         => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
         );
 
         $link = sprintf(
@@ -150,13 +136,26 @@ class Pinim_Pin{
     function get_link_action_edit(){
         
         if (!in_array($this->pin_id,pinim_tool_page()->existing_pin_ids)) return;
-        
-        $post = $this->get_post();
 
         $link = sprintf(
             '<a href="%1$s">%2$s</a>',
-            get_edit_post_link( $post->ID ),
+            get_edit_post_link( $this->post_id ),
             __('Edit post','pinim')
+
+        );
+
+        return $link;
+    }
+    
+    function get_link_action_delete(){
+        
+        if (!in_array($this->pin_id,pinim_tool_page()->existing_pin_ids)) return;
+        if ( !current_user_can('delete_posts', $this->post_id) ) return;
+
+        $link = sprintf(
+            '<a href="%1$s">%2$s</a>',
+            get_delete_post_link( $this->post_id ),
+            __('Move to Trash')
 
         );
 
@@ -254,7 +253,6 @@ class Pinim_Pin{
         $link = $this->get_datas('link');
         $domain = $this->get_datas('domain');
         $content = null;
-        $log = pinim_get_pin_meta('log',$post->ID,true);
 
         switch($post_format){
 
@@ -404,6 +402,7 @@ class Pinim_Pin{
 class Pinim_Pins_Table extends WP_List_Table {
     
     var $input_data = array();
+    var $pin_idx = -1;
 
     /** ************************************************************************
      * REQUIRED. Set up a constructor that references the parent constructor. We 
@@ -477,16 +476,27 @@ class Pinim_Pins_Table extends WP_List_Table {
         );
         
         if ($pin->get_post()){ //only if post exists
-            $actions['update'] = $pin->get_link_action_update();
+            
+            if ( pinim()->get_options('enable_update_pins') ) {
+                $actions['update'] = $pin->get_link_action_update();
+            }
+            
             $actions['edit'] = $pin->get_link_action_edit();
+            $actions['delete'] = $pin->get_link_action_delete();
+            
         }else{
             $actions['import'] = $pin->get_link_action_import();
         }
 
-        $title = $pin->get_datas('title');
+        if ($pin->post){ //imported post
+            $title = get_the_title($pin->post->ID);
+        }else{ //buffer pin
+            $title = $pin->get_datas('title');
+        }
+        
         
         //Return the title contents
-        $title = sprintf('%1$s <span style="color:silver">(id:%2$s)</span>%3$s',
+        $title = sprintf('%1$s <span class="item-id">(id:%2$s)</span>%3$s',
             /*$1%s*/ $title,
             /*$2%s*/ $pin->pin_id,
             /*$3%s*/ $this->row_actions($actions)
@@ -518,56 +528,53 @@ class Pinim_Pins_Table extends WP_List_Table {
      * @return string Text to be placed inside the column <td> (movie title only)
      **************************************************************************/
     function column_cb($pin){
-        $hidden = sprintf('<input type="hidden" name="%1$s[pins][%2$s][id]" value="%2$s" />',
-            'pinim_tool',
+        
+        $this->pin_idx++;
+        
+        $hidden = sprintf('<input type="hidden" name="%1$s[%2$s][id]" value="%3$s" />',
+            'pinim_form_pins',
+            $this->pin_idx,
             $pin->pin_id
         );
         $bulk = sprintf(
-            '<input type="checkbox" name="%1$s[pins][%2$s][bulk]" value="on" />',
-            'pinim_tool',
-            $pin->pin_id
+            '<input type="checkbox" name="%1$s[%2$s][bulk]" value="on" />',
+            'pinim_form_pins',
+            $this->pin_idx
         );
         return $hidden.$bulk;
     }
-
-    function column_private($pin){
-
-        //privacy
-        $secret_checked_str = checked(true, false, false );
-        $is_secret_pin = ($pin->get_datas('privacy')=='secret');
-
-        if ($private = $pin->get_options('private') ){
-            $secret_checked_str = checked($private, 'on', false );
-        }else{
-            $secret_checked_str = checked($is_secret_pin, true, false );
-        }
-        
-        return sprintf(
-            '<input type="checkbox" name="%1$s[pins][%2$s][private]" value="on" %3$s/>',
-            'pinim_tool',
-            $pin->pin_id,
-            $secret_checked_str
-        );
-        
-    }
     
     function column_thumbnail($pin){
-
-        if (!$images = $pin->get_datas('images')) return;
-
-        //get last one
-        $image = array_pop($images);
-
+        
+        $image = null;
+        
+        if ($pin->post){ //imported post
+            $image = get_the_post_thumbnail_url($pin->post->ID);
+        }elseif ($images = $pin->get_datas('images')){ //buffer pin
+            //get last one
+            $image = array_pop($images);
+            $image = $image['url'];
+        }
+        
+        if (!$image) return;
+        
         return sprintf(
             '<img src="%1$s" />',
-            $image['url']
+            $image
         );
+
+
     }
     
     function column_source($pin){
+        
+        $text = $url = null;
 
         $text = $pin->get_datas('domain');
-        $url = get_option( 'link' );
+        $url = $pin->get_datas('link');
+
+        //if (!$text || !$url) return;
+
         return sprintf(
             '<a target="_blank" href="%1$s">%2$s</a>',
             esc_url($url),
@@ -582,7 +589,7 @@ class Pinim_Pins_Table extends WP_List_Table {
         return sprintf( __('%1$s at %2$s','pinim'), $date, $time );
     }
     
-    function column_updated($pin){
+    function column_date_updated($pin){
         if (!$post = $pin->get_post()) return;
         $timestamp = get_post_modified_time( 'U', false, $post );
         $date = date_i18n( get_option( 'date_format'), $timestamp );
@@ -594,9 +601,15 @@ class Pinim_Pins_Table extends WP_List_Table {
         
         $board = $pin->get_board();
 
+        if (!$board) return;
+        
         $board_name = $board->get_datas('name');
 
         return $board_name;
+    }
+    
+    function column_categories($pin){
+        return get_the_category_list( '', '', $pin->post_id );
     }
 
     /** ************************************************************************
@@ -619,11 +632,13 @@ class Pinim_Pins_Table extends WP_List_Table {
             'title'     => __('Pin Title','pinim'),
             'source'     => __('Source','pinim'),
             'date'     => __('Date','pinim'),
-            'board'     => __('Board','pinim')
         );
         
         if (pinim_tool_page()->get_screen_pins_filter() =='processed'){
-            $columns['updated'] = __('Last Updated','pinim');
+            $columns['date_updated'] = __('Last Updated','pinim');
+            $columns['categories'] = __('Categories');
+        }elseif (pinim_tool_page()->get_screen_pins_filter() =='pending'){
+            $columns['board'] = __('Board');
         }
         
         return $columns;
@@ -646,9 +661,9 @@ class Pinim_Pins_Table extends WP_List_Table {
      **************************************************************************/
     function get_sortable_columns() {
         $sortable_columns = array(
-            'title'     => array('title',false),     //true means it's already sorted
-            'date'    => array('date',false),
-            'updated'    => array('updated',false),
+            'title'             => array('title',false),     //true means it's already sorted
+            'date'              => array('date',false),
+            'date_updated'      => array('date_updated',false),
         );
         return $sortable_columns;
     }
@@ -670,7 +685,9 @@ class Pinim_Pins_Table extends WP_List_Table {
                     break;
                     case 'processed':
                         //Update All Pins
-                        submit_button( pinim_tool_page()->all_action_str['update_all_pins'], 'button', 'all_pins_action', false, array('id'=>'update_all_bt') );
+                        if ( pinim()->get_options('enable_update_pins') ){
+                            submit_button( pinim_tool_page()->all_action_str['update_all_pins'], 'button', 'all_pins_action', false, array('id'=>'update_all_bt') );
+                        }
                     break;
                 }
         }
@@ -694,8 +711,7 @@ class Pinim_Pins_Table extends WP_List_Table {
 	protected function get_views() {
             
             $link_args = array(
-                'step'          => 2,   
-                'board_ids'     => implode(',',(array)pinim_tool_page()->get_requested_boards_ids())
+                'step'          => 'pins-list'
             );
             $link_args = array_filter($link_args);
             
@@ -784,10 +800,17 @@ class Pinim_Pins_Table extends WP_List_Table {
      * @return array An associative array containing all the bulk actions: 'slugs'=>'Visible Titles'
      **************************************************************************/
     function get_bulk_actions() {
-        $actions = array(
-            'pins_import_pins'    => __('Import Pins','pinim'),
-            'pins_update_pins'    => __('Update Pins','pinim')
-        );
+        $actions = array();
+        
+        if (pinim_tool_page()->get_screen_pins_filter() =='pending'){
+            $actions['pins_import_pins'] = __('Import pins','pinim');
+        }elseif (pinim_tool_page()->get_screen_pins_filter() =='processed'){
+            if ( pinim()->get_options('enable_update_pins') ){
+                $actions['pins_update_pins'] = __('Update pins','pinim');
+            }
+            $actions['pins_delete_pins'] = __('Move to Trash');
+        }
+        
         return $actions;
     }
 
@@ -880,6 +903,11 @@ class Pinim_Pins_Table extends WP_List_Table {
         function usort_reorder($a,$b){
             
             $orderby_default = 'date';
+            
+            if (pinim_tool_page()->get_screen_pins_filter() =='processed'){
+                $orderby_default = 'date_updated';
+            }
+            
             $order_default = 'desc';
 
             $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : $orderby_default; //If no sort, default to date
@@ -887,6 +915,7 @@ class Pinim_Pins_Table extends WP_List_Table {
             
             switch ($orderby){
                 case 'title':
+                    
                     $title_a = ($a->get_datas('title')) ? $a->get_datas('title') : $a->pin_id;
                     $title_b = ($b->get_datas('title')) ? $b->get_datas('title') : $b->pin_id;
                     $result = strcmp($title_a, $title_b);
@@ -894,7 +923,7 @@ class Pinim_Pins_Table extends WP_List_Table {
                 case 'date':
                     $result = strcmp($a->get_datas('created_at'), $b->get_datas('created_at'));
                 break;
-                case 'updated':
+                case 'date_updated':
                     $post_a = $a->get_post();
                     $post_b = $b->get_post();
                     $timestamp_a = get_post_modified_time( 'U', false, $post_a );
@@ -944,14 +973,14 @@ class Pinim_Pins_Table extends WP_List_Table {
          * array_slice() to 
          */
         $data = array_slice($data,(($current_page-1)*$per_page),$per_page);
-        
-        
-        
+
         /**
          * REQUIRED. Now we can add our *sorted* data to the items property, where 
          * it can be used by the rest of the class.
          */
         $this->items = $data;
+        
+
         
         
         /**

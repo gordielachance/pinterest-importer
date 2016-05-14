@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: Pinterest Importer
-Description: Backup all your pins from Pinterest into Wordpress !  Own your data !
-Version: 0.2.8
+Description: Backup your Pinterest.com account by importing pins as Wordpress posts.  Supports boards, secret boards and likes.  Images are downloaded as Wordpress medias.
+Version: 0.3.0
 Author: G.Breant
 Author URI: http://sandbox.pencil2d.org
 Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
@@ -16,12 +16,12 @@ class PinIm {
     /**
     * @public string plugin version
     */
-    public $version = '0.2.8';
+    public $version = '0.3.0';
 
     /**
     * @public string plugin DB version
     */
-    public $db_version = '200';
+    public $db_version = '201';
 
     /** Paths *****************************************************************/
 
@@ -37,7 +37,7 @@ class PinIm {
     */
     public $plugin_dir = '';
     
-    public $meta_name_options = 'pinim_options';
+    static $meta_name_options = 'pinim_options';
 
     var $user_boards_options = null;
     var $pinterest_url = 'https://www.pinterest.com';
@@ -79,12 +79,13 @@ class PinIm {
             $this->plugin_url = plugin_dir_url ( $this->file );
 
             $this->options_default = array(
-                'boards_per_page'   => 20,
-                'pins_per_page'     => 50,
-                'category_root_id'  => null,
-                'category_likes_id' => null,
+                'boards_per_page'       => 25,
+                'pins_per_page'         => 50,
+                'category_root_id'      => null,
+                'category_likes_id'     => null,
+                'enable_update_pins'   => false,
             );
-            $this->options = wp_parse_args(get_option( $this->meta_name_options), $this->options_default);
+            $this->options = wp_parse_args(get_option( self::$meta_name_options), $this->options_default);
 
     }
 
@@ -95,6 +96,7 @@ class PinIm {
         require $this->plugin_dir . '/pinim-functions.php';
         require $this->plugin_dir . '/pinim-templates.php';
         require $this->plugin_dir . '/pinim-pin-class.php';
+        //require $this->plugin_dir . '/pinim-ajax.php';
         require $this->plugin_dir . '/pinim-board-class.php';
         require $this->plugin_dir . '/pinim-dummy-importer.php';
         require $this->plugin_dir . '/pinim-tool-page.php';
@@ -127,8 +129,6 @@ class PinIm {
         $current_version = get_option("_pinterest-importer-db_version");
 
         if ($current_version==$this->db_version) return false;
-        
-        if($current_version < '1.0.3') $current_version = null; //force re-install
 
         if(!$current_version){ //not installed
             /*
@@ -141,6 +141,15 @@ class PinIm {
             }
             */
             
+        }else{
+            /*
+            if($current_version < '201'){
+                $boards_options = pinim_get_boards_options();
+                print_r($boards_options);
+                die();
+            }
+             * 
+             */
         }
 
 
@@ -152,9 +161,9 @@ class PinIm {
     }
 
     function enqueue_scripts_styles($hook){
+        
         $screen = get_current_screen();
         if ($screen->id != pinim_tool_page()->options_page) return;
-
         wp_enqueue_script('pinim', $this->plugin_url.'_inc/js/pinim.js', array('jquery'),$this->version);
         wp_enqueue_style('font-awesome', '//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css',false,'4.3.0');
         wp_enqueue_style('pinim', $this->plugin_url . '_inc/css/pinim.css',false,$this->version);
@@ -172,6 +181,11 @@ class PinIm {
         if (!$key) return $options;
         if (!isset($options[$key])) return false;
         return $options[$key];
+    }
+    
+    public function get_default_option($name){
+        if (!isset($this->options_default[$name])) return;
+        return $this->options_default[$name];
     }
 
     /**

@@ -197,31 +197,19 @@ function pinim_get_pin_meta($key = false, $post_id = false, $single = false){
 
 }
 
-function pinim_get_boards_options(){
-
-    if (!$boards_settings = pinim()->user_boards_options){
+function pinim_get_boards_options($force_reload = false){
+    
+    if (!pinim()->user_boards_options || $force_reload) {
         pinim()->user_boards_options = get_user_meta( get_current_user_id(), 'pinim_boards_settings', true);
     }
     
-    if (!$boards_settings) return;
+    return pinim()->user_boards_options;
 
-    //remove duplicates
-    $boards_settings = array_filter(
-        $boards_settings,
-            function ( $board ) {
-              static $idlist = array();
 
-              if ( in_array( $board['id'], $idlist ) ){
-                  return false;
-              }
+}
 
-              $idlist[] = $board['id'];
-              return true;    
-            }
-    );
-    $boards_settings = array_filter($boards_settings); //reset keys
-
-    return $boards_settings;
+function pinim_classes($classes){
+    echo pinim_get_classes($classes);
 }
 
 function pinim_get_classes($classes){

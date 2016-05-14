@@ -60,7 +60,7 @@
          'comments',
          'access',
          'comment_count',
-         'board',
+         //'board',
          'method',
          'price_value',
          'is_repin',
