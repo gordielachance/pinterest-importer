@@ -111,6 +111,7 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 * First release
 
 == TO DO ==
+* pending & processed pins table : do not load all the posts (very slow !) for processed pins table.
 * use some ajax functions (Pinterest queries, etc.)
 * allow to fetch pins from any Pinterest board
 * bug when creating 'pinim_boards_settings' : last board settings are not saved, so it is detected as new board when the page refreshes.
