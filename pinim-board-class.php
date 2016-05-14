@@ -335,27 +335,7 @@ class Pinim_Board{
         
         
     }
-    
-    function get_link_action_cache(){
-        //Refresh cache
-        $link_args = array(
-            'step'      => 'boards-settings',
-            'action'    => 'boards_cache_pins',
-            'board_ids'  => $this->board_id,
-            'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
-        );
 
-        $link = sprintf(
-            '<a href="%1$s">%2$s</a>',
-            pinim_get_tool_page_url($link_args),
-            __('Cache Pins','pinim')
-
-        );
-
-        return $link;
-    }
-
-    
     function get_remote_url(){
         $url = pinim()->pinterest_url.$this->get_datas('url');
         return $url;
@@ -697,15 +677,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                     //Import All Pins
                     submit_button( pinim_tool_page()->all_action_str['import_all_pins'], 'button', 'all_boards_action', false );
                 break;
-                case 'waiting':
-                    //Cache All Pins
-                    submit_button( pinim_tool_page()->all_action_str['cache_all_pins'], 'button', 'all_boards_action', false );
-                break;
             }
-                //Update All Boards Settings
-                //submit_button( pinim_tool_page()->all_action_str['update_all_boards'], 'button', 'all_boards_action', false );
-
-
         }
 
         ?>
@@ -959,10 +931,10 @@ class Pinim_Boards_Table extends WP_List_Table {
          * to ensure that the data is trimmed to only the current page. We can use
          * array_slice() to 
          */
-        $data = array_slice($data,(($current_page-1)*$per_page),$per_page);
-        
-        
-        
+        if ($per_page){
+            $data = array_slice($data,(($current_page-1)*$per_page),$per_page);
+        }
+
         /**
          * REQUIRED. Now we can add our *sorted* data to the items property, where 
          * it can be used by the rest of the class.
@@ -973,11 +945,13 @@ class Pinim_Boards_Table extends WP_List_Table {
         /**
          * REQUIRED. We also have to register our pagination options & calculations.
          */
+
         $this->set_pagination_args( array(
-            'total_items' => $total_items,                  //WE have to calculate the total number of items
-            'per_page'    => $per_page,                     //WE have to determine how many items to show on a page
-            'total_pages' => ceil($total_items/$per_page)   //WE have to calculate the total number of pages
+            'total_items' => $total_items,                                      //WE have to calculate the total number of items
+            'per_page'    => $per_page ? $per_page : $total_items,              //WE have to determine how many items to show on a page
+            'total_pages' => $per_page ? ceil($total_items/$per_page)   : 1     //WE have to calculate the total number of pages
         ) );
+
     }
 
 

@@ -37,7 +37,7 @@ class PinIm {
     */
     public $plugin_dir = '';
     
-    public $meta_name_options = 'pinim_options';
+    static $meta_name_options = 'pinim_options';
 
     var $user_boards_options = null;
     var $pinterest_url = 'https://www.pinterest.com';
@@ -79,12 +79,13 @@ class PinIm {
             $this->plugin_url = plugin_dir_url ( $this->file );
 
             $this->options_default = array(
-                'boards_per_page'   => 20,
-                'pins_per_page'     => 50,
-                'category_root_id'  => null,
-                'category_likes_id' => null,
+                'boards_per_page'       => 25,
+                'pins_per_page'         => 50,
+                'category_root_id'      => null,
+                'category_likes_id'     => null,
+                'enable_update_pins'   => false,
             );
-            $this->options = wp_parse_args(get_option( $this->meta_name_options), $this->options_default);
+            $this->options = wp_parse_args(get_option( self::$meta_name_options), $this->options_default);
 
     }
 
@@ -180,6 +181,11 @@ class PinIm {
         if (!$key) return $options;
         if (!isset($options[$key])) return false;
         return $options[$key];
+    }
+    
+    public function get_default_option($name){
+        if (!isset($this->options_default[$name])) return;
+        return $this->options_default[$name];
     }
 
     /**

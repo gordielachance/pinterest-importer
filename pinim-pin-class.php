@@ -97,8 +97,7 @@ class Pinim_Pin{
             'step'      => 'pins-list',
             'action'    => 'pins_import_pins',
             'pin_ids'  => $this->pin_id,
-            'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
-            //'boards_ids'    => ( isset($_REQUEST['board_ids']) ? $_REQUEST['board_ids'] : null)
+            //'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
         );
 
         $link = sprintf(
@@ -113,14 +112,15 @@ class Pinim_Pin{
     
     function get_link_action_update(){
         
+        if ( !pinim()->get_options('enable_update_pins') ) return;
+        
         if (!in_array($this->pin_id,pinim_tool_page()->existing_pin_ids)) return;
 
         $link_args = array(
             'step'          => 'pins-list',
             'action'        => 'pins_update_pins',
             'pin_ids'       => $this->pin_id,
-            'paged'         => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
-            'boards_ids'    => ( isset($_REQUEST['board_ids']) ? $_REQUEST['board_ids'] : null)
+            //'paged'         => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
         );
 
         $link = sprintf(
@@ -136,13 +136,26 @@ class Pinim_Pin{
     function get_link_action_edit(){
         
         if (!in_array($this->pin_id,pinim_tool_page()->existing_pin_ids)) return;
-        
-        $post = $this->get_post();
 
         $link = sprintf(
             '<a href="%1$s">%2$s</a>',
-            get_edit_post_link( $post->ID ),
+            get_edit_post_link( $this->post_id ),
             __('Edit post','pinim')
+
+        );
+
+        return $link;
+    }
+    
+    function get_link_action_delete(){
+        
+        if (!in_array($this->pin_id,pinim_tool_page()->existing_pin_ids)) return;
+        if ( !current_user_can('delete_posts', $this->post_id) ) return;
+
+        $link = sprintf(
+            '<a href="%1$s">%2$s</a>',
+            get_delete_post_link( $this->post_id ),
+            __('Move to Trash')
 
         );
 
@@ -463,8 +476,14 @@ class Pinim_Pins_Table extends WP_List_Table {
         );
         
         if ($pin->get_post()){ //only if post exists
-            $actions['update'] = $pin->get_link_action_update();
+            
+            if ( pinim()->get_options('enable_update_pins') ) {
+                $actions['update'] = $pin->get_link_action_update();
+            }
+            
             $actions['edit'] = $pin->get_link_action_edit();
+            $actions['delete'] = $pin->get_link_action_delete();
+            
         }else{
             $actions['import'] = $pin->get_link_action_import();
         }
@@ -666,7 +685,9 @@ class Pinim_Pins_Table extends WP_List_Table {
                     break;
                     case 'processed':
                         //Update All Pins
-                        submit_button( pinim_tool_page()->all_action_str['update_all_pins'], 'button', 'all_pins_action', false, array('id'=>'update_all_bt') );
+                        if ( pinim()->get_options('enable_update_pins') ){
+                            submit_button( pinim_tool_page()->all_action_str['update_all_pins'], 'button', 'all_pins_action', false, array('id'=>'update_all_bt') );
+                        }
                     break;
                 }
         }
@@ -782,9 +803,12 @@ class Pinim_Pins_Table extends WP_List_Table {
         $actions = array();
         
         if (pinim_tool_page()->get_screen_pins_filter() =='pending'){
-            $actions['pins_import_pins'] = __('Import Pins','pinim');
+            $actions['pins_import_pins'] = __('Import pins','pinim');
         }elseif (pinim_tool_page()->get_screen_pins_filter() =='processed'){
-            $actions['pins_update_pins'] = __('Update Pins','pinim');
+            if ( pinim()->get_options('enable_update_pins') ){
+                $actions['pins_update_pins'] = __('Update pins','pinim');
+            }
+            $actions['pins_delete_pins'] = __('Move to Trash');
         }
         
         return $actions;

@@ -1,6 +1,7 @@
 @import "compass/css3";
 
 .tools_page_pinim {
+    
     #header-links {
       margin-bottom: 2em;
       font-size:1.1em;
@@ -8,161 +9,218 @@
         text-decoration: none;
       }
     }
-  
-    .tab-description{
-        margin:2em;
-        p{
-            font-size:1.1em;
+    
+    #user-info{
+        height:3em;
+        line-height:3em;
+        position:relative;
+        text-align:right;
+
+        img{
+            //TO FIX weird behaviour, should be max-height;100% but is not working !
+            //max-height:100%;
+            max-height:2em;
+            width:auto;
+            padding-right:0.5em;
+            vertical-align:middle;
         }
 
+        span{
+            display:inline-block;
+        }
     }
 
-}
-
-#user-info{
-    height:3em;
-    line-height:3em;
-    position:relative;
-    text-align:right;
-    
-    img{
-        //TO FIX weird behaviour, should be max-height;100% but is not working !
-        //max-height:100%;
-        max-height:2em;
-        width:auto;
-        padding-right:0.5em;
-        vertical-align:middle;
+    .wrap .nav-tab-wrapper{
+        margin-bottom:1em;
     }
-    
-    span{
-        display:inline-block;
-    }
-}
 
-.pinim-form {
-    &.pinim-form-loading{
-        opacity:0.5;
-        pointer-events: none;
+    .pinim_tab_content{
         
-        #submit{
-            
-        }
-    }
-
-    .wp-list-table {
-
-        .column-details{
-            display:none;
-        }
-
-      td.column-thumbnail {
-        padding: 0;
-        img {
-          position: absolute;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          background-size: 100%;
-          background-repeat: no-repeat;
-          opacity: 0.6;
-        }
-      }
-
-      tr{
-        &:hover td.column-thumbnail img {
-            opacity: 1;
-        }
-
-
-
-
-
-      }
-
-
-    }
-    
-    .column-thumbnail {
-      width: 150px;
-      position: relative;
-      overflow: hidden;
-      img {
-        object-fit: cover;
-        max-width: 100%;
-      }
-    }
-    
-    &#pinim-form-boards{
-        
-        .column-pin_count_imported{
-            text-align:center;
-        }
-
-        .column-private {
-          width: 4em;
-        }
-
-        .column-pin_count_remote {
-          width: 8em;
-        }
-
-        tbody tr{
-            &.is-new-board{
-                background-color:#FAFFE9;
+        .tab-description{
+            margin:2em;
+            p{
+                font-size:1.1em;
             }
         }
-        
-        &.boards-view-simple{
-            
-            width:65%;
-            margin:auto;
-            
-            .column-category,.column-private,.column-board_id{
+
+        .wp-list-table {
+
+            .column-details{
                 display:none;
             }
+
+            .column-thumbnail {
+              width: 150px;
+              position: relative;
+              overflow: hidden;
+              img {
+                object-fit: cover;
+                max-width: 100%;
+              }
+            }
+
+          td.column-thumbnail {
+            padding: 0;
+            img {
+              position: absolute;
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+              background-size: 100%;
+              background-repeat: no-repeat;
+              opacity: 0.6;
+            }
+          }
+
+          tr{
+            &:hover td.column-thumbnail img {
+                opacity: 1;
+            }
+
+
+
+
+
+          }
+
+
         }
 
-
-    }
-    
-}
-
-.pinim-pc-bar{
-    position: relative;
-    display:block;
-    background-color:rgba(#CCC, 0.4);
-    clear:both;
-    width:100%;
-    height:1.3em;
-    line-height:1.3em;
-    
-    .pinim-pc-bar-fill{
-        display:block;
-        height:100%;
-        text-align:left;
-        @include transition(all 0.5s ease-out);
-        position:relative;
-        .pinim-pc-bar-fill-color{
+        .pinim-pc-bar{
+            position: relative;
+            display:block;
+            background-color:rgba(#CCC, 0.4);
+            clear:both;
             width:100%;
-            height:100%;
-            position: absolute;
-            &.pinim-pc-bar-fill-yellow{
-                background-color:#FFE000;
+            height:1.3em;
+            line-height:1.3em;
+
+            .pinim-pc-bar-fill{
+                display:block;
+                height:100%;
+                text-align:left;
+                @include transition(all 0.5s ease-out);
+                position:relative;
+                .pinim-pc-bar-fill-color{
+                    width:100%;
+                    height:100%;
+                    position: absolute;
+                    &.pinim-pc-bar-fill-yellow{
+                        background-color:#FFE000;
+                    }
+                    &.pinim-pc-bar-fill-red{
+                        background-color:red;
+                    }
+                }
+
+                .pinim-pc-bar-text{
+                    position:absolute;
+                    font-size: 0.8em;
+                    padding-left:1em;
+                }
+
             }
-            &.pinim-pc-bar-fill-red{
-                background-color:red;
+
+            &.complete{
             }
+
         }
-        
-        .pinim-pc-bar-text{
-            position:absolute;
-            font-size: 0.8em;
-            padding-left:1em;
+
+        .pinim-form {
+            &.pinim-form-loading{
+                opacity:0.5;
+                pointer-events: none;
+
+                #submit{
+
+                }
+            }
+
+            &#pinim-form-login{
+
+                #pinim_login_box{
+
+                    max-width:250px;
+                    margin:auto;
+                    padding: 1em;
+                    margin: 2em auto;
+                    text-align:center;
+
+                    #pinim_login_icon{
+                        margin-bottom:2em;
+                        i{
+                            font-size:5em;
+                        }
+                    }
+
+                    input[type=text],input[type=password] {
+                        font-size: 24px;
+                        width: 100%;
+                        padding: 3px;
+                        margin: 2px 6px 16px 0;
+                        background: #fbfbfb;
+                    }
+
+                }
+
+                    p.submit{
+                        text-align:center;
+                    }
+
+
+
+            }
+
+            &#pinim-form-boards{
+
+                p.submit{
+                    text-align:center;
+                }
+
+                #follow-new-board{
+
+                    #follow-new-board-new{
+                        input[type=text]{
+                            width:100%;
+                        }
+                    }
+
+                }
+
+                .column-pin_count_imported{
+                    text-align:center;
+                }
+
+                .column-private {
+                  width: 4em;
+                }
+
+                .column-pin_count_remote {
+                  width: 8em;
+                }
+
+                tbody tr{
+                    &.is-new-board{
+                        background-color:#FAFFE9;
+                    }
+                }
+
+                &.boards-view-simple{
+
+                    width:65%;
+                    margin:auto;
+
+                    .column-category,.column-private,.column-board_id{
+                        display:none;
+                    }
+                }
+
+
+            }
+
         }
-  
+
     }
-    
-    &.complete{
-    }
-    
+
 }
+
