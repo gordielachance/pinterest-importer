@@ -399,7 +399,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             case 'board_id':
                 return $item->board_id;
             case 'new_board':
-                $is_new = empty($item->get_options());
+                $is_new = !$item->get_options();
                 return sprintf(
                     '<input type="checkbox" disabled="disabled" %1$s/>',
                     checked( $is_new, true, false )
@@ -461,12 +461,8 @@ class Pinim_Boards_Table extends WP_List_Table {
             $board->board_id
         );
 
-        $board_active = false;
-        
-        if ( !empty($board->get_options() ) ){ //no options saved, set as active
-            $board_active = $board->get_options('active');
-        }
-        
+
+        $board_active = $board->get_options('active');
         
         $active = sprintf(
             '<input type="checkbox" name="pinim_form_boards[%1$s][active]" value="on" %2$s/>',

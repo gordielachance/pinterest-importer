@@ -494,7 +494,7 @@ class Pinim_Tool_Page {
 
                             foreach ((array)$boards as $board){
 
-                                if ( empty($board->get_options()) ){
+                                if ( !$board->get_options() ){
                                     $has_new_boards = true;
                                     break;
                                 }
