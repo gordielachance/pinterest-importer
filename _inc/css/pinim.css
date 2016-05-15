@@ -38,26 +38,35 @@
 .tools_page_pinim .pinim_tab_content .tab-description p {
   font-size: 1.1em;
 }
-/* line 49, ../scss/pinim.scss */
+/* line 47, ../scss/pinim.scss */
+.tools_page_pinim .pinim_tab_content .view_filter {
+  float: right;
+}
+/* line 53, ../scss/pinim.scss */
+.tools_page_pinim .pinim_tab_content .wp-list-table [data-colname] {
+  text-align: center;
+}
+/* line 57, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .wp-list-table .column-details {
   display: none;
 }
-/* line 53, ../scss/pinim.scss */
+/* line 61, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .wp-list-table .column-thumbnail {
   width: 150px;
   position: relative;
   overflow: hidden;
+  text-align: left;
 }
-/* line 57, ../scss/pinim.scss */
+/* line 66, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .wp-list-table .column-thumbnail img {
   object-fit: cover;
   max-width: 100%;
 }
-/* line 63, ../scss/pinim.scss */
+/* line 72, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .wp-list-table td.column-thumbnail {
   padding: 0;
 }
-/* line 65, ../scss/pinim.scss */
+/* line 74, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .wp-list-table td.column-thumbnail img {
   position: absolute;
   width: 100%;
@@ -67,15 +76,15 @@
   background-repeat: no-repeat;
   opacity: 0.6;
 }
-/* line 77, ../scss/pinim.scss */
+/* line 86, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .wp-list-table tr:hover td.column-thumbnail img {
   opacity: 1;
 }
-/* line 81, ../scss/pinim.scss */
+/* line 90, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .wp-list-table tr .item-id {
   color: silver;
 }
-/* line 92, ../scss/pinim.scss */
+/* line 101, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-pc-bar {
   position: relative;
   display: block;
@@ -85,7 +94,7 @@
   height: 1.3em;
   line-height: 1.3em;
 }
-/* line 101, ../scss/pinim.scss */
+/* line 110, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-pc-bar .pinim-pc-bar-fill {
   display: block;
   height: 100%;
@@ -96,52 +105,57 @@
   transition: all 0.5s ease-out;
   position: relative;
 }
-/* line 107, ../scss/pinim.scss */
+/* line 116, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-fill-color {
   width: 100%;
   height: 100%;
   position: absolute;
 }
-/* line 111, ../scss/pinim.scss */
+/* line 120, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-fill-color.pinim-pc-bar-fill-yellow {
   background-color: #FFE000;
 }
-/* line 114, ../scss/pinim.scss */
+/* line 123, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-fill-color.pinim-pc-bar-fill-red {
   background-color: red;
 }
-/* line 119, ../scss/pinim.scss */
+/* line 128, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-text {
   margin: auto;
   display: block;
   text-align: center;
 }
-/* line 123, ../scss/pinim.scss */
+/* line 132, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-text i.fa {
   padding: 0 0.5em;
 }
-/* line 130, ../scss/pinim.scss */
+/* line 139, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-pc-bar.color-light .pinim-pc-bar-text {
   color: white;
 }
-/* line 135, ../scss/pinim.scss */
-.tools_page_pinim .pinim_tab_content .pinim-pc-bar.offline .pinim-pc-bar-fill-color {
+/* line 144, ../scss/pinim.scss */
+.tools_page_pinim .pinim_tab_content .pinim-pc-bar.offline .pinim-pc-bar-fill, .tools_page_pinim .pinim_tab_content .pinim-pc-bar.empty .pinim-pc-bar-fill {
+  width: 100% !important;
+}
+/* line 148, ../scss/pinim.scss */
+.tools_page_pinim .pinim_tab_content .pinim-pc-bar.offline .pinim-pc-bar-fill-color, .tools_page_pinim .pinim_tab_content .pinim-pc-bar.empty .pinim-pc-bar-fill-color {
   display: none;
 }
-/* line 138, ../scss/pinim.scss */
-.tools_page_pinim .pinim_tab_content .pinim-pc-bar.offline .pinim-pc-bar-text {
+/* line 151, ../scss/pinim.scss */
+.tools_page_pinim .pinim_tab_content .pinim-pc-bar.offline .pinim-pc-bar-text, .tools_page_pinim .pinim_tab_content .pinim-pc-bar.empty .pinim-pc-bar-text {
+  color: inherit;
   font-size: 0.8em;
 }
-/* line 147, ../scss/pinim.scss */
+/* line 161, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-pc-bar.incomplete .pinim-pc-bar-text {
   text-align: right;
 }
-/* line 155, ../scss/pinim.scss */
+/* line 169, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form.pinim-form-loading {
   opacity: 0.5;
   pointer-events: none;
 }
-/* line 166, ../scss/pinim.scss */
+/* line 180, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-login #pinim_login_box {
   max-width: 250px;
   margin: auto;
@@ -149,15 +163,15 @@
   margin: 2em auto;
   text-align: center;
 }
-/* line 174, ../scss/pinim.scss */
+/* line 188, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-login #pinim_login_box #pinim_login_icon {
   margin-bottom: 2em;
 }
-/* line 176, ../scss/pinim.scss */
+/* line 190, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-login #pinim_login_box #pinim_login_icon i {
   font-size: 5em;
 }
-/* line 181, ../scss/pinim.scss */
+/* line 195, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-login #pinim_login_box input[type=text], .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-login #pinim_login_box input[type=password] {
   font-size: 24px;
   width: 100%;
@@ -165,44 +179,44 @@
   margin: 2px 6px 16px 0;
   background: #fbfbfb;
 }
-/* line 191, ../scss/pinim.scss */
+/* line 205, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-login p.submit {
   text-align: center;
 }
-/* line 201, ../scss/pinim.scss */
+/* line 215, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards p.submit {
   text-align: center;
 }
-/* line 208, ../scss/pinim.scss */
+/* line 222, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards #follow-new-board #follow-new-board-new input[type=text] {
   width: 100%;
 }
-/* line 215, ../scss/pinim.scss */
+/* line 229, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards .column-pin_count_imported {
   text-align: center;
 }
-/* line 219, ../scss/pinim.scss */
+/* line 233, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards .column-private {
   width: 4em;
 }
-/* line 223, ../scss/pinim.scss */
+/* line 237, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards .column-pin_count_remote {
   width: 8em;
 }
-/* line 228, ../scss/pinim.scss */
-.tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards tbody tr.is-new-board {
+/* line 242, ../scss/pinim.scss */
+.tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards tbody tr.is-checked {
   background-color: #FAFFE9;
 }
-/* line 233, ../scss/pinim.scss */
-.tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards.boards-view-simple {
+/* line 247, ../scss/pinim.scss */
+.tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards.view-filter-simple {
   width: 65%;
   margin: auto;
 }
-/* line 238, ../scss/pinim.scss */
-.tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards.boards-view-simple .item-id {
+/* line 252, ../scss/pinim.scss */
+.tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards.view-filter-simple .item-id {
   display: none;
 }
-/* line 242, ../scss/pinim.scss */
-.tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards.boards-view-simple .column-category, .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards.boards-view-simple .column-private, .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards.boards-view-simple .column-board_id {
+/* line 256, ../scss/pinim.scss */
+.tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards.view-filter-simple .column-category, .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards.view-filter-simple .column-private, .tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-boards.view-filter-simple .column-board_id {
   display: none;
 }

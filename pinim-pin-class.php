@@ -416,7 +416,7 @@ class Pinim_Pins_Table extends WP_List_Table {
      * REQUIRED. Set up a constructor that references the parent constructor. We 
      * use the parent reference to set some default configs.
      ***************************************************************************/
-    function __construct($data){
+    function __construct($data = null){
         global $status, $page;
         
         $this->input_data = $data;
@@ -545,7 +545,7 @@ class Pinim_Pins_Table extends WP_List_Table {
             $pin->pin_id
         );
         $bulk = sprintf(
-            '<input type="checkbox" name="%1$s[%2$s][bulk]" value="on" />',
+            '<input type="checkbox" class="bulk" name="%1$s[%2$s][bulk]" value="on" />',
             'pinim_form_pins',
             $this->pin_idx
         );

@@ -79,11 +79,15 @@ class PinIm {
             $this->plugin_url = plugin_dir_url ( $this->file );
 
             $this->options_default = array(
-                'boards_per_page'       => 25,
+                'boards_per_page'       => 10,
                 'pins_per_page'         => 50,
                 'category_root_id'      => null,
                 'category_likes_id'     => null,
-                'enable_update_pins'   => false,
+                'enable_update_pins'    => false,
+                'boards_view_filter'    => 'simple',
+                'boards_filter'         => 'all',
+                'pins_filter'           => 'pending',
+                'autocache'             => true,
             );
             $this->options = wp_parse_args(get_option( self::$meta_name_options), $this->options_default);
 
