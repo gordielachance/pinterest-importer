@@ -557,36 +557,51 @@ class Pinim_Boards_Table extends WP_List_Table {
     }
     
     function column_pin_count_imported($board){
-
-        if ( !$board->get_cached_pins() ){
-            printf('<em>%1$s</em>',__('Not yet cached','pinim') );
-        }else{
+        
+            $percent = 0;
             
-            $percent = $board->get_pc_imported_pins();
-            $pc_imported = floor($percent);
-
             $pc_status_classes = array('pinim-pc-bar');
-
+            $text_bar = $bar_width = null;
+            
+            if ( $board->get_cached_pins() ){
+                $percent = $board->get_pc_imported_pins();
+                $percent = floor($percent);
+            }
+            
+            $bar_width = $percent;
 
             switch($percent){
-                case 100:
-                    $pc_status_classes[] = 'complete';
-                break;
                 case 0:
                     $pc_status_classes[] = 'empty';
                 break;
+                case 100:
+                    $pc_status_classes[] = 'complete';
+                    $text_bar .= '<i class="fa fa-check-circle" aria-hidden="true"></i>';
+                break;
+                default:
+                    $pc_status_classes[] = 'incomplete';
+                    $imported = $board->get_count_imported_pins();
+                    $text_bar = $imported.'/'.$board->get_datas('pin_count');
+                    $text_bar .= '<i class="fa fa-refresh" aria-hidden="true"></i>';
+                break;
+            }
+            
+            if ( !$board->get_cached_pins() ){
+                $pc_status_classes[] = "offline";
+                $text_bar = __('No cached yet','pinim');
+                $bar_width = 100;
+            }else{
+   
+            if ($percent<50){
+                    $pc_status_classes[] = 'color-light';
+                }
             }
 
-            $pc_status = pinim_get_classes($pc_status_classes);
-            $imported = $board->get_count_imported_pins();
+            $pc_status_classes = pinim_get_classes($pc_status_classes);
             $red_opacity = (100 - $percent) / 100;
-            $text_bar = $imported.'/'.$board->get_datas('pin_count');
-            return sprintf('<span %1$s><span class="pinim-pc-bar-fill" style="width:%2$s"><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-yellow"></span><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-red" style="opacity:%3$s"></span><span class="pinim-pc-bar-text">%4$s</span></span>',$pc_status,$pc_imported.'%',$red_opacity,$text_bar);
 
+            return sprintf('<span %1$s><span class="pinim-pc-bar-fill" style="width:%2$s"><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-yellow"></span><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-red" style="opacity:%3$s"></span><span class="pinim-pc-bar-text">%4$s</span></span>',$pc_status_classes,$bar_width.'%',$red_opacity,$text_bar);
 
-        }
-
-        
     }
 
 

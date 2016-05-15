@@ -117,14 +117,36 @@
                 }
 
                 .pinim-pc-bar-text{
-                    position:absolute;
-                    font-size: 0.8em;
-                    padding-left:1em;
+                    margin:auto;
+                    display:block;
+                    text-align:center;
+                    i.fa{
+                        padding:0 0.5em;
+                    }
                 }
 
             }
+            
+            &.color-light .pinim-pc-bar-text{
+                color:white;
+            }
+            
+            &.offline{
+                .pinim-pc-bar-fill-color{
+                    display:none;
+                }
+                .pinim-pc-bar-text{
+                    font-size:0.8em;
+                }
+            }
 
             &.complete{
+
+            }
+            &.incomplete{
+                .pinim-pc-bar-text{
+                    text-align:right;
+                }
             }
 
         }
