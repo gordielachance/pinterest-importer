@@ -222,7 +222,7 @@ class Pinim_Pin{
 
     }
 
-    function set_post_content($post){
+    function build_post_content($post){
         $post_format = get_post_format( $post->ID );
         $link = $this->get_datas('link');
         $domain = $this->get_datas('domain');
@@ -245,21 +245,10 @@ class Pinim_Pin{
         }
 
         $content .= "\n";//line break (avoid problems with embeds)
-        $content .='<p class="pinim-pin-source"><a href="' . $link . '" title="' . $domain . '" >'.$domain.'</a></p>';
+        $link_el = sprintf(__('Source: <a href="%1$s" target="_blank">%2$s</a>','pinim'),$link,$domain);
+        $content .=sprintf('<p class="pinim-pin-source">%s</p>',$link_el);
 
-        //allow to filter
-        $content = apply_filters('pinim_get_post_content',$content,$post,$this);
-
-        //print_r("<xmp>".$content."</xmp>");exit;
-
-        $my_post = array();
-        $my_post['ID'] = $post->ID;
-        $my_post['post_content'] = $content;
-
-        if (!wp_update_post( $my_post )){
-            return false;
-        }
-        return true;
+        return $content;
     }
     
 
@@ -355,8 +344,15 @@ class Pinim_Pin{
         //set post metas
         $this->set_pin_metas($post_id);
         
-        //set post content
-        if (!$this->set_post_content($new_post)){
+        //final update
+        $update_post = array();
+        $update_post['ID'] = $new_post->ID;
+        $update_post['post_content'] = $this->build_post_content($new_post); //set post content
+        
+        //allow to filter before updating post
+        $update_post = apply_filters('pinim_post_before_insert',$update_post);
+
+        if (!wp_update_post( $update_post )){
             //feedback
             $error_msg =  __('Error while updating post content', 'pinim');
             $error->add('pin_content_error', $error_msg, $post_id);
@@ -1013,7 +1009,7 @@ class Pinim_Processed_Pins_Table extends Pinim_Pins_Table {
     var $query_args = array();
     var $query = null;
     var $per_page = 10;
-    var $orderby = 'date_updated';
+    var $orderby = 'modified';
     var $order = 'desc';
     
     function __construct($args = array()){
@@ -1157,9 +1153,12 @@ class Pinim_Processed_Pins_Table extends Pinim_Pins_Table {
         
         $actions = parent::get_actions($post);
         
-        if ( pinim()->get_options('enable_update_pins') ) {
-            $actions['update'] = $post->get_link_action_update();
-        }
+        $actions['view'] = sprintf(
+            '<a href="%1$s">%2$s</a>',
+            get_permalink( $post->ID ),
+            __('View')
+
+        );
         
         $actions['edit'] = sprintf(
             '<a href="%1$s">%2$s</a>',
@@ -1172,7 +1171,11 @@ class Pinim_Processed_Pins_Table extends Pinim_Pins_Table {
             get_delete_post_link( $post->ID ),
             __('Move to Trash')
 
-        );;
+        );
+        
+        if ( pinim()->get_options('enable_update_pins') ) {
+            $actions['update'] = $post->get_link_action_update();
+        }
         
         return $actions;
         
