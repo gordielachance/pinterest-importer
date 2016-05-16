@@ -622,7 +622,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             
             if ( !$board->get_cached_pins() ){
                 $pc_status_classes[] = "offline";
-                $link = pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'cached','action'=>'boards_cache_pins','board_ids'=>$board->board_id));
+                $link = pinim_get_tool_page_url(array('step'=>'boards-settings','action'=>'boards_cache_pins','board_ids'=>$board->board_id));
                 $text_bar = sprintf('<a href="%1$s">%2$s</a>',$link,__('Not cached yet','pinim'));
             }else{
    
