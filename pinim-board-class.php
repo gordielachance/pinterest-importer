@@ -187,6 +187,9 @@ class Pinim_Board{
         if ($total_pins  = $this->get_datas('pin_count')){
             $percent = $count / $total_pins * 100;
         }
+        
+        if ($percent > 100) $percent = 100;
+        
         return $percent;
     }
     
