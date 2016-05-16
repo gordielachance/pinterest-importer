@@ -69,6 +69,13 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 
 
 == Changelog ==
+= 0.3.1 =
+* Fixed bad code which was slowing down the plugin when displaying the processed pins
+* new boards views
+* auto-cache option
+* queue pins option (stored in the session)
+* progress bar improvements
+* autoselect bulk checkbox when settings of a board are changed (jQuery)
 = 0.3.0 =
 * Major release !
 * Improved GUI

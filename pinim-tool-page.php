@@ -615,8 +615,8 @@ class Pinim_Tool_Page {
                     
                     //no boards cached message
                     if ( !$this->get_boards_cached() ){
-                        $feedback = array(__("Start by caching some boards so we can get informations about their pins !",'pinim') );
-                        $feedback[] =   __("You could also enable the <em>auto-cache</em> for some of your boards, so they will always be preloaded.",'pinim');
+                        $feedback = array(__("Start by caching a bunch of boards so we can get informations about their pins !",'pinim') );
+                        $feedback[] =   __("You could also check the <em>auto-cache</em> option for some of your boards, so they will always be preloaded.",'pinim');
                         add_settings_error('pinim_form_boards','no_boards_cached',implode('<br/>',$feedback),'updated inline');
                     }
 
