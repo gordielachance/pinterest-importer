@@ -526,18 +526,30 @@ class Pinim_Tool_Page {
                 }
                 
                 $pins = array();
-                $this->table_pins = new Pinim_Pins_Table();
+                
+                switch ( $this->get_screen_pins_filter() ){
+                    case 'pending':
+                        
+                        $this->table_pins = new Pinim_Pending_Pins_Table();
+                        if ($pins_ids = $this->get_requested_pins_ids()){
+                            $pins_ids = array_diff($pins_ids, $this->existing_pin_ids);
 
-                if ($pins_ids = $this->get_requested_pins_ids()){
-                    $pins_ids = array_diff($pins_ids, $this->existing_pin_ids);
+                            //populate pins
+                            foreach ((array)$pins_ids as $pin_id){
+                                $pins[] = new Pinim_Pin($pin_id);
+                            }
 
-                    //populate pins
-                    foreach ((array)$pins_ids as $pin_id){
-                        $pins[] = new Pinim_Pin($pin_id);
-                    }
-
-                    $this->table_pins->input_data = $pins;
-                    $this->table_pins->prepare_items();
+                            $this->table_pins->input_data = $pins;
+                            $this->table_pins->prepare_items();
+                        }
+                        
+                    break;
+                    case 'processed':
+                        
+                        $this->table_posts = new Pinim_Processed_Pins_Table();
+                        $this->table_posts->prepare_items();
+                        
+                    break;
                 }
                 
                 //clear pins selection
@@ -612,7 +624,7 @@ class Pinim_Tool_Page {
                     if ( $pending_count = $this->get_pins_count_pending() ){
 
                         $feedback =  array( __("We're ready to process !","pinim") );
-                        $feedback[] = sprintf( _n( '%s new pin was found in the cached boards.', '%s new pins were found in the cached boards.', $pending_count, 'pinim' ), $pending_count );
+                        $feedback[] = sprintf( _n( '%s new pin was found in the queued boards.', '%s new pins were found in the queued boards.', $pending_count, 'pinim' ), $pending_count );
                         $feedback[] = sprintf( __('You can <a href="%1$s">import them all</a>, or go to the <a href="%2$s">Pins list</a> for advanced control.',"pinim"),
                                     pinim_get_tool_page_url(array('step'=>'pins-list','all_pins_action'=>$this->all_action_str['import_all_pins'])),
                                     pinim_get_tool_page_url(array('step'=>'pins-list'))
@@ -862,24 +874,9 @@ class Pinim_Tool_Page {
                                     break;
                                     case 'processed':
                                         
-                                        $pins_ids = $this->existing_pin_ids;
-                                        /*
-                                        //populate pins
-                                        foreach ((array)$pins_ids as $pin_id){
-                                            $pins[] = new Pinim_Pin($pin_id);
-                                        }
+                                        $this->table_posts->views();
+                                        $this->table_posts->display();
 
-                                        //populate processed posts
-                                        if ( $this->get_screen_pins_filter() == 'processed' ){
-                                            foreach ((array)$pins as $pin){
-                                                $pin->get_post();
-                                            }
-                                        }
-                                        
-                                        $this->table_pins = new Pinim_Pins_Table();
-                                        $this->table_pins->input_data = $pins;
-                                        $this->table_pins->prepare_items();
-                                        */
                                         
                                     break;
                                 }                                

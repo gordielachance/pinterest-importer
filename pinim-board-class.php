@@ -532,10 +532,6 @@ class Pinim_Boards_Table extends WP_List_Table {
         );
     }
     
-    function column_details(){
-        return sprintf('<button>%1$s</button>',__('Details','pinim'));
-    }
-    
     function column_category($board){
         $board_term = null;
         $root_cat = pinim_get_root_category_id();
@@ -660,7 +656,6 @@ class Pinim_Boards_Table extends WP_List_Table {
             'cb'                    => '<input type="checkbox" />', //Render a checkbox instead of text
             'thumbnail'             => '',
             'title'                 => __('Board Title','pinim'),
-            'details'               => __('Details','pinim'),
             'category'              => __('Category','pinim'),
             'private'               => __('Private','pinim'),
             'pin_count_remote'      => __('Board Pins','pinim'),
@@ -998,11 +993,11 @@ class Pinim_Boards_Table extends WP_List_Table {
          */
         function usort_reorder($a,$b){
 
-            $orderby_default = 'title';
-            $order_default = 'desc';
+            $orderby = 'title';
+            $order = 'desc';
 
-            $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : $orderby_default;
-            $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : $order_default;
+            $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : $orderby;
+            $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : $order;
             
             switch ($orderby){
                 case 'title':

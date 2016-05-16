@@ -111,7 +111,7 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 * First release
 
 == TO DO ==
-* a trashed pin should not be considered as imported ?
+* a trashed pin should not be considered existing ?
 * pending & processed pins table : do not load all the posts (very slow !) for processed pins table.
 * use some ajax functions (Pinterest queries, etc.)
 * allow to fetch pins from any Pinterest board

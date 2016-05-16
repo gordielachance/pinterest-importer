@@ -49,14 +49,6 @@
         }
 
         .wp-list-table {
-            
-            [data-colname]{
-                text-align:center;
-            }
-
-            .column-details{
-                display:none;
-            }
 
             .column-thumbnail {
               width: 150px;
@@ -225,24 +217,34 @@
                     }
 
                 }
+                
+                .wp-list-table {
 
-                .column-pin_count_imported{
-                    text-align:center;
-                }
-
-                .column-private {
-                  width: 4em;
-                }
-
-                .column-pin_count_remote {
-                  width: 8em;
-                }
-
-                tbody tr{
-                    &.is-checked{
-                        background-color:#FAFFE9;
+                    [data-colname]{
+                        text-align:center;
                     }
+
+                    .column-pin_count_imported{
+                        text-align:center;
+                    }
+
+                    .column-private {
+                      width: 4em;
+                    }
+
+                    .column-pin_count_remote {
+                      width: 8em;
+                    }
+
+                    tbody tr{
+                        &.is-checked{
+                            background-color:#FAFFE9;
+                        }
+                    }
+
                 }
+
+
 
                 &.view-filter-simple{
 
@@ -259,6 +261,13 @@
                 }
 
 
+            }
+            
+            &#pinim-form-pins{
+                .wp-list-table {
+                    tbody tr{
+                    }
+                }
             }
 
         }

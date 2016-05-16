@@ -41,44 +41,6 @@ function pinim_get_tool_page_url($args = array()){
 
 }
 
-function pinim_get_posts(){
-    $query_args = array(
-        'post_status'   => array('publish','pending','draft','future','private'),
-        'meta_query'        => array(
-            array(
-                'key'     => '_pinterest-pin_id',
-            )
-        ),
-        'posts_per_page' => -1
-    );
-    $query = new WP_Query($query_args);
-    if (!$query->have_posts()) return false;
-    return $query->posts;
-}
-
-/**
- * Checks if a pin ID already has been imported
- * @param type $pin_id
- * @return boolean
- */
-
-function pinim_get_posts_by_board_id($board_id){
-    $query_args = array(
-        'post_status'   => array('publish','pending','draft','future','private'),
-        'meta_query'        => array(
-            array(
-                'key'     => '_pinterest-board_id',
-                'value'   => $board_id,
-                'compare' => '='
-            )
-        ),
-        'posts_per_page' => -1
-    );
-    $query = new WP_Query($query_args);
-    if (!$query->have_posts()) return false;
-    return $query->posts;
-}
-
 /**
  * Checks if a pin ID already has been imported
  * @param type $pin_id
@@ -197,6 +159,11 @@ function pinim_get_pin_meta($key = false, $post_id = false, $single = false){
 
 }
 
+function pinim_get_pin_log($post_id){
+
+    return unserialize(pinim_get_pin_meta('log',$post_id,true));
+}
+
 function pinim_get_boards_options($force_reload = false){
     
     if (!pinim()->user_boards_options || $force_reload) {
@@ -224,6 +191,11 @@ function pinim_get_root_category_id(){
         }
     }
     return false;
+}
+
+function pinim_get_pinterest_pin_url($pin_id){
+    $url = pinim()->pinterest_url.'/pin/'.$pin_id;
+    return $url;
 }
 
 
