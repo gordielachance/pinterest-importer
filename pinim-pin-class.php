@@ -53,11 +53,15 @@ class Pinim_Pin{
     function get_board(){
         
         if ( !isset($this->board) ){
+            
+            echo"GET PIN BOARD";
+            
+            print_r($this->get_datas());
 
             if ($this->is_like){
-                $this->board = new Pinim_Board('likes');
+                $this->board = new Pinim_Board_Url('likes'); //TO FIX USERNAME
             }elseif($this->board_id){
-                $this->board = new Pinim_Board($this->board_id);
+                $this->board = new Pinim_Board_Url($this->board_id); //TO FIX
             }
 
         }
@@ -69,11 +73,8 @@ class Pinim_Pin{
      * Get data from Pinterest
      */
     
-    function get_datas($key = null,$raw = false){
-        $pin_datas = $this->datas;
-        if (!isset($key)) return $pin_datas;
-        if (!isset($pin_datas[$key])) return false;
-        return $pin_datas[$key];
+    function get_datas($keys = null){
+        return pinim_get_array_value($keys, $this->datas);
     }
     
     /*

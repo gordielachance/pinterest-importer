@@ -4,16 +4,68 @@ if(!class_exists('WP_List_Table')){
     require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 }
 
-class Pinim_Board{
+class Pinim_Board_Data extends Pinim_Board{
+    function __construct($board_data){
+        $this->datas = $board_data;
+        $pinterest_url = $this->get_datas(array('url'));
+        parent::__construct($pinterest_url);
+    }
+}
+class Pinim_Board_Url extends Pinim_Board{
+    function __construct($board_full_url){
+        $pinterest_url = str_replace(pinim()->pinterest_url, '', $board_full_url);
+        parent::__construct($pinterest_url);
+    }
+}
+
+abstract class Pinim_Board{
     
+    var $pinterest_url;
+    var $username;
+    var $slug;
     var $board_id;
-    var $options;
-    var $data;
+
+    var $datas;
     var $pins;
     
     
-    function __construct($board_id){
-        $this->board_id = $board_id;
+    function __construct($pinterest_url){
+        
+        $this->pinterest_url = $pinterest_url;
+        
+        //extract username & board slug
+        $pattern = '~([^/]+)/([^/]+)~';
+        preg_match($pattern, $this->pinterest_url, $matches);
+        
+        if (!isset($matches[1])){
+            return new WP_Error('Pinim_Board_Data_no_username',__('Board username missing','pinim'));
+        }
+        
+        if (!isset($matches[2])){
+            return new WP_Error('Pinim_Board_Data_no_slug',__('Board slug missing','pinim'));
+        }
+        
+        $this->username = $matches[1];
+        $this->slug = $matches[2];
+
+        print_R($this);die();
+
+
+            
+        
+        
+        
+        
+        
+        
+        $this->board_id = $this->get_datas('id');
+        
+        
+        echo"<br/><br/>";
+        foreach($this->datas as $key=>$data){
+            echo"<br/>";
+            print_r($key);
+        }
         
     }
     
@@ -133,29 +185,8 @@ class Pinim_Board{
      * Get data from Pinterest
      */
     
-    function get_datas($key = null){
-
-        $boards_datas = pinim_tool_page()->get_user_boards_raw();
-
-        //keep only our board
-        $current_board_id = $this->board_id;
-        $matching_boards = array_filter(
-            $boards_datas,
-            function ($e) use ($current_board_id) {
-                return $e['id'] == $current_board_id;
-            }
-        );  
-
-        $board_keys = array_values($matching_boards);
-        $board_datas = array_shift($board_keys);
-
-        if (!$board_datas){
-            return new WP_Error( 'get_datas_board_'.$this->board_id, sprintf(__( 'Unable to load datas for board #%1$s', 'wordpress-importer' ),$this->board_id));
-        }
-
-        if (!isset($key)) return $board_datas;
-        if (!isset($board_datas[$key])) return false;
-        return $board_datas[$key];
+    function get_datas($keys = null){
+        return pinim_get_array_value($keys, $this->datas);
     }
     
     function get_count_cached_pins(){
@@ -301,6 +332,8 @@ class Pinim_Board{
      */
     
     function get_pins($reset = false){
+        
+        print_r($this);die();
 
         $error = null;
         

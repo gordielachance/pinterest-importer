@@ -449,7 +449,7 @@ class Pinim_Bridge{
 
         while ($bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
 
-            $query = $this->get_board_pins_page($board,$bookmark);
+            $query = $this->get_private_board_pins_page($board,$bookmark);
             
             if ( is_wp_error($query) ){
                 
@@ -498,13 +498,17 @@ class Pinim_Bridge{
 
     }
     
+    private function get_public_board_pins_page($board, $bookmark = null){
+        
+    }
+    
     /**
      * 
      * @param type $board
      * @param type $bookmark
      * @return \WP_Error
      */
-    private function get_board_pins_page($board, $bookmark = null){
+    private function get_private_board_pins_page($board, $bookmark = null){
 
         $page_pins = array();
         $data_options = array();
@@ -552,24 +556,6 @@ class Pinim_Bridge{
             'source_url' => $board->get_datas('url'),
             '_' => time()*1000 //js timestamp
         );
-        
-        /*
-        if ($board->board_id == 'likes'){
-            
-            $data['module_path'] = sprintf('App()>UserProfilePage(resource=UserResource(username=%1$s))>UserInfoBar(tab=likes, spinner=[object Object], resource=UserResource(username=%1$s, invite_code=null))',
-                        $user_datas['username'],
-                        $board->board_id
-            );
-            
-        }else{
-            
-            $data['module_path'] = sprintf('UserProfilePage(resource=UserResource(username=%1$s, invite_code=null))>UserProfileContent(resource=UserResource(username=%1$s, invite_code=null))>UserBoards()>Grid(resource=ProfileBoardsResource(username=%1$s))>GridItems(resource=ProfileBoardsResource(username=%1$s))>Board(show_board_context=false, show_user_icon=false, view_type=boardCoverImage, component_type=1, resource=BoardResource(board_id=%2$d))',
-                        $user_datas['username'],
-                        $board->board_id
-            );
-            
-        }
-         */
 
         $extra_headers = array(
             //'Referer'   => '/'

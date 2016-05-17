@@ -819,8 +819,8 @@ class Pinim_Tool_Page {
                              
                             //user boards
                              
-                            $boards_datas = pinim_tool_page()->get_user_boards_raw();
-                            if (!is_wp_error($boards_datas)){ //TO FIX and is logged
+                            $boards = pinim_tool_page()->get_boards();
+                            if (!is_wp_error($boards)){ //TO FIX and is logged
                                 ?>  
                                 <form id="pinim-form-user-boards"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_tool_page_url();?>" method="post">
                                     <?php settings_errors('pinim_form_boards');?>
@@ -1340,11 +1340,10 @@ class Pinim_Tool_Page {
         if (is_wp_error($boards_data)) return $boards_data;
 
         foreach((array)$boards_data as $board_data){
-
-            $board_id = $board_data['id'];
-            $board = new Pinim_Board($board_id);
+            $board = new Pinim_Board_Data($board_data);
             $boards[] = $board;
-
+            print_r($board);
+            die();
         }
         
         return $boards;
@@ -1411,17 +1410,8 @@ class Pinim_Tool_Page {
     }
 
     function get_boards_count_incomplete(){
-        $count = 0;
         $boards = $this->get_boards();
-
-       foreach((array)$boards as $board){
-            $board = new Pinim_Board($board_data['id']);
-            if ($board->is_queue_complete()){
-                $count++;
-            }
-
-        }
-
+        $count = count($boards);
         $count -= $this->get_boards_count_complete();
 
         return $count;
@@ -1430,15 +1420,14 @@ class Pinim_Tool_Page {
 
     function get_boards_count_complete(){
         $count = 0;
-        $boards_data = $this->get_user_boards_raw();
+        $boards = $this->get_boards();
 
-       foreach((array)$boards_data as $board_data){
-           $board = new Pinim_Board($board_data['id']);
-           if ($board->get_pins_queue() && $board->is_fully_imported()){
-               $count++;
-           }
+        foreach((array)$boards as $board){
+            if ($board->get_pins_queue() && $board->is_fully_imported()){
+                $count++;
+            }
 
-       }
+        }
 
        return $count;
 
@@ -1446,9 +1435,9 @@ class Pinim_Tool_Page {
 
     function get_boards_count_waiting(){
         $count = 0;
-        $boards_data = $this->get_user_boards_raw();
+        $boards = $this->get_boards();
 
-        $count = count($boards_data) - $this->get_boards_count_incomplete() - $this->get_boards_count_complete();
+        $count = count($boards) - $this->get_boards_count_incomplete() - $this->get_boards_count_complete();
 
        return $count;
 
