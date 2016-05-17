@@ -4,10 +4,18 @@ jQuery(document).ready(function($){
     $('#pinim-form-boards .column-new_board').hide();
     $('#pinim-form-boards table.wp-list-table tbody tr').each(function() {
        var row = $(this);
-       var new_checkbox = row.find('td.column-new_board input[type=checkbox]');
-       if ( new_checkbox.is(":checked") ){
-           row.addClass('is-new-board');
-       }
+       var bulk = $(this).find("input.bulk");
+       var form_options = $(this).find("input,select").not('.bulk');
+
+        form_options.change(function() {
+          bulk.prop('checked', true);
+          bulk.trigger("change");
+        });
+        
+        bulk.change(function() {
+          row.toggleClass("is-checked", this.checked);
+        });
+
        if ( row.find('.pinim-pc-bar').length > 0 ){ //has a progres bar = is cached
            row.addClass('is-cached');
        }

@@ -61,6 +61,20 @@ class Pinim_Board{
 
     }
     
+    function queue_board($add_to_queue=true){
+        //queued board
+        $queued_boards_ids = (array)pinim_tool_page()->get_session_data('queued_boards_ids');
+
+        if ( $add_to_queue ){
+            $queued_boards_ids[] = $this->board_id;
+        }else{
+            $queued_boards_ids = array_diff( $queued_boards_ids, array($this->board_id) );
+        }
+        $queued_boards_ids = array_unique($queued_boards_ids);
+        pinim_tool_page()->set_session_data('queued_boards_ids',$queued_boards_ids);
+
+    }
+    
     function set_options($input){
         
         //TO FIX have defaults ?
@@ -70,10 +84,15 @@ class Pinim_Board{
         $new_input = array(
             'id'    => $input['id']
         );
-        
-        //active
-        $new_input['active'] = ( isset($input['active']) );
-        
+
+        //queued board
+        $do_queue_board = (isset($input['queued_board']));
+
+        $this->queue_board($do_queue_board);
+
+        //autocache
+        $new_input['autocache'] = ( isset($input['autocache']) );
+
         //private
         $new_input['private'] = ( isset($input['private']) );
         
@@ -99,11 +118,13 @@ class Pinim_Board{
         //remove empty + reset keys...
         $boards_settings = array_filter($boards_settings);
         $boards_settings = array_values($boards_settings);
-
+        
         if ($success = update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_settings)){
+            //reload all boards settings
+            pinim_get_boards_options(true);
             return $new_input;
         }else{
-            return new WP_Error( 'pinim', sprintf(__( 'Error while saving settings for board#%1$s', 'pinim' ),$this->board_id));
+            return new WP_Error( 'pinim', sprintf(__( 'Error while saving settings for board "%1$s"', 'pinim' ),$this->get_datas('name')));
         }
 
     }
@@ -166,6 +187,9 @@ class Pinim_Board{
         if ($total_pins  = $this->get_datas('pin_count')){
             $percent = $count / $total_pins * 100;
         }
+        
+        if ($percent > 100) $percent = 100;
+        
         return $percent;
     }
     
@@ -353,7 +377,7 @@ class Pinim_Boards_Table extends WP_List_Table {
      * REQUIRED. Set up a constructor that references the parent constructor. We 
      * use the parent reference to set some default configs.
      ***************************************************************************/
-    function __construct($data){
+    function __construct($data = null){
         global $status, $page;
         
         $this->input_data = $data;
@@ -396,14 +420,6 @@ class Pinim_Boards_Table extends WP_List_Table {
                 return $item[$column_name];
             default:
                 return print_r($item,true); //Show the whole array for troubleshooting purposes
-            case 'board_id':
-                return $item->board_id;
-            case 'new_board':
-                $is_new = !$item->get_options();
-                return sprintf(
-                    '<input type="checkbox" disabled="disabled" %1$s/>',
-                    checked( $is_new, true, false )
-                );
         }
     }
 
@@ -461,17 +477,38 @@ class Pinim_Boards_Table extends WP_List_Table {
             $board->board_id
         );
 
-
-        $board_active = $board->get_options('active');
-        
-        $active = sprintf(
-            '<input type="checkbox" name="pinim_form_boards[%1$s][active]" value="on" %2$s/>',
-            $this->board_idx,
-            checked( $board_active, true, false )
+        $input = sprintf(
+            '<input type="checkbox" class="bulk" name="pinim_form_boards[%1$s][bulk]" value="on"/>',
+            $this->board_idx
         );
-        return $hidden.$active;
+        return $hidden.$input;
     }
     
+    function column_autocache($board){
+
+        $option = $board->get_options('autocache');
+
+        return sprintf(
+            '<input type="checkbox" name="pinim_form_boards[%1$s][autocache]" value="on" %2$s/>',
+            $this->board_idx,
+            checked($option, true, false )
+        );
+        
+    }
+    
+    function column_queued_board($board){
+        $queued_boards_ids = (array)pinim_tool_page()->get_session_data('queued_boards_ids');
+        $option = in_array($board->board_id,$queued_boards_ids);
+        $can_queue = (bool)!$board->get_pins_queue(); //we already did try to reach Pinterest
+
+        return sprintf(
+            '<input type="checkbox" name="pinim_form_boards[%1$s][queued_board]" value="on" %2$s %3$s />',
+            $this->board_idx,
+            checked($option, true, false ),
+            disabled( $can_queue, true, false )
+        );
+        
+    }
     
     function column_private($board){
 
@@ -496,10 +533,6 @@ class Pinim_Boards_Table extends WP_List_Table {
             '<img src="%1$s" />',
             $image['url']
         );
-    }
-    
-    function column_details(){
-        return sprintf('<button>%1$s</button>',__('Details','pinim'));
     }
     
     function column_category($board){
@@ -557,36 +590,52 @@ class Pinim_Boards_Table extends WP_List_Table {
     }
     
     function column_pin_count_imported($board){
-
-        if ( !$board->get_cached_pins() ){
-            printf('<em>%1$s</em>',__('Not yet cached','pinim') );
-        }else{
+        
+            $percent = 0;
             
-            $percent = $board->get_pc_imported_pins();
-            $pc_imported = floor($percent);
-
             $pc_status_classes = array('pinim-pc-bar');
-
+            $text_bar = $bar_width = null;
+            
+            if ( $board->get_cached_pins() ){
+                $percent = $board->get_pc_imported_pins();
+                $percent = floor($percent);
+            }
+            
+            $bar_width = $percent;
+            
+            $imported = $board->get_count_imported_pins();
+            $text_bar = $imported.'/'.$board->get_datas('pin_count');
+            $text_bar .= '<i class="fa fa-refresh" aria-hidden="true"></i>';
 
             switch($percent){
-                case 100:
-                    $pc_status_classes[] = 'complete';
-                break;
                 case 0:
                     $pc_status_classes[] = 'empty';
                 break;
+                case 100:
+                    $pc_status_classes[] = 'complete';
+                    $text_bar = '<i class="fa fa-check-circle" aria-hidden="true"></i>';
+                break;
+                default:
+                    $pc_status_classes[] = 'incomplete';
+                break;
+            }
+            
+            if ( !$board->get_cached_pins() ){
+                $pc_status_classes[] = "offline";
+                $link = pinim_get_tool_page_url(array('step'=>'boards-settings','action'=>'boards_cache_pins','board_ids'=>$board->board_id));
+                $text_bar = sprintf('<a href="%1$s">%2$s</a>',$link,__('Not cached yet','pinim'));
+            }else{
+   
+            if ($percent<50){
+                    $pc_status_classes[] = 'color-light';
+                }
             }
 
-            $pc_status = pinim_get_classes($pc_status_classes);
-            $imported = $board->get_count_imported_pins();
+            $pc_status_classes = pinim_get_classes($pc_status_classes);
             $red_opacity = (100 - $percent) / 100;
-            $text_bar = $imported.'/'.$board->get_datas('pin_count');
-            return sprintf('<span %1$s><span class="pinim-pc-bar-fill" style="width:%2$s"><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-yellow"></span><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-red" style="opacity:%3$s"></span><span class="pinim-pc-bar-text">%4$s</span></span>',$pc_status,$pc_imported.'%',$red_opacity,$text_bar);
 
+            return sprintf('<span %1$s><span class="pinim-pc-bar-fill" style="width:%2$s"><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-yellow"></span><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-red" style="opacity:%3$s"></span><span class="pinim-pc-bar-text">%4$s</span></span>',$pc_status_classes,$bar_width.'%',$red_opacity,$text_bar);
 
-        }
-
-        
     }
 
 
@@ -610,13 +659,19 @@ class Pinim_Boards_Table extends WP_List_Table {
             'cb'                    => '<input type="checkbox" />', //Render a checkbox instead of text
             'thumbnail'             => '',
             'title'                 => __('Board Title','pinim'),
-            'details'               => __('Details','pinim'),
             'category'              => __('Category','pinim'),
             'private'               => __('Private','pinim'),
             'pin_count_remote'      => __('Board Pins','pinim'),
             'pin_count_imported'    => __('Status','pinim'),
-            'new_board'                => __('New','pinim'),
         );
+        
+        if ( pinim()->get_options('autocache') ){
+            $columns['autocache'] = __('Auto-cache','pinim');
+        }
+        
+        if ( pinim_tool_page()->get_screen_boards_filter() != 'not_cached' ){
+            $columns['queued_board'] = __('Queue pins','pinim');
+        }
 
         return $columns;
     }
@@ -643,10 +698,8 @@ class Pinim_Boards_Table extends WP_List_Table {
             
         );
         
-        //if ( pinim_tool_page()->get_screen_boards_filter() != 'completed' ){
-            $sortable_columns['pin_count_imported'] = array('pin_count_imported',false);
-        //}
-        
+        //do not allow to sort 'pin_count_imported' as it should force to populate the pins from all boards to work
+
         return $sortable_columns;
     }
     
@@ -658,15 +711,16 @@ class Pinim_Boards_Table extends WP_List_Table {
         <div class="alignleft actions">
         <?php
         if ( 'top' == $which && !is_singular() ) {
-            
-            //TO FIX remove ?
 
+            /*
             switch (pinim_tool_page()->get_screen_boards_filter()){
                 case 'pending':
                     //Import All Pins
                     submit_button( pinim_tool_page()->all_action_str['import_all_pins'], 'button', 'all_boards_action', false );
                 break;
             }
+             * 
+             */
         }
 
         ?>
@@ -686,9 +740,85 @@ class Pinim_Boards_Table extends WP_List_Table {
 
     protected function get_views() {
 
-        $link_simple_classes = $link_advanced_classes = array();
+        $link_all = $link_cached = $link_not_cached = null;
+        $link_all_classes = $link_cached_classes = $link_not_cached_classes = $link_in_queue_classes = array();
+        $all_count = count(pinim_tool_page()->get_boards());
+        $cached_count = count(pinim_tool_page()->get_boards_cached());
+        $not_cached_count = count(pinim_tool_page()->get_boards_not_cached());
+        $in_queue_count = count(pinim_tool_page()->get_boards_in_queue());
 
         switch (pinim_tool_page()->get_screen_boards_filter()){
+            case 'all':
+                $link_all_classes[] = 'current';
+            break;
+            case 'cached':
+                $link_cached_classes[] = 'current';
+            break;
+            case 'not_cached':
+                $link_not_cached_classes[] = 'current';
+            break;
+            case 'in_queue':
+                $link_in_queue_classes[] = 'current';
+            break;
+        }
+        
+        $link_all = sprintf(
+            __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'all')),
+            pinim_get_classes($link_all_classes),
+            __('All','pinim'),
+            $all_count
+        );
+
+        $link_cached = sprintf(
+            __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'cached')),
+            pinim_get_classes($link_cached_classes),
+            __('Cached','pinim'),
+            $cached_count
+        );
+
+        $link_not_cached = sprintf(
+            __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'not_cached')),
+            pinim_get_classes($link_not_cached_classes),
+            __('Not cached','pinim'),
+            $not_cached_count
+        );
+        
+        $link_in_queue = sprintf(
+            __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'in_queue')),
+            pinim_get_classes($link_in_queue_classes),
+            __('In queue','pinim'),
+            $in_queue_count
+        );
+
+        $links = array(
+            'all'           => $link_all,
+            'cached'        => $link_cached,
+            'not_cached'    => $link_not_cached,
+            'in_queue'      => $link_in_queue,
+        );
+
+        return $links;
+    }
+    
+    /**
+     * Get an associative array ( id => link ) with the list
+     * of views available on this table.
+     *
+     * @since 3.1.0
+     * @access protected
+     *
+     * @return array
+     */
+
+    protected function get_views_display() {
+
+        $link_simple_classes = $link_advanced_classes = array();
+
+        switch (pinim_tool_page()->get_screen_boards_view_filter()){
             case 'simple':
                 $link_simple_classes[] = 'current';
             break;
@@ -696,17 +826,19 @@ class Pinim_Boards_Table extends WP_List_Table {
                 $link_advanced_classes[] = 'current';
             break;
         }
+        
+        $boards_filter = pinim_tool_page()->get_screen_boards_filter();
 
         $link_simple = sprintf(
             __('<a href="%1$s"%2$s>%3$s</a>'),
-            pinim_get_tool_page_url(array('step'=>'boards-settings')),
+            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_view_filter'=>'simple')),
             pinim_get_classes($link_simple_classes),
             __('Simple','pinim')
         );
 
         $link_advanced = sprintf(
             __('<a href="%1$s"%2$s>%3$s</a>'),
-            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_view'=>'advanced')),
+            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_view_filter'=>'advanced')),
             pinim_get_classes($link_advanced_classes),
             __('Advanced','pinim')
         );
@@ -723,13 +855,28 @@ class Pinim_Boards_Table extends WP_List_Table {
      * @since 3.1.0
      * @access public
      */
+    
+    public function views_display() {
+            $views = $this->get_views_display();
+
+            if ( empty( $views ) )
+                    return;
+
+            echo '<ul id="boards_view_filter" class="view_filter subsubsub">'."\n";
+            foreach ( $views as $class => $view ) {
+                    $views[ $class ] = "\t<li class='$class'>$view";
+            }
+            echo implode( " |</li>\n", $views ) . "</li>\n";
+            echo "</ul>";
+    }
+    
     public function views() {
             $views = $this->get_views();
 
             if ( empty( $views ) )
                     return;
 
-            echo "<ul class='subsubsub'>\n";
+            echo '<ul class="subsubsub">'."\n";
             foreach ( $views as $class => $view ) {
                     $views[ $class ] = "\t<li class='$class'>$view";
             }
@@ -757,9 +904,8 @@ class Pinim_Boards_Table extends WP_List_Table {
         //TO FIX can be cleared out
         
         $actions = array(
-            //'boards_update_settings'    => __('Update Settings','pinim'),
-            //'boards_cache_pins'    => __('Cache Pins','pinim'),
-            //'boards_import_pins'    => __('Import Pins','pinim')
+            'boards_cache_pins'         => __('Cache Boards','pinim'),
+            'boards_save_settings'      => __('Save Settings','pinim')
         );
         return $actions;
     }
@@ -850,11 +996,11 @@ class Pinim_Boards_Table extends WP_List_Table {
          */
         function usort_reorder($a,$b){
 
-            $orderby_default = 'pin_count_imported';
-            $order_default = 'desc';
+            $orderby = 'title';
+            $order = 'desc';
 
-            $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : $orderby_default;
-            $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : $order_default;
+            $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : $orderby;
+            $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : $order;
             
             switch ($orderby){
                 case 'title':
@@ -863,19 +1009,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                 case 'pin_count_remote':
                     $result = $a->get_datas('pin_count') - $b->get_datas('pin_count');
                 break;
-                case 'pin_count_imported':
-                    
-                    /* TO FIX
-                     * for boards that have not been cached yet, set percentage to -1 so 
-                     * boards with 0 pc are ordered correctly
-                     */
-                    $curr_pc = -1;
-                    if ( $a->get_cached_pins() ) $curr_pc = $a->get_pc_imported_pins();
-                    
-                    $result = $curr_pc - $b->get_pc_imported_pins();
-
-                    
-                break;
+                
             }
 
             return ($order==='asc') ? $result : -$result; //Send final sort direction to usort

@@ -2,7 +2,7 @@
 /*
 Plugin Name: Pinterest Importer
 Description: Backup your Pinterest.com account by importing pins as Wordpress posts.  Supports boards, secret boards and likes.  Images are downloaded as Wordpress medias.
-Version: 0.3.0
+Version: 0.3.1
 Author: G.Breant
 Author URI: http://sandbox.pencil2d.org
 Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
@@ -16,12 +16,12 @@ class PinIm {
     /**
     * @public string plugin version
     */
-    public $version = '0.3.0';
+    public $version = '0.3.1';
 
     /**
     * @public string plugin DB version
     */
-    public $db_version = '201';
+    public $db_version = '202';
 
     /** Paths *****************************************************************/
 
@@ -79,11 +79,15 @@ class PinIm {
             $this->plugin_url = plugin_dir_url ( $this->file );
 
             $this->options_default = array(
-                'boards_per_page'       => 25,
-                'pins_per_page'         => 50,
+                'boards_per_page'       => 10,
+                'pins_per_page'         => 25,
                 'category_root_id'      => null,
                 'category_likes_id'     => null,
-                'enable_update_pins'   => false,
+                'enable_update_pins'    => false,
+                'boards_view_filter'    => 'simple',
+                'boards_filter'         => 'all',
+                'pins_filter'           => 'pending',
+                'autocache'             => true,
             );
             $this->options = wp_parse_args(get_option( self::$meta_name_options), $this->options_default);
 

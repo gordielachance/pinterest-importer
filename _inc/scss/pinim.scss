@@ -43,17 +43,18 @@
                 font-size:1.1em;
             }
         }
+        
+        .view_filter{
+            float:right;
+        }
 
         .wp-list-table {
-
-            .column-details{
-                display:none;
-            }
 
             .column-thumbnail {
               width: 150px;
               position: relative;
               overflow: hidden;
+              text-align:left;
               img {
                 object-fit: cover;
                 max-width: 100%;
@@ -117,14 +118,41 @@
                 }
 
                 .pinim-pc-bar-text{
-                    position:absolute;
-                    font-size: 0.8em;
-                    padding-left:1em;
+                    margin:auto;
+                    display:block;
+                    text-align:center;
+                    i.fa{
+                        padding:0 0.5em;
+                    }
                 }
 
             }
+            
+            &.color-light .pinim-pc-bar-text{
+                color:white;
+            }
+            
+            &.offline,&.empty{
+                .pinim-pc-bar-fill{
+                    width:100%!important;
+                }
+                
+                .pinim-pc-bar-fill-color{
+                    display:none;
+                }
+                .pinim-pc-bar-text{
+                    color:inherit;
+                    font-size:0.8em;
+                }
+            }
 
             &.complete{
+
+            }
+            &.incomplete{
+                .pinim-pc-bar-text{
+                    text-align:right;
+                }
             }
 
         }
@@ -189,26 +217,36 @@
                     }
 
                 }
+                
+                .wp-list-table {
 
-                .column-pin_count_imported{
-                    text-align:center;
-                }
-
-                .column-private {
-                  width: 4em;
-                }
-
-                .column-pin_count_remote {
-                  width: 8em;
-                }
-
-                tbody tr{
-                    &.is-new-board{
-                        background-color:#FAFFE9;
+                    [data-colname]{
+                        text-align:center;
                     }
+
+                    .column-pin_count_imported{
+                        text-align:center;
+                    }
+
+                    .column-private {
+                      width: 4em;
+                    }
+
+                    .column-pin_count_remote {
+                      width: 8em;
+                    }
+
+                    tbody tr{
+                        &.is-checked{
+                            background-color:#FAFFE9;
+                        }
+                    }
+
                 }
 
-                &.boards-view-simple{
+
+
+                &.view-filter-simple{
 
                     width:65%;
                     margin:auto;
@@ -223,6 +261,13 @@
                 }
 
 
+            }
+            
+            &#pinim-form-pins{
+                .wp-list-table {
+                    tbody tr{
+                    }
+                }
             }
 
         }

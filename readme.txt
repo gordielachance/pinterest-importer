@@ -56,8 +56,30 @@ If you are a plugin developer, [we would like to hear from you](https://github.c
 
 == Frequently Asked Questions ==
 
-= I'm not happy with the content created for posts imported.  How can I change that ? =
-You can set the content you want by using the filter "pinim_get_post_content", see function set_post_content() from class 'Pinim_Pin'.
+= How could I change how pins are saved ? =
+
+Use the filter *pinim_post_before_insert*.  
+
+For example :
+
+`<?php
+
+//switch the default post type to a custom one
+add_filter('pinim_post_before_insert','pin_custom_post_type');
+
+//change post content
+add_filter('pinim_post_before_insert','pin_custom_content');
+
+function pin_custom_post_type($post){   
+    $post['post_type'] = 'MY_POST_TYPE';
+    return $post;
+}
+
+function pin_custom_content($post){   
+    $post['post_content'] = 'MY CONTENT';
+    return $post;
+}
+?>`
 
 == Screenshots ==
 
@@ -69,6 +91,15 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 
 
 == Changelog ==
+= 0.3.1 =
+* Fixed bad code which was slowing down the plugin when displaying the processed pins
+* better handling of the pins caching stuff
+* new auto-cache option
+* New 'pinim_post_before_insert' filter
+* new boards views + last choice stored in session
+* 'queue pins' checkbox for boards (stored in the session)
+* progress bar improvements
+* autoselect bulk checkbox when settings of a board are changed (jQuery)
 = 0.3.0 =
 * Major release !
 * Improved GUI
@@ -111,6 +142,9 @@ You can set the content you want by using the filter "pinim_get_post_content", s
 * First release
 
 == TO DO ==
+* add source in post content should be optional
+* a trashed pin should not be considered existing ?
+* pending & processed pins table : do not load all the posts (very slow !) for processed pins table.
 * use some ajax functions (Pinterest queries, etc.)
 * allow to fetch pins from any Pinterest board
 * bug when creating 'pinim_boards_settings' : last board settings are not saved, so it is detected as new board when the page refreshes.
