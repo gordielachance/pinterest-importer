@@ -201,8 +201,8 @@
 
 
             }
-
-            &#pinim-form-boards{
+            
+            &.pinim-form-boards{
 
                 p.submit{
                     text-align:center;
@@ -260,6 +260,15 @@
                     }
                 }
 
+
+            }
+            
+            &#pinim-form-followed-boards{
+                #follow-new-board{
+                    textarea{
+                        width:100%;
+                    }
+                }
 
             }
             

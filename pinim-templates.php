@@ -164,14 +164,21 @@ function pinim_get_pin_log($post_id){
     return unserialize(pinim_get_pin_meta('log',$post_id,true));
 }
 
-function pinim_get_boards_options($force_reload = false){
+function pinim_get_followed_boards_urls(){
+    if (!pinim()->user_followed_boards_urls) {
+        pinim()->user_followed_boards_urls = get_user_meta( get_current_user_id(), 'pinim_followed_boards_urls', true);
+    }
     
-    if (!pinim()->user_boards_options || $force_reload) {
+    return pinim()->user_followed_boards_urls;
+}
+
+function pinim_get_boards_options(){
+    
+    if (!pinim()->user_boards_options) {
         pinim()->user_boards_options = get_user_meta( get_current_user_id(), 'pinim_boards_settings', true);
     }
     
     return pinim()->user_boards_options;
-
 
 }
 

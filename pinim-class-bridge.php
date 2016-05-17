@@ -321,9 +321,7 @@ class Pinim_Bridge{
 
                 $query = $this->get_user_boards_page($bookmark);
 
-                if ( is_wp_error($query) ){
-                    return new WP_Error( 'pinim', $query->get_error_message(), $boards ); //return already loaded boards with error
-                }
+                if ( is_wp_error($query) ) return $query;
 
                 $bookmark = $query['bookmark'];
 

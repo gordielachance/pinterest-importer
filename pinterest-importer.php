@@ -39,6 +39,7 @@ class PinIm {
     
     static $meta_name_options = 'pinim_options';
 
+    var $user_followed_boards_urls = array();
     var $user_boards_options = null;
     var $pinterest_url = 'https://www.pinterest.com';
     var $donation_url = 'http://bit.ly/gbreant';

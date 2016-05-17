@@ -101,8 +101,9 @@ class Pinim_Board{
                 $new_input['categories'] = $input['category_custom'];
         }
 
+        pinim()->user_boards_options = null; //will force reload
         
-        if ( $boards_settings = pinim_get_boards_options(true) ){ //(force) reloading boards settings...
+        if ( $boards_settings = pinim_get_boards_options() ){ //(force) reloading boards settings...
             //remove previous settings if they exists
             foreach ((array)$boards_settings as $key => $single_board_settings){
 
@@ -120,8 +121,7 @@ class Pinim_Board{
         $boards_settings = array_values($boards_settings);
         
         if ($success = update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_settings)){
-            //reload all boards settings
-            pinim_get_boards_options(true);
+            pinim()->user_boards_options = $boards_settings; //force reload
             return $new_input;
         }else{
             return new WP_Error( 'pinim', sprintf(__( 'Error while saving settings for board "%1$s"', 'pinim' ),$this->get_datas('name')));
@@ -135,7 +135,7 @@ class Pinim_Board{
     
     function get_datas($key = null){
 
-        $boards_datas = pinim_tool_page()->get_boards_raw();
+        $boards_datas = pinim_tool_page()->get_user_boards_raw();
 
         //keep only our board
         $current_board_id = $this->board_id;

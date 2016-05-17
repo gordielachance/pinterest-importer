@@ -362,37 +362,39 @@ class Pinim_Tool_Page {
 
                 $board_settings = array();
                 $board_errors = array();
-                
-                //save boards settings
-                //if ( !isset($_POST['pinim_form_boards']) ) return;
-
-                /*
-                $form_data = $_POST['pinim_form_boards'];
-
-                foreach((array)$form_data as $board_data){
-
-                    $board_id = $board_data['id'];
-                    $board = new Pinim_Board($board_id);
-                    $board_saved = $board->set_options($board_data);
-
-                    if (is_wp_error($board_saved)){
-                        //TO FIX TO CHECK
-                        $board_errors[$board->board_id] = $board_saved->get_error_message();
-                    }
-
-                }
-                */
 
                 if (!$action) break;
-                if ( !$bulk_boards = $this->get_requested_boards() ) break;
 
                 switch ($action) {
                     
+                    case 'boards_save_followed':
+                        
+                        if (!$_POST['pinim_form_boards_followed']) break;
+                        
+                        $boards_urls = array();
+                        $input_urls = $_POST['pinim_form_boards_followed'];
+                        
+                        $input_urls = trim($input_urls);
+                        $input_urls = explode("\n", $input_urls);
+                        $input_urls = array_filter($input_urls, 'trim'); // remove any extra \r characters left behind
+
+                        foreach ($input_urls as $url) {
+                            $boards_urls[] = esc_url($url);
+                            //TO FIX validate board URL
+                            
+                        }
+                        
+                        //save
+                        if ($boards_urls){
+                            update_user_meta( get_current_user_id(), 'pinim_followed_boards_urls', $boards_urls);
+                        }
+                        
+                    break;
+                    
                     case 'boards_save_settings':
-                        
-                        
-                        
+
                         $bulk_data = array();
+                        $bulk_boards = $this->get_requested_boards();
 
                         foreach ((array)$bulk_boards as $board){
                             //fetch form data
@@ -813,46 +815,64 @@ class Pinim_Tool_Page {
                          case 'boards-settings':
                              
                             $form_classes[] = 'view-filter-'.pinim_tool_page()->get_screen_boards_view_filter();
+                            $form_classes[] = 'pinim-form-boards';
                              
-                            ?>
-                            <form id="pinim-form-boards"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_tool_page_url();?>" method="post">
-                                <?php settings_errors('pinim_form_boards');?>
-                                <input type="hidden" name="step" value="<?php echo $this->current_step;?>" />
+                            //user boards
+                             
+                            $boards_datas = pinim_tool_page()->get_user_boards_raw();
+                            if (!is_wp_error($boards_datas)){ //TO FIX and is logged
+                                ?>  
+                                <form id="pinim-form-user-boards"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_tool_page_url();?>" method="post">
+                                    <?php settings_errors('pinim_form_boards');?>
+                                    <input type="hidden" name="step" value="<?php echo $this->current_step;?>" />
 
-                                <h3><?php _e('My boards','pinim');?></h3>
-                                <div class="tab-description">
-                                    <p>
-                                        <?php _e("This is the list of all the boards we've fetched from your profile, including your likes.","pinim");?>
-                                    </p>
-                                </div>
+                                    <h3><?php _e('My boards','pinim');?></h3>
+                                    <div class="tab-description">
+                                        <p>
+                                            <?php _e("This is the list of all the boards we've fetched from your profile, including your likes.","pinim");?>
+                                        </p>
+                                    </div>
+                                    <?php
+                                    $this->table_boards->views_display();
+                                    $this->table_boards->views();
+                                    $this->table_boards->display();                            
+                                    ?>
+                                </form>
+                
                                 <?php
-                                $this->table_boards->views_display();
-                                $this->table_boards->views();
-                                $this->table_boards->display();                            
-                                ?>
-                                <?php
+                                //followed boards
                                 /*
-                                <h3><?php _e('Followed boards','pinim');?></h3>
-                                <?php
-
-                                $this->table_boards->views();
-                                $this->table_boards->display();
-
+                                $followed_boards_urls = pinim_get_followed_boards_urls();
+                                $textarea_content = null;
+                                foreach ((array)$followed_boards_urls as $board_url){
+                                    $textarea_content.= esc_url($board_url)."\n";
+                                }
+                                
                                 ?>
-                                <h3><?php _e('Follow new board','pinim');?></h3>
-                                <div id="follow-new-board" class="tab-description">
-                                    <p>
-                                        <?php _e("Enter the URL of a board you would like to follow.","pinim");?>
-                                    </p>
-                                    <p id="follow-new-board-new">
-                                        <input type="text" name="pinim_form_boards_followed[new]" placeholder="<?php _e('Board URL','pinim');?>" />
-                                    </p>
-                                </div>
+                                <form id="pinim-form-followed-boards"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_tool_page_url();?>" method="post">
+                                    <input type="hidden" name="step" value="<?php echo $this->current_step;?>" />
+                                    <input type="hidden" name="action" value="boards_save_followed" />
+
+                                    <h3><?php _e('Followed boards','pinim');?></h3>
+                                    <div id="follow-new-board" class="tab-description">
+                                        <p>
+                                            <?php _e("Enter the URLs of the boards you would like to follow.  One line per board url.","pinim");?>
+                                        </p>
+                                        
+                                        <?php settings_errors('pinim_form_followed_boards');?>
+                                        
+                                        <p id="follow-new-board-new">
+                                            <textarea name="pinim_form_boards_followed"><?php echo $textarea_content;?></textarea>
+                                        </p>
+                                    </div>
+                                    <?php submit_button(__('Save boards urls','pinim'));?>
+                                </form>
+                                <?php
                                  * 
                                  */
-                                ?>
-                            </form>
-                            <?php
+                            }
+                             
+                            
 
                          break;
 
@@ -1116,7 +1136,7 @@ class Pinim_Tool_Page {
 
     }
 
-    function get_boards_raw(){
+    function get_user_boards_raw(){
 
         $user_boards = null;
 
@@ -1127,9 +1147,7 @@ class Pinim_Tool_Page {
             $logged = $this->do_bridge_login();
             $user_boards = $this->bridge->get_user_boards();
 
-            if (is_wp_error($user_boards)){
-                return $user_boards;
-            }
+            if (is_wp_error($user_boards))return $user_boards;
             
             //likes board
 
@@ -1151,6 +1169,16 @@ class Pinim_Tool_Page {
             $this->set_session_data('user_boards',$user_boards);
 
         }
+        
+        //followed boards
+        /*
+        if ( $boards_urls = pinim_get_followed_boards_urls() ){
+            echo "GOT SOME !";
+            print_R( $user_boards );die();
+        }
+         * 
+         */
+        
 
         return $user_boards;
     }
@@ -1308,7 +1336,7 @@ class Pinim_Tool_Page {
     
     function get_boards(){
         
-        $boards_data = $this->get_boards_raw();
+        $boards_data = $this->get_user_boards_raw();
         if (is_wp_error($boards_data)) return $boards_data;
 
         foreach((array)$boards_data as $board_data){
@@ -1402,7 +1430,7 @@ class Pinim_Tool_Page {
 
     function get_boards_count_complete(){
         $count = 0;
-        $boards_data = $this->get_boards_raw();
+        $boards_data = $this->get_user_boards_raw();
 
        foreach((array)$boards_data as $board_data){
            $board = new Pinim_Board($board_data['id']);
@@ -1418,7 +1446,7 @@ class Pinim_Tool_Page {
 
     function get_boards_count_waiting(){
         $count = 0;
-        $boards_data = $this->get_boards_raw();
+        $boards_data = $this->get_user_boards_raw();
 
         $count = count($boards_data) - $this->get_boards_count_incomplete() - $this->get_boards_count_complete();
 

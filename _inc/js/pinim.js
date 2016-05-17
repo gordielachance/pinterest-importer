@@ -1,8 +1,8 @@
 jQuery(document).ready(function($){
     
     //new boards row
-    $('#pinim-form-boards .column-new_board').hide();
-    $('#pinim-form-boards table.wp-list-table tbody tr').each(function() {
+    $('.pinim-form-boards .column-new_board').hide();
+    $('.pinim-form-boards table.wp-list-table tbody tr').each(function() {
        var row = $(this);
        var bulk = $(this).find("input.bulk");
        var form_options = $(this).find("input,select").not('.bulk');
