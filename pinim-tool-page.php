@@ -619,10 +619,7 @@ class Pinim_Tool_Page {
 
                     //cache pins for auto-cache boards
                     $autocache_boards = $this->get_boards_autocache();
-
-                    foreach((array)$autocache_boards as $board){
-                        $this->cache_boards_pins($board);
-                    }
+                    $this->cache_boards_pins($autocache_boards);
                     
                     //no boards cached message
                     if ( !$this->get_boards_cached() ){

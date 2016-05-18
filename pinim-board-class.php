@@ -186,8 +186,10 @@ class Pinim_Board{
         $board_keys = array_values($matching_boards);
         
         if ($session_loaded = array_shift($board_keys)){
-            $this->bookmark = $session_loaded['bookmark'];
+            $this->datas = $session_loaded['datas'];
             $this->raw_pins = $session_loaded['raw_pins'];
+            $this->bookmark = $session_loaded['bookmark'];
+            
         }
 
     }
