@@ -27,14 +27,17 @@ class Pinim_Pin{
 
         $this->pin_id = $pin_id;
         $this->datas = $this->get_raw_datas();
-        $this->is_like = (isset($this->datas['is_like']));
-        $this->board_id = $this->datas['board']['id'];
+        $this->is_like = $this->get_datas('is_like');
+        $this->board_id = $this->get_datas(array('board','id'));
+        
+        //TO FIX : we should store the username and board slug, so storing is easier ?
+        die("NOUNOU");
 
     }
     
     function get_raw_datas(){
 
-        $all_pins = pinim_tool_page()->get_all_cached_pins_raw(true);
+        $all_pins = pinim_tool_page()->get_all_raw_pins(true);
         //remove unecessary items
         $current_pin_id = $this->pin_id;
         $pins = array_filter(
@@ -57,9 +60,10 @@ class Pinim_Pin{
             echo"GET PIN BOARD";
             
             print_r($this->get_datas());
-
+            die();
             if ($this->is_like){
-                $this->board = new Pinim_Board_Url('likes'); //TO FIX USERNAME
+                $username = pinim_tool_page()->get_session_data(array('user_datas','username'));
+                $this->board = new Pinim_Board($username,'likes'); //TO FIX USERNAME
             }elseif($this->board_id){
                 $this->board = new Pinim_Board_Url($this->board_id); //TO FIX
             }

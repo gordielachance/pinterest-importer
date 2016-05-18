@@ -118,9 +118,9 @@ function pinim_get_array_value($keys = null, $array){
 
  function pin_raw_data_remove_self_pinner($raw_pin){
      if (!isset($raw_pin['pinner'])) return $raw_pin;
-     $user_datas = pinim_tool_page()->get_session_data('user_datas');
+     $username = pinim_tool_page()->get_session_data(array('user_datas','username'));
 
-     if ($raw_pin['pinner']['username'] != $user_datas['username']) return $raw_pin;
+     if ($raw_pin['pinner']['username'] != $username) return $raw_pin;
 
      unset($raw_pin['pinner']);
 
