@@ -217,9 +217,11 @@ class Pinim_Board{
         
         $boards_session[] = $session;
 
-        $success = pinim_tool_page()->set_session_data('boards',$boards_session);
+        if ( $success = pinim_tool_page()->set_session_data('boards',$boards_session) ){
+            $this->populate_session();
+            return $success;
+        }
 
-        return $success;
     }
     
     function get_category(){
@@ -362,8 +364,6 @@ class Pinim_Board{
 
             }
         }
-
-
 
         return $this->raw_pins;
         
