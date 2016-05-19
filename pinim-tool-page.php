@@ -1203,6 +1203,10 @@ class Pinim_Tool_Page {
             foreach ((array)$boards as $board){
                 $board->save_session();
             }
+            
+            //followers
+            $urls = pinim_get_followed_boards_urls();
+            die("FOLLOWERS");
 
         }else{
             foreach((array)$session_boards as $board){
