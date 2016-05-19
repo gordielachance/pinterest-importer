@@ -164,12 +164,23 @@ function pinim_get_pin_log($post_id){
     return unserialize(pinim_get_pin_meta('log',$post_id,true));
 }
 
+
+
 function pinim_get_followed_boards_urls(){
-    if (!pinim()->user_followed_boards_urls) {
-        pinim()->user_followed_boards_urls = get_user_meta( get_current_user_id(), 'pinim_followed_boards_urls', true);
+    if (!pinim()->boards_followed_urls) {
+        $urls = get_user_meta( get_current_user_id(), 'pinim_followed_boards_urls', true);
+        
+        $valid_urls = array();
+        
+        foreach ((array)$urls as $url){
+            if (!Pinim_Bridge::validate_board_url($url)) continue;
+            pinim()->boards_followed_urls[] = $url;
+        }
+        
+        
     }
     
-    return pinim()->user_followed_boards_urls;
+    return pinim()->boards_followed_urls;
 }
 
 function pinim_get_boards_options(){

@@ -382,10 +382,14 @@ class Pinim_Tool_Page {
                         $input_urls = array_filter($input_urls, 'trim'); // remove any extra \r characters left behind
 
                         foreach ($input_urls as $url) {
+                            if (!Pinim_Bridge::validate_board_url($url)) continue;
                             $boards_urls[] = esc_url($url);
                             //TO FIX validate board URL
                             
                         }
+                        
+                        //should we update the session ?
+                        //TO FIX
                         
                         //save
                         if ($boards_urls){
@@ -587,7 +591,7 @@ class Pinim_Tool_Page {
                 $boards = array();
                 $has_new_boards = false;
                 $this->table_boards_user = new Pinim_Boards_Table();
-                $this->table_boards_followed = new Pinim_Boards_Table();
+                $this->table_boards_followed = new Pinim_Boards_Followed_Table();
 
                 //load boards
                 $boards = $this->get_boards();
@@ -632,7 +636,7 @@ class Pinim_Tool_Page {
 
                     $this->table_boards_user->input_data = $user_boards;
                     $this->table_boards_user->prepare_items();
-                    
+
                     $this->table_boards_followed->input_data = $followed_boards;
                     $this->table_boards_followed->prepare_items();
                     
@@ -1203,10 +1207,6 @@ class Pinim_Tool_Page {
             foreach ((array)$boards as $board){
                 $board->save_session();
             }
-            
-            //followers
-            $urls = pinim_get_followed_boards_urls();
-            die("FOLLOWERS");
 
         }else{
             foreach((array)$session_boards as $board){
@@ -1217,13 +1217,15 @@ class Pinim_Tool_Page {
         }
 
         //followed boards
-        /*
+
         if ( $boards_urls = pinim_get_followed_boards_urls() ){
-            echo "GOT SOME !";
-            print_R( $boards );die();
+            foreach((array)$boards_urls as $board_url){
+                $extracted = Pinim_Bridge::validate_board_url($board_url);
+                $board_url = Pinim_Bridge::get_short_url($extracted[0],$extracted[1]);
+                $boards[] = new Pinim_Board_Url($board_url);
+            }
         }
-         * 
-         */
+
 
         return $boards;
     }
@@ -1446,6 +1448,28 @@ class Pinim_Tool_Page {
                     if (!$board->raw_pins || !$board->is_fully_imported()){
                         $output[] = $board;
                     }
+                }
+                
+            break;
+            
+            case 'user':
+                
+                $username = pinim_tool_page()->get_session_data(array('user_datas','username'));
+                
+                foreach((array)$boards as $board){
+                    if($board->username != $username) continue;
+                    $output[] = $board;
+                }
+                
+            break;
+            
+            case 'followed':
+                
+                $username = pinim_tool_page()->get_session_data(array('user_datas','username'));
+                
+                foreach((array)$boards as $board){
+                    if($board->username == $username) continue;
+                    $output[] = $board;
                 }
                 
             break;

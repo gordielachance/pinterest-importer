@@ -511,6 +511,12 @@ class Pinim_Bridge{
         return sprintf('/%1$s/%2$s/',$username,$slug);
     }
     
+    static function validate_board_url($url){
+        preg_match("~http(?:s)?://(?:www\.)?pinterest.com/([^/]+)/([^/]+)/?~", $url, $matches);
+        if (!isset($matches[1]) || !isset($matches[2])) return false;
+        return $matches;
+    }
+    
     public function get_board_id($username,$slug){
         $url = $this->pinterest_url.self::get_short_url($username,$slug);
 

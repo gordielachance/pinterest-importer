@@ -385,6 +385,21 @@ class Pinim_Board{
     
 }
 
+class Pinim_Boards_Followed_Table extends Pinim_Boards_Table {
+    function get_columns(){
+        $columns = parent::get_columns();
+        $columns['username'] = __('Username','pinim');
+        return $columns;
+    }
+    function get_sortable_columns() {
+        $sortable_columns = parent::get_sortable_columns();
+        return $sortable_columns;
+    }
+    function column_username($board){
+        return "toto";
+    }
+}
+
 class Pinim_Boards_Table extends WP_List_Table {
     
     var $input_data = array();
