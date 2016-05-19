@@ -14,7 +14,7 @@ function pinim_get_array_value($keys = null, $array){
     $first_key = $keys[0];
     if(count($keys) > 1) {
         if ( isset($array[$keys[0]]) ){
-            return spiff_get_array_value(array_slice($keys, 1), $array[$keys[0]]);
+            return pinim_get_array_value(array_slice($keys, 1), $array[$keys[0]]);
         }
     }elseif (isset($array[$first_key])){
         return $array[$first_key];

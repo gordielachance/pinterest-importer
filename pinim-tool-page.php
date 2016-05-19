@@ -1331,14 +1331,17 @@ class Pinim_Tool_Page {
         $pins = array();
         
         $boards = $this->get_boards();
-        if (is_wp_error($boards)) return $boards;
+        
+        if (!is_wp_error($boards)) {
+            
+            foreach ((array)$boards as $board){
 
-        foreach ((array)$boards as $board){
+                if ( !$board->raw_pins ) continue;
+                if ( $only_queued_boards && !$board->options['is_queue'] ) continue;
 
-            if ( !$board->raw_pins ) continue;
-            if ( $only_queued_boards && !$board->options['is_queue'] ) continue;
+                $pins = array_merge($pins,$board->raw_pins);
 
-            $pins = array_merge($pins,$board->raw_pins);
+            }
             
         }
 
