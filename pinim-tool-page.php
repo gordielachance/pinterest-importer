@@ -414,7 +414,7 @@ class Pinim_Tool_Page {
                             $input = array_shift($board_form_data);
                             
                             //update board
-                            $board->options['is_queue'] = (isset($input['is_queue']));
+                            $board->in_queue = (isset($input['in_queue']));
 
                             //autocache
                             $board->options['autocache'] = ( isset($input['autocache']) );
@@ -428,6 +428,7 @@ class Pinim_Tool_Page {
                             }
 
                             //save
+                            $board->save_session();
                             $board_saved = $board->save_options();
 
                             if (is_wp_error($board_saved)){
@@ -520,8 +521,6 @@ class Pinim_Tool_Page {
 
             if (is_wp_error($board_pins)){    
                 add_settings_error('pinim_form_boards', 'cache_single_board_pins_'.$board->board_id, $board_pins->get_error_message(),'inline');
-            }else{
-                $board->options['is_queue'] = true;
             }
 
         }
@@ -587,7 +586,8 @@ class Pinim_Tool_Page {
 
                 $boards = array();
                 $has_new_boards = false;
-                $this->table_boards = new Pinim_Boards_Table();
+                $this->table_boards_user = new Pinim_Boards_Table();
+                $this->table_boards_followed = new Pinim_Boards_Table();
 
                 //load boards
                 $boards = $this->get_boards();
@@ -598,35 +598,47 @@ class Pinim_Tool_Page {
                     $boards = array(); //reset boards
                     
                 }else{
-
-                    switch ( $this->get_screen_boards_filter() ){
-                        case 'all':
-                            $boards = $this->get_boards();
-                        break;
-                        case 'cached':
-                            $boards = $this->get_boards_cached();
-                        break;
-                        case 'not_cached':
-                            $boards = $this->get_boards_not_cached();
-                        break;
-                        case 'in_queue':
-                            $boards = $this->get_boards_in_queue();
-                        break;
-                    }
-
-                    $this->table_boards->input_data = $boards;
-                    $this->table_boards->prepare_items();
+                    
+                    $all_boards = $this->get_boards();
+                    $user_boards = $this->filter_boards($boards,'user');
+                    $followed_boards = $this->filter_boards($boards,'followed');
 
                     //cache pins for auto-cache boards
-                    $autocache_boards = $this->get_boards_autocache();
+                    $autocache_boards = $this->filter_boards($all_boards,'autocache');
                     $this->cache_boards_pins($autocache_boards);
-                    
+                    $boards_cached = $this->filter_boards($boards,'cached');
+
                     //no boards cached message
-                    if ( !$this->get_boards_cached() ){
+                    if ( !$boards_cached ){
                         $feedback = array(__("Start by caching a bunch of boards so we can get informations about their pins !",'pinim') );
                         $feedback[] =   __("You could also check the <em>auto-cache</em> option for some of your boards, so they will always be preloaded.",'pinim');
                         add_settings_error('pinim_form_boards','no_boards_cached',implode('<br/>',$feedback),'updated inline');
                     }
+
+                    switch ( $this->get_screen_boards_filter() ){
+                        case 'all':
+                            $user_boards = $all_boards;
+                        break;
+                        case 'cached':
+                            $user_boards = $boards_cached;
+                        break;
+                        case 'not_cached':
+                            $user_boards = $this->filter_boards($boards,'not_cached');
+                        break;
+                        case 'in_queue':
+                            $user_boards = $this->filter_boards($boards,'in_queue');
+                        break;
+                    }
+
+                    $this->table_boards_user->input_data = $user_boards;
+                    $this->table_boards_user->prepare_items();
+                    
+                    $this->table_boards_followed->input_data = $followed_boards;
+                    $this->table_boards_followed->prepare_items();
+                    
+                    
+
+
 
                     //display feedback with import links
                     if ( $pending_count = $this->get_pins_count_pending() ){
@@ -840,15 +852,15 @@ class Pinim_Tool_Page {
                                         </p>
                                     </div>
                                     <?php
-                                    $this->table_boards->views_display();
-                                    $this->table_boards->views();
-                                    $this->table_boards->display();                            
+                                    $this->table_boards_user->views_display();
+                                    $this->table_boards_user->views();
+                                    $this->table_boards_user->display();                            
                                     ?>
                                 </form>
                 
                                 <?php
                                 //followed boards
-                                /*
+
                                 $followed_boards_urls = pinim_get_followed_boards_urls();
                                 $textarea_content = null;
                                 foreach ((array)$followed_boards_urls as $board_url){
@@ -868,6 +880,13 @@ class Pinim_Tool_Page {
                                         
                                         <?php settings_errors('pinim_form_followed_boards');?>
                                         
+                                        
+                                        <?php
+                                        $this->table_boards_followed->views_display();
+                                        $this->table_boards_followed->views();
+                                        $this->table_boards_followed->display();                            
+                                        ?>
+                                        
                                         <p id="follow-new-board-new">
                                             <textarea name="pinim_form_boards_followed"><?php echo $textarea_content;?></textarea>
                                         </p>
@@ -875,8 +894,7 @@ class Pinim_Tool_Page {
                                     <?php submit_button(__('Save boards urls','pinim'));?>
                                 </form>
                                 <?php
-                                 * 
-                                 */
+
                             }
                              
                             
@@ -1146,7 +1164,7 @@ class Pinim_Tool_Page {
     function get_boards(){
 
         if (!$session_boards = $this->get_session_data('boards')){ //already populated
-        //if (1==1){  
+
             //user boards
             $logged = $this->do_bridge_login();
             if ( is_wp_error($logged) ) return $logged;
@@ -1172,7 +1190,7 @@ class Pinim_Tool_Page {
             if (is_wp_error($board_likes)){
                 add_settings_error('pinim_form_boards', 'get_user_board_likes', $board_likes->get_error_message(),'inline');
             }else{
-                $board_likes->datas['name'] = __('Likes','pinim');
+                $board_likes->datas['name'] = __('Likes','pinim').' <i class="fa fa-heart" aria-hidden="true"></i>';
                 $board_likes->datas['pin_count'] = $pin_count;
                 $board_likes->datas['cover_images'] = array(
                     array(
@@ -1337,7 +1355,7 @@ class Pinim_Tool_Page {
             foreach ((array)$boards as $board){
 
                 if ( !$board->raw_pins ) continue;
-                if ( $only_queued_boards && !$board->options['is_queue'] ) continue;
+                if ( $only_queued_boards && !$board->in_queue ) continue;
 
                 $pins = array_merge($pins,$board->raw_pins);
 
@@ -1360,99 +1378,81 @@ class Pinim_Tool_Page {
         return count(pinim_tool_page()->existing_pin_ids);
     }
     
+    function filter_boards($boards,$filter){
 
-    function get_boards_autocache(){
         $output = array();
         
-        if ( !pinim()->get_options('autocache') ) return $output;
-        
-        $boards = $this->get_boards();
-
-        foreach((array)$boards as $board){
-            if ( $board->get_options('autocache') ){
-                $output[] = $board;
-            }
-
-        }
-
-       return $output;
-    }
-    
-    function get_boards_not_cached(){
-        $output = array();
-        $boards = $this->get_boards();
-
-       foreach((array)$boards as $board){
-           if ( $board->is_queue_complete() ) continue; //query done
-           $output[] = $board;
-
-       }
-
-       return $output;
-    }
-    
-    function get_boards_cached(){
-        $output = array();
-        $boards = $this->get_boards();
-
-       foreach((array)$boards as $board){
-            if ( !$board->is_queue_complete() ) continue; //query not done
-            $output[] = $board;
-
-       }
-
-       return $output;
-    }
-    
-    function get_boards_in_queue(){
-        $output = array();
-        $boards = $this->get_boards();
-
-       foreach((array)$boards as $board){
-            if ( !$board->options['is_queue'] ) continue;
-            if ( $board->is_fully_imported() ) continue;
+        switch ($filter){
+            case 'autocache':
+                if ( !pinim()->get_options('autocache') ) break;
+                
+                foreach((array)$boards as $board){
+                    if ( $board->get_options('autocache') ){
+                        $output[] = $board;
+                    }
+                }
+                
+            break;
             
-            $output[] = $board;
+            case 'cached':
+                
+                foreach((array)$boards as $board){
+                    if ( !$board->is_queue_complete() ) continue; //query done
+                    $output[] = $board;
 
-       }
+                }
+                
+            break;
+            
+            case 'not_cached':
+                
+                foreach((array)$boards as $board){
+                    if ( $board->is_queue_complete() ) continue; //query done
+                    $output[] = $board;
 
-       return $output;
-    }
+                }
+                
+            break;
+            
+            case 'in_queue':
+                
+                foreach((array)$boards as $board){
+                    if ( !$board->raw_pins ) continue; //empty
+                    if ( $board->is_fully_imported() ) continue; //full
+                    if ( !$board->in_queue ) continue; //not in queue
+                    $output[] = $board;
+                }
+                
+            break;
+            
+            case 'complete':
+                
+                foreach((array)$boards as $board){
+                    if (!$board->raw_pins) continue; //empty
+                    if ($board->is_fully_imported()){
+                        $output[] = $board;
+                    }
+                }
+                
+            break;
+            
+            case 'incomplete':
+                
+                foreach((array)$boards as $board){
+                    if (!$board->raw_pins || !$board->is_fully_imported()){
+                        $output[] = $board;
+                    }
+                }
+                
+            break;
+            
 
-    function get_boards_count_incomplete(){
-        $boards = $this->get_boards();
-        $count = count($boards);
-        $count -= $this->get_boards_count_complete();
-
-        return $count;
-
-    }
-
-    function get_boards_count_complete(){
-        $count = 0;
-        $boards = $this->get_boards();
-
-        foreach((array)$boards as $board){
-            if ($board->raw_pins && $board->is_fully_imported()){
-                $count++;
-            }
-
+            
         }
-
-       return $count;
-
+        
+        return $output;
     }
 
-    function get_boards_count_waiting(){
-        $count = 0;
-        $boards = $this->get_boards();
-
-        $count = count($boards) - $this->get_boards_count_incomplete() - $this->get_boards_count_complete();
-
-       return $count;
-
-    }
-    
     /**
      * Register a session so we can store the temporary.
      */

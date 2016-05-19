@@ -45,6 +45,7 @@ class Pinim_Board{
 
     var $datas;
     var $options;
+    var $in_queue;
     
     var $raw_pins = array();
     var $pins = array();
@@ -75,7 +76,6 @@ class Pinim_Board{
             'username'      => $this->username,
             'slug'          => $this->slug,
             'board_id'      => $this->board_id,
-            'is_queue'      => false,
             'autocache'     => false,
             'private'       => false,
             'categories'    => null
@@ -90,6 +90,7 @@ class Pinim_Board{
             'slug'          => $this->slug,
             'raw_pins'      => null,
             'bookmark'      => null,
+            'in_queue'      => false,
         );
         
         $this->populate_session();
@@ -152,7 +153,7 @@ class Pinim_Board{
         //keep all but our board
         $current_board_id = $this->board_id;
         $boards_settings = array_filter(
-            $boards_settings,
+            (array)$boards_settings,
             function ($e) use ($current_board_id) {
                 return ( isset($e['board_id']) && ($e['board_id'] != $current_board_id) );
             }
@@ -189,6 +190,7 @@ class Pinim_Board{
             $this->datas = $session_loaded['datas'];
             $this->raw_pins = $session_loaded['raw_pins'];
             $this->bookmark = $session_loaded['bookmark'];
+            $this->in_queue = $session_loaded['in_queue'];
             
         }
 
@@ -206,6 +208,7 @@ class Pinim_Board{
             'datas'         => $this->datas,
             'raw_pins'      => $this->raw_pins,
             'bookmark'      => $this->bookmark,
+            'in_queue'      => $this->in_queue,
         );
         
         //keep all but our board
@@ -366,73 +369,15 @@ class Pinim_Board{
 
             }
         }
-
+        
+        $this->in_queue = true;
+        $this->save_session();
+        
         return $this->raw_pins;
         
         
     }
     
-    /**
-     * $cache = 'auto', 'disabled', 'only'
-     * @param type $cache
-     * @return \WP_Error
-     */
-    
-    function Nget_pins($reset = false){
-        $error = null;
-        
-        if (!isset($this->raw_pins)){
-            $pins = array();
-            
-            if ( isset($this->bookmark) && ($this->bookmark!='-end-') ){ //uncomplete queue
-                $reset = false; //do not reset queue, it is not filled yet
-            }
-            
-            if ($reset){
-                //reset
-                $this->raw_pins = null;
-            }
-
-            if ( !$this->raw_pins || $this->bookmark ){
-
-                $bridge_data = pinim_tool_page()->bridge->get_board_pins($this->pinterest_url,$this->bookmark);
-
-                if (is_wp_error($bridge_data)){
-
-                    //check if we have an incomplete queue
-                    $error_code = $bridge_data->get_error_code();
-                    return $bridge_data->get_error_data($error_code);
-
-                }else{
-                    
-                    //special key for likes (will be used in function 'get_cached_pins' )
-                    if ( ($this->slug=='likes') && $bridge_data['pins'] ){
-                        foreach ($bridge_data['pins'] as $key=>$pin_raw){
-                            $pin_raw['is_like'] = true;
-                            $bridge_data['pins'][$key] = $pin_raw;
-                        }
-                    }
-
-                    $this->raw_pins = array_merge($this->raw_pins,$bridge_data['pins']);
-                    $this->bookmark = $bridge_data['bookmark'];
-                }
-
-
-                $this->save_session();
-                
-            }
-
-        }
-
-        if ($error){
-            return $error;
-        }else{
-            return $this->raw_pins;
-        }
-        
-        
-    }
-
     function get_remote_url(){
         $url = pinim()->pinterest_url.$this->get_datas('url');
         return $url;
@@ -568,12 +513,12 @@ class Pinim_Boards_Table extends WP_List_Table {
         
     }
     
-    function column_is_queue($board){
-        $option = $board->options['is_queue'];
+    function column_in_queue($board){
+        $option = ($board->in_queue);
         $can_queue = $this->is_queue_complete(); //we already did try to reach Pinterest
 
         return sprintf(
-            '<input type="checkbox" name="pinim_form_boards[%1$s][is_queue]" value="on" %2$s %3$s />',
+            '<input type="checkbox" name="pinim_form_boards[%1$s][in_queue]" value="on" %2$s %3$s />',
             $this->board_idx,
             checked($option, true, false ),
             disabled( $can_queue, true, false )
@@ -741,7 +686,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         }
         
         if ( pinim_tool_page()->get_screen_boards_filter() != 'not_cached' ){
-            $columns['is_queue'] = __('Queue pins','pinim');
+            $columns['in_queue'] = __('Queue pins','pinim');
         }
 
         return $columns;
@@ -813,10 +758,13 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         $link_all = $link_cached = $link_not_cached = null;
         $link_all_classes = $link_cached_classes = $link_not_cached_classes = $link_in_queue_classes = array();
-        $all_count = count(pinim_tool_page()->get_boards());
-        $cached_count = count(pinim_tool_page()->get_boards_cached());
-        $not_cached_count = count(pinim_tool_page()->get_boards_not_cached());
-        $in_queue_count = count(pinim_tool_page()->get_boards_in_queue());
+        
+        $all_boards = pinim_tool_page()->get_boards();
+        
+        $all_count = count($all_boards);
+        $cached_count = count(pinim_tool_page()->filter_boards($all_boards,'cached'));
+        $not_cached_count = count(pinim_tool_page()->filter_boards($all_boards,'not_cached'));
+        $in_queue_count = count(pinim_tool_page()->filter_boards($all_boards,'in_queue'));
 
         switch (pinim_tool_page()->get_screen_boards_filter()){
             case 'all':
@@ -1065,6 +1013,9 @@ class Pinim_Boards_Table extends WP_List_Table {
          * to a custom query. The returned data will be pre-sorted, and this array
          * sorting technique would be unnecessary.
          */
+        
+        
+        /*
         function usort_reorder($a,$b){
 
             $orderby = 'title';
@@ -1085,7 +1036,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
             return ($order==='asc') ? $result : -$result; //Send final sort direction to usort
         }
-        //TO FIX
+        
         //usort($data, 'usort_reorder');
         
         

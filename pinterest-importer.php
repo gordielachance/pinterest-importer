@@ -117,12 +117,6 @@ class PinIm {
         
         add_action( 'admin_init', array(&$this,'load_textdomain'));
 
-        //TO FIX TO CHECK we have removed that filter
-        //add_filter( 'pin_sanitize_raw_datas','pin_raw_data_remove_unecessary_keys');
-        //add_filter( 'pin_sanitize_raw_datas','pin_raw_data_date_to_timestamp');
-        add_filter( 'pin_sanitize_before_insert','pin_raw_data_images_reduce');
-        add_filter( 'pin_sanitize_before_insert','pin_raw_data_remove_self_pinner');
-
     }
     
     function load_textdomain() {

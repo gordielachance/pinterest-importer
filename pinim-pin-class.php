@@ -31,7 +31,6 @@ class Pinim_Pin{
         $this->board_id = $this->get_datas(array('board','id'));
         
         //TO FIX : we should store the username and board slug, so storing is easier ?
-        die("NOUNOU");
 
     }
     
@@ -55,22 +54,23 @@ class Pinim_Pin{
 
     function get_board(){
         
-        if ( !isset($this->board) ){
-            
-            echo"GET PIN BOARD";
-            
-            print_r($this->get_datas());
-            die();
-            if ($this->is_like){
-                $username = pinim_tool_page()->get_session_data(array('user_datas','username'));
-                $this->board = new Pinim_Board($username,'likes'); //TO FIX USERNAME
-            }elseif($this->board_id){
-                $this->board = new Pinim_Board_Url($this->board_id); //TO FIX
-            }
-
-        }
+        //TO FIX likes board does not work (is_like, etc)
+        //print_r($this);die();
         
-        return $this->board;
+        //load boards
+        $boards = pinim_tool_page()->get_boards();
+        
+        $pin_board_id = $this->board_id;
+        
+        $boards = array_filter(
+            $boards,
+            function ($e) use ($pin_board_id) {
+                return $e->board_id == $pin_board_id;
+            }
+        );  
+        
+        $boards = array_values($boards);
+        return array_shift($boards); //keep only first
         
     }
     /*
@@ -990,18 +990,19 @@ class Pinim_Pending_Pins_Table extends Pinim_Pins_Table {
     }
     
     function column_board($pin){
-        
+
         $board = $pin->get_board();
 
-        if (!$board) return;
-        
+        if ( !$board || is_wp_error($board) ) return;
+
         $board_name = $board->get_datas('name');
 
         return $board_name;
     }
     
     function column_date($pin){
-        $timestamp = $pin->get_datas('created_at');
+        $pinterest_date = $pin->get_datas('created_at');
+        $timestamp = strtotime($pinterest_date);
         $date = date_i18n( get_option( 'date_format'), $timestamp );
         $time = date_i18n( get_option( 'time_format'), $timestamp );
         return sprintf( __('%1$s at %2$s','pinim'), $date, $time );

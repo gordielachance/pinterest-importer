@@ -16,10 +16,6 @@ jQuery(document).ready(function($){
           row.toggleClass("is-checked", this.checked);
         });
 
-       if ( row.find('.pinim-pc-bar').length > 0 ){ //has a progres bar = is cached
-           row.addClass('is-cached');
-       }
-       
     });
     
     //form buttons
