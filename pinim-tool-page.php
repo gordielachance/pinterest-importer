@@ -639,10 +639,6 @@ class Pinim_Tool_Page {
 
                     $this->table_boards_followed->input_data = $followed_boards;
                     $this->table_boards_followed->prepare_items();
-                    
-                    
-
-
 
                     //display feedback with import links
                     if ( $pending_count = $this->get_pins_count_pending() ){
@@ -864,7 +860,7 @@ class Pinim_Tool_Page {
                 
                                 <?php
                                 //followed boards
-
+                                /*
                                 $followed_boards_urls = pinim_get_followed_boards_urls();
                                 $textarea_content = null;
                                 foreach ((array)$followed_boards_urls as $board_url){
@@ -898,7 +894,8 @@ class Pinim_Tool_Page {
                                     <?php submit_button(__('Save boards urls','pinim'));?>
                                 </form>
                                 <?php
-
+                                 * 
+                                 */
                             }
                              
                             
@@ -1217,7 +1214,8 @@ class Pinim_Tool_Page {
         }
 
         //followed boards
-
+        //TO FIX separate session ?
+        
         if ( $boards_urls = pinim_get_followed_boards_urls() ){
             foreach((array)$boards_urls as $board_url){
                 $extracted = Pinim_Bridge::validate_board_url($board_url);
