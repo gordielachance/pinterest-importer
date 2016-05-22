@@ -173,7 +173,7 @@ class Pinim_Board{
     function populate_session(){
 
         //get it
-        $all_boards_session = (array)pinim_tool_page()->get_session_data('boards');
+        $all_boards_session = (array)pinim_tool_page()->get_session_data('user_boards');
         
         //keep only our board
         $current_board_id = $this->board_id;
@@ -199,7 +199,7 @@ class Pinim_Board{
     function save_session(){
         
         //all boards session
-        $boards_session = (array)pinim_tool_page()->get_session_data('boards');
+        $boards_session = (array)pinim_tool_page()->get_session_data('user_boards');
 
         $session = array(
             'board_id'      => $this->board_id,
@@ -222,7 +222,7 @@ class Pinim_Board{
         
         $boards_session[] = $session;
 
-        if ( $success = pinim_tool_page()->set_session_data('boards',$boards_session) ){
+        if ( $success = pinim_tool_page()->set_session_data('user_boards',$boards_session) ){
             $this->populate_session();
             return $success;
         }
@@ -396,7 +396,7 @@ class Pinim_Boards_Followed_Table extends Pinim_Boards_Table {
         return $sortable_columns;
     }
     function column_username($board){
-        return "toto";
+        return $board->username;
     }
 }
 
@@ -530,13 +530,14 @@ class Pinim_Boards_Table extends WP_List_Table {
     
     function column_in_queue($board){
         $option = ($board->in_queue);
-        $can_queue = $this->is_queue_complete(); //we already did try to reach Pinterest
+        $can_queue = $this->is_queue_complete();//TO FIX not working
+        $can_queue = true;
 
         return sprintf(
             '<input type="checkbox" name="pinim_form_boards[%1$s][in_queue]" value="on" %2$s %3$s />',
             $this->board_idx,
             checked($option, true, false ),
-            disabled( $can_queue, true, false )
+            disabled( $can_queue, false, true ) 
         );
         
     }

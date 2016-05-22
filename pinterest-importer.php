@@ -89,22 +89,21 @@ class PinIm {
                 'boards_filter'         => 'all',
                 'pins_filter'           => 'pending',
                 'autocache'             => true,
+                'enable_follow_boards'  => true
             );
             $this->options = wp_parse_args(get_option( self::$meta_name_options), $this->options_default);
 
     }
 
-    
-    
     function includes(){
-        require $this->plugin_dir . '/pinim-class-bridge.php';      //communication with Pinterest
-        require $this->plugin_dir . '/pinim-functions.php';
-        require $this->plugin_dir . '/pinim-templates.php';
-        require $this->plugin_dir . '/pinim-pin-class.php';
-        //require $this->plugin_dir . '/pinim-ajax.php';
-        require $this->plugin_dir . '/pinim-board-class.php';
-        require $this->plugin_dir . '/pinim-dummy-importer.php';
-        require $this->plugin_dir . '/pinim-tool-page.php';
+        require $this->plugin_dir . 'pinim-class-bridge.php';      //communication with Pinterest
+        require $this->plugin_dir . 'pinim-functions.php';
+        require $this->plugin_dir . 'pinim-templates.php';
+        require $this->plugin_dir . 'pinim-pin-class.php';
+        //require $this->plugin_dir . 'pinim-ajax.php';
+        require $this->plugin_dir . 'pinim-board-class.php';
+        require $this->plugin_dir . 'pinim-dummy-importer.php';
+        require $this->plugin_dir . 'pinim-tool-page.php';
     }
 
     function setup_actions(){  

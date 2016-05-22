@@ -167,15 +167,21 @@ function pinim_get_pin_log($post_id){
 
 
 function pinim_get_followed_boards_urls(){
+    
+    $output = array();
+    
+    if ( !pinim()->get_options('enable_follow_boards') ) return $output;
+    
     if (!pinim()->boards_followed_urls) {
         $urls = get_user_meta( get_current_user_id(), 'pinim_followed_boards_urls', true);
-        
-        $valid_urls = array();
-        
+
         foreach ((array)$urls as $url){
-            if (!Pinim_Bridge::validate_board_url($url)) continue;
-            pinim()->boards_followed_urls[] = $url;
+            $board_args = Pinim_Bridge::validate_board_url($url);
+            if ( is_wp_error($board_args) ) continue;
+            $output[] = $url;
         }
+        
+        pinim()->boards_followed_urls = $output;
         
         
     }
