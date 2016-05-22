@@ -89,7 +89,7 @@ class PinIm {
                 'boards_filter'         => 'all',
                 'pins_filter'           => 'pending',
                 'autocache'             => true,
-                'enable_follow_boards'  => true
+                'enable_follow_boards'  => false
             );
             $this->options = wp_parse_args(get_option( self::$meta_name_options), $this->options_default);
 

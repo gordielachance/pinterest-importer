@@ -290,9 +290,6 @@ class Pinim_Bridge{
 
         if (isset($body['resource_data_cache'][0]['data'])) {
             $data = $body['resource_data_cache'][0]['data'];
-            if (isset($data['repins_from'])) {
-                unset($data['repins_from']);
-            }
             return array_filter($data);
         }
 

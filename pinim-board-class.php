@@ -324,7 +324,7 @@ class Pinim_Board{
         
     }
     
-    function get_pins($reset = false){
+    function get_pins(){
         $error = null;
         
         if (!$this->is_queue_complete()){
@@ -333,19 +333,9 @@ class Pinim_Board{
             $logged = pinim_tool_page()->do_bridge_login();
             if(is_wp_error($logged)) return $logged;
 
-            $bookmark = null;
+            $bookmark = $this->bookmark; //uncomplete queue
 
-            if ( $this->bookmark!='-end-' ){ //uncomplete queue
-                $bookmark = $this->bookmark;
-                $reset = false; //do not reset queue, it is not filled yet
-            }
-            if ( $reset || !$this->raw_pins || $bookmark ){
-
-                if ($reset){
-                    $this->raw_pins = array();
-                    $this->bookmark = null;
-                    $this->save_session();
-                }
+            if ( !$this->raw_pins || $bookmark ){
 
                 $pinterest_query = pinim_tool_page()->bridge->get_board_pins($this->username, $this->slug, $this->board_id, $this->bookmark);
 
@@ -356,7 +346,6 @@ class Pinim_Board{
                     $raw_pins = $error->get_error_data($error_code);
                     $this->raw_pins = $raw_pins;
                 }else{
-
                     $this->raw_pins = array_merge((array)$this->raw_pins,$pinterest_query['pins']);
                     $this->bookmark = $pinterest_query['bookmark'];
                 }
@@ -369,9 +358,6 @@ class Pinim_Board{
 
             }
         }
-        
-        $this->in_queue = true;
-        $this->save_session();
         
         return $this->raw_pins;
         
@@ -530,14 +516,13 @@ class Pinim_Boards_Table extends WP_List_Table {
     
     function column_in_queue($board){
         $option = ($board->in_queue);
-        $can_queue = $this->is_queue_complete();//TO FIX not working
-        $can_queue = true;
+        $can_queue = $board->is_queue_complete();
 
         return sprintf(
             '<input type="checkbox" name="pinim_form_boards[%1$s][in_queue]" value="on" %2$s %3$s />',
             $this->board_idx,
             checked($option, true, false ),
-            disabled( $can_queue, false, true ) 
+            disabled( $can_queue, false, false ) 
         );
         
     }
@@ -651,7 +636,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                     $pc_status_classes[] = 'incomplete';
                 break;
             }
-            
+
             if ( !$board->bookmark ){ //queue not started
                 $pc_status_classes[] = "offline";
                 $link = pinim_get_tool_page_url(array('step'=>'boards-settings','action'=>'boards_cache_pins','board_ids'=>$board->board_id));

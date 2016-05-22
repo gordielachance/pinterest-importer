@@ -524,6 +524,7 @@ class Pinim_Tool_Page {
 
         foreach((array)$boards as $board){ 
 
+            $board->in_queue = true;
             $board_pins = $board->get_pins();
 
             if (is_wp_error($board_pins)){    
@@ -610,14 +611,14 @@ class Pinim_Tool_Page {
                 }else{
                     
                     $all_boards = $this->get_boards();
-                    $user_boards = $this->filter_boards($boards,'user');
 
-                    $followed_boards = $this->filter_boards($boards,'followed');
-
-                    //cache pins for auto-cache boards
+                    //cache pins for auto-cache & queued boards
                     $autocache_boards = $this->filter_boards($all_boards,'autocache');
-                    $this->cache_boards_pins($autocache_boards);
-                    $boards_cached = $this->filter_boards($boards,'cached');
+                    $queued_boards = $this->filter_boards($all_boards,'in_queue');
+                    $load_pins_boards = array_merge($autocache_boards,$queued_boards);
+                    $this->cache_boards_pins($load_pins_boards);
+                    
+                    $boards_cached = $this->filter_boards($all_boards,'cached');
 
                     //no boards cached message
                     if ( !$boards_cached ){
@@ -625,16 +626,18 @@ class Pinim_Tool_Page {
                         $feedback[] =   __("You could also check the <em>auto-cache</em> option for some of your boards, so they will always be preloaded.",'pinim');
                         add_settings_error('pinim_form_boards','no_boards_cached',implode('<br/>',$feedback),'updated inline');
                     }
+                    
+                    $user_boards = $this->filter_boards($boards,'user');
 
                     switch ( $this->get_screen_boards_filter() ){
                         case 'cached':
-                            $user_boards = $boards_cached;
+                            $user_boards = $this->filter_boards($user_boards,'cached');
                         break;
                         case 'not_cached':
-                            $user_boards = $this->filter_boards($boards,'not_cached');
+                            $user_boards = $this->filter_boards($user_boards,'not_cached');
                         break;
                         case 'in_queue':
-                            $user_boards = $this->filter_boards($boards,'in_queue');
+                            $user_boards = $this->filter_boards($user_boards,'in_queue');
                         break;
                     }
 
@@ -642,6 +645,7 @@ class Pinim_Tool_Page {
                     $this->table_boards_user->prepare_items();
 
                     if ( pinim()->get_options('enable_follow_boards') ){
+                        $followed_boards = $this->filter_boards($boards,'followed');
                         $this->table_boards_followed->input_data = $followed_boards;
                         $this->table_boards_followed->prepare_items();
                     }
@@ -1140,32 +1144,34 @@ class Pinim_Tool_Page {
 
         $user_data = $this->get_user_infos();
         if ( is_wp_error($user_data) || !$user_data ) return;
-
-        if (isset($user_datas['image_medium_url'])){
-            $user_icon = $user_datas['image_medium_url'];
-        }
+        
+        $user_icon = $this->get_user_infos('image_medium_url');
+        $username = $this->get_user_infos('username');
+        $board_count = $this->get_user_infos('board_count');
+        $secret_board_count = $this->get_user_infos('secret_board_count');
+        $like_count = $this->get_user_infos('like_count');
         
         //names
-        $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$user_data['username'].'</strong>');
+        $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$username.'</strong>');
         
         $list = array();
         
         //public boards
         $list[] = sprintf(
             '<span>'.__('%1$s public boards','pinim').'</span>',
-            '<strong>'.$user_data['board_count'].'</strong>'
+            '<strong>'.$board_count.'</strong>'
         );
         
         //public boards
         $list[] = sprintf(
             '<span>'.__('%1$s private boards','pinim').'</span>',
-            '<strong>'.$user_data['secret_board_count'].'</strong>'
+            '<strong>'.$secret_board_count.'</strong>'
         );
         
         //likes
         $list[] = sprintf(
             '<span>'.__('%1$s likes','pinim').'</span>',
-            '<strong>'.$user_data['like_count'].'</strong>'
+            '<strong>'.$like_count.'</strong>'
         );
         
         $user_stats = implode(",",$list);
@@ -1183,7 +1189,7 @@ class Pinim_Tool_Page {
      * @return type
      */
     
-    function get_user_infos($username = 'me'){
+    function get_user_infos($keys = null,$username = 'me'){
         $session_data = $this->get_session_data('user_datas');
         
         if ( !isset($session_data[$username]) ){
@@ -1196,8 +1202,9 @@ class Pinim_Tool_Page {
             $this->set_session_data('user_datas',$session_data);
             
         }
-
-        return $session_data[$username];
+        
+        $datas = $session_data[$username];
+        return pinim_get_array_value($keys, $datas);
 
     }
     
@@ -1206,7 +1213,14 @@ class Pinim_Tool_Page {
 
         if ( !isset($session_data[$username]) ){
             
-            $userdata = $this->bridge->get_user_boards($username);
+            if ($username == 'me'){
+                //FIX for secret boards; which are not retrieved if username = 'me'.
+                $me_username = $this->get_user_infos('username');
+                $userdata = $this->bridge->get_user_boards($me_username);
+            }else{
+                $userdata = $this->bridge->get_user_boards($username);
+            }
+
             if ( is_wp_error($userdata) ) return $userdata;
 
             $session_data[$username] = $userdata;
@@ -1220,19 +1234,11 @@ class Pinim_Tool_Page {
     }
 
     function get_boards(){
-        
+
+        //try to auth
         $logged = $this->do_bridge_login();
         if ( is_wp_error($logged) ) return $logged;
 
-        $user_data = $this->get_user_infos();
-        
-        if ( !is_wp_error($user_data) && $user_data ){
-            $username = $user_data['username'];
-            $pin_count = $user_data['like_count'];
-            $profile_thumb = $user_data['image_medium_url'];
-        }
-
-        
         //get users
         $users = array(
             'me'
@@ -1248,43 +1254,37 @@ class Pinim_Tool_Page {
 
         $users = array_unique($users);
         $user_datas = array();
-        
-        foreach((array)$users as $user){
-            
-            $userdata = $this->get_user_infos($user);
-            $userboards = $this->get_user_boards($user);
-            
-            if ( is_wp_error($userdata) ){
-                //TO FIX handle errors
-                continue;
-            }
 
-            if ( is_wp_error($userboards) ){
-                //TO FIX handle errors
-                continue;
-            }
+        foreach((array)$users as $username){
+            
+            $userdata = $this->get_user_infos(null,$username);
+            $boards = $this->get_user_boards($username);
 
             $data = array(
                 'user'      => $userdata,
-                'boards'    => $userboards
+                'boards'    => $boards
             );
-            
-            $user_datas[$user] = $data;
+
+            $user_datas[$username] = $data;
         }
 
         //populate boards
         $populate_boards = array();
-        $session_boards = $this->get_session_data('user_boards');
 
         //append user boards
-        foreach((array)$user_datas['me']['boards'] as $board_data){
-            $populate_boards[] = new Pinim_Board_Data($board_data);
+        if ( isset($user_datas['me']['boards']) ){
+            foreach((array)$user_datas['me']['boards'] as $board_data){
+                $populate_boards[] = new Pinim_Board_Data($board_data);
+            }
         }
+
         
         //append user likes
+        /*
+        $username = $this->get_user_infos('username');
         $url = Pinim_Bridge::get_short_url($username,'likes');
         $populate_boards[] = new Pinim_Board_Url($url);
-        
+        */
 
         //append followed boards
         foreach((array)$followed_boards_urls as $board_url){
@@ -1325,13 +1325,15 @@ class Pinim_Tool_Page {
         foreach ((array)$populate_boards as $key=>$board){
             if ( is_wp_error($board) ) unset($board);
             if ( $board->slug == 'likes'){
-                $user_data = $this->get_user_infos($board->username);
+                $board_username = $this->get_user_infos('username',$board->username);
+                $board_like_count = $this->get_user_infos('like_count',$board->username);
+                $board_image = $this->get_user_infos('image_medium_url',$board->username);
 
-                $board->datas['name'] = sprintf(__("%s's likes",'pinim'),$user_data['username']).' <i class="fa fa-heart" aria-hidden="true"></i>';
-                $board->datas['pin_count'] = $user_data['like_count'];
+                $board->datas['name'] = sprintf(__("%s's likes",'pinim'),$board_username).' <i class="fa fa-heart" aria-hidden="true"></i>';
+                $board->datas['pin_count'] = $board_like_count;
                 $board->datas['cover_images'] = array(
                     array(
-                        'url'   => $user_data['image_medium_url']
+                        'url'   => $board_image
                     )
                 );
                 
@@ -1500,8 +1502,7 @@ class Pinim_Tool_Page {
 
         $output = array();
         
-        $user_data = $this->get_user_infos();
-        $username = $user_data['username'];
+        $username = $this->get_user_infos('username');
         
         switch ($filter){
             case 'autocache':
