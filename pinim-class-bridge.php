@@ -404,14 +404,10 @@ class Pinim_Bridge{
         }
 
         $body = $this->maybe_decode_response($body);
-        
-        
-        
-        if (isset($body['resource_data_cache'][0]['data'])){
 
-            $page_boards = $body['resource_data_cache'][0]['data'];
-            
-            
+        if (isset($body['resource_response']['data'])){
+
+            $page_boards = $body['resource_response']['data'];
 
             //remove items that have not the "pin" type (like module items)
             $page_boards = array_filter(
