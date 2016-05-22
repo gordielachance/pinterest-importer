@@ -1529,7 +1529,7 @@ class Pinim_Tool_Page {
             case 'not_cached':
                 
                 foreach((array)$boards as $board){
-                    if ( $board->is_queue_complete() ) continue; //query done
+                    if ( $board->bookmark ==  '-end-' ) continue;
                     $output[] = $board;
 
                 }
