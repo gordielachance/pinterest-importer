@@ -28,7 +28,7 @@ class Pinim_Board{
         $matching_boards = array_filter(
             $boards_options,
             function ($e) use ($current_board_id) {
-                return $e['id'] == $current_board_id;
+                return $e['board_id'] == $current_board_id;
             }
         );  
         
@@ -82,7 +82,7 @@ class Pinim_Board{
         //sanitize
         
         $new_input = array(
-            'id'    => $input['id']
+            'board_id'    => $input['id']
         );
 
         //queued board
@@ -106,7 +106,7 @@ class Pinim_Board{
             //remove previous settings if they exists
             foreach ((array)$boards_settings as $key => $single_board_settings){
 
-                if ($single_board_settings['id'] == $new_input['id']){
+                if ($single_board_settings['board_id'] == $new_input['board_id']){
                     unset($boards_settings[$key]);
                 }
             }

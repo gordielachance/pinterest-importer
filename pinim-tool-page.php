@@ -575,67 +575,58 @@ class Pinim_Tool_Page {
                 //load boards
                 $boards = $this->get_boards();
 
-                if ( is_wp_error($boards) ){
-                    
-                    add_settings_error('pinim_form_boards', 'get_boards', $boards->get_error_message(),'inline');
-                    $boards = array(); //reset boards
-                    
-                }else{
 
-                    switch ( $this->get_screen_boards_filter() ){
-                        case 'all':
-                            $boards = $this->get_boards();
-                        break;
-                        case 'cached':
-                            $boards = $this->get_boards_cached();
-                        break;
-                        case 'not_cached':
-                            $boards = $this->get_boards_not_cached();
-                        break;
-                        case 'in_queue':
-                            $boards = $this->get_boards_in_queue();
-                        break;
+                switch ( $this->get_screen_boards_filter() ){
+                    case 'all':
+                        $boards = $this->get_boards();
+                    break;
+                    case 'cached':
+                        $boards = $this->get_boards_cached();
+                    break;
+                    case 'not_cached':
+                        $boards = $this->get_boards_not_cached();
+                    break;
+                    case 'in_queue':
+                        $boards = $this->get_boards_in_queue();
+                    break;
+                }
+
+                $this->table_boards->input_data = $boards;
+                $this->table_boards->prepare_items();
+
+                //cache pins for auto-cache boards
+                if ( pinim()->get_options('autocache') ) {
+                    $autocache_boards = $this->get_boards_autocache();
+
+                    foreach((array)$autocache_boards as $board){
+                        if ( $board->get_pins_queue() ) continue; //we already did try to reach Pinterest)
+                        $this->cache_boards_pins($board);
+                        $board->queue_board();
                     }
 
-                    $this->table_boards->input_data = $boards;
-                    $this->table_boards->prepare_items();
-
-                    //cache pins for auto-cache boards
-                    if ( pinim()->get_options('autocache') ) {
-                        $autocache_boards = $this->get_boards_autocache();
-
-                        foreach((array)$autocache_boards as $board){
-                            if ( $board->get_pins_queue() ) continue; //we already did try to reach Pinterest)
-                            $this->cache_boards_pins($board);
-                            $board->queue_board();
-                        }
-
-
-                    }
-                    
-                    //no boards cached message
-                    if ( !$this->get_boards_cached() ){
-                        $feedback = array(__("Start by caching a bunch of boards so we can get informations about their pins !",'pinim') );
-                        $feedback[] =   __("You could also check the <em>auto-cache</em> option for some of your boards, so they will always be preloaded.",'pinim');
-                        add_settings_error('pinim_form_boards','no_boards_cached',implode('<br/>',$feedback),'updated inline');
-                    }
-
-                    //display feedback with import links
-                    if ( $pending_count = $this->get_pins_count_pending() ){
-
-                        $feedback =  array( __("We're ready to process !","pinim") );
-                        $feedback[] = sprintf( _n( '%s new pin was found in the queued boards.', '%s new pins were found in the queued boards.', $pending_count, 'pinim' ), $pending_count );
-                        $feedback[] = sprintf( __('You can <a href="%1$s">import them all</a>, or go to the <a href="%2$s">Pins list</a> for advanced control.',"pinim"),
-                                    pinim_get_tool_page_url(array('step'=>'pins-list','all_pins_action'=>$this->all_action_str['import_all_pins'])),
-                                    pinim_get_tool_page_url(array('step'=>'pins-list'))
-                        );
-
-                        add_settings_error('pinim_form_boards','ready_to_import',implode('  ',$feedback),'updated inline');
-
-                    }
 
                 }
 
+                //no boards cached message
+                if ( !$this->get_boards_cached() ){
+                    $feedback = array(__("Start by caching a bunch of boards so we can get informations about their pins !",'pinim') );
+                    $feedback[] =   __("You could also check the <em>auto-cache</em> option for some of your boards, so they will always be preloaded.",'pinim');
+                    add_settings_error('pinim_form_boards','no_boards_cached',implode('<br/>',$feedback),'updated inline');
+                }
+
+                //display feedback with import links
+                if ( $pending_count = $this->get_pins_count_pending() ){
+
+                    $feedback =  array( __("We're ready to process !","pinim") );
+                    $feedback[] = sprintf( _n( '%s new pin was found in the queued boards.', '%s new pins were found in the queued boards.', $pending_count, 'pinim' ), $pending_count );
+                    $feedback[] = sprintf( __('You can <a href="%1$s">import them all</a>, or go to the <a href="%2$s">Pins list</a> for advanced control.',"pinim"),
+                                pinim_get_tool_page_url(array('step'=>'pins-list','all_pins_action'=>$this->all_action_str['import_all_pins'])),
+                                pinim_get_tool_page_url(array('step'=>'pins-list'))
+                    );
+
+                    add_settings_error('pinim_form_boards','ready_to_import',implode('  ',$feedback),'updated inline');
+
+                }
             break;
         }
     }
@@ -1307,18 +1298,21 @@ class Pinim_Tool_Page {
     }
     
     function get_boards(){
-        
+        $boards = array();
         $boards_data = $this->get_boards_raw();
-        if (is_wp_error($boards_data)) return $boards_data;
 
-        foreach((array)$boards_data as $board_data){
+        if (is_wp_error($boards_data)) {
+            add_settings_error('pinim_form_boards', 'get_boards', $boards_data->get_error_message(),'inline');
+        }else{
+            foreach((array)$boards_data as $board_data){
 
-            $board_id = $board_data['id'];
-            $board = new Pinim_Board($board_id);
-            $boards[] = $board;
+                $board_id = $board_data['id'];
+                $board = new Pinim_Board($board_id);
+                $boards[] = $board;
 
+            }
         }
-        
+
         return $boards;
         
     }
@@ -1355,12 +1349,12 @@ class Pinim_Tool_Page {
         $output = array();
         $boards = $this->get_boards();
 
-       foreach((array)$boards as $board){
-           if ( $board->get_pins_queue() ){ //we already did try to reach Pinterest
-               $output[] = $board;
-           }
+        foreach((array)$boards as $board){
+            if ( $board->get_pins_queue() ){ //we already did try to reach Pinterest
+                $output[] = $board;
+            }
 
-       }
+        }
 
        return $output;
     }
@@ -1369,15 +1363,15 @@ class Pinim_Tool_Page {
         $output = array();
         $boards = $this->get_boards();
 
-       foreach((array)$boards as $board){
-            $queued_boards_ids = (array)pinim_tool_page()->get_session_data('queued_boards_ids');
-            $queued = in_array($board->board_id,$queued_boards_ids);
-            if ( !$queued ) continue;
-            if ( $board->is_fully_imported() ) continue;
-            
-            $output[] = $board;
+        foreach((array)$boards as $board){
+             $queued_boards_ids = (array)pinim_tool_page()->get_session_data('queued_boards_ids');
+             $queued = in_array($board->board_id,$queued_boards_ids);
+             if ( !$queued ) continue;
+             if ( $board->is_fully_imported() ) continue;
 
-       }
+             $output[] = $board;
+
+        }
 
        return $output;
     }
@@ -1386,7 +1380,7 @@ class Pinim_Tool_Page {
         $count = 0;
         $boards = $this->get_boards();
 
-       foreach((array)$boards as $board){
+        foreach((array)$boards as $board){
             $board = new Pinim_Board($board_data['id']);
             if ($board->is_queue_complete()){
                 $count++;
@@ -1404,7 +1398,7 @@ class Pinim_Tool_Page {
         $count = 0;
         $boards_data = $this->get_boards_raw();
 
-       foreach((array)$boards_data as $board_data){
+        foreach((array)$boards_data as $board_data){
            $board = new Pinim_Board($board_data['id']);
            if ($board->get_pins_queue() && $board->is_fully_imported()){
                $count++;
