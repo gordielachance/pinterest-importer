@@ -379,13 +379,13 @@ class Pinim_Bridge{
      * @return \WP_Error
      */
 
-    public function get_board_pins($username, $slug, $board_id, $bookmark=null, $max=0,$stop_at_pin_id=null){
+    public function get_board_pins($url, $board_id, $bookmark=null, $max=0,$stop_at_pin_id=null){
         $board_page = 0;
         $board_pins = array();
 
         while ($bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
 
-            $query = $this->get_board_pins_page($username, $slug, $board_id, $bookmark);
+            $query = $this->get_board_pins_page($url, $board_id, $bookmark);
             
             if ( is_wp_error($query) ){
                 
@@ -463,14 +463,16 @@ class Pinim_Bridge{
         return $output;
     }
     
-    public function get_board_id($username,$slug){
-        $url = self::$pinterest_url.self::get_short_url($username,$slug);
+    public function get_board_id($url){
+        $board_args = self::validate_board_url($url);
+        
+        if (is_wp_error($board_args)) return $board_args;
 
         $args = array(
             'headers'       => $this->get_headers()
         );
 
-        $response = wp_remote_get( $url, $args );
+        $response = wp_remote_get( $board_args['full_url'], $args );
         $body = wp_remote_retrieve_body($response);
         
         if ( is_wp_error($body) ){
@@ -495,26 +497,42 @@ class Pinim_Bridge{
      * @param type $bookmark
      * @return \WP_Error
      */
-    private function get_board_pins_page($username, $slug, $board_id, $bookmark = null){
+    private function get_board_pins_page($url, $board_id = null, $bookmark = null){
 
         $page_pins = array();
         $data_options = array();
-        $url = null;
+        $query_url = null;
         $secret = null;
+        
+        $board_args = self::validate_board_url($url);
+        if (is_wp_error($board_args)) return $board_args;
 
         $login = $this->do_login();
         if (is_wp_error($login)) return $login;
+        
+        
 
         $data_options = array(
-            'username'                  => $username,
-            'board_id'                  => $board_id, //required
+            'username'                  => $board_args['username'],
             'add_pin_rep_with_place'    => null,
-            'board_url'                 => self::get_short_url($username,$slug),
+            'board_url'                 => $board_args['url'],
             'page_size'                 => null,
             'prepend'                   => true,
             'access'                    => array('write','delete'),
             'board_layout'              => 'default',
         );
+        
+        if ($board_args['slug'] == 'likes'){
+            $query_url = self::$pinterest_url.'/resource/UserLikesResource/get/';
+        }else{
+            $query_url = self::$pinterest_url.'/resource/BoardFeedResource/get/';
+            if (!$board_id){
+                $board_id = self::get_board_id($board_args['url']);
+                if ( is_wp_error($board_id) ) return $board_id;
+            }
+            $data_options['board_id'] = $board_id; //required !
+            
+        }
 
         if ($bookmark){ //used for pagination. Bookmark is defined when it is not the first page.
             $data_options['bookmarks'] = (array)$bookmark;
@@ -525,7 +543,7 @@ class Pinim_Bridge{
                 'options' => $data_options,
                 'context' => new \stdClass,
             )),
-            'source_url' => self::get_short_url($username,$slug),
+            'source_url' => $board_args['url'],
             '_' => time()*1000 //js timestamp
         );
 
@@ -542,14 +560,8 @@ class Pinim_Bridge{
             'cookies'       => $this->cookies,
             'body'          => $data,
         );
-        
-        if ($slug == 'likes'){
-            $url = self::$pinterest_url.'/resource/UserLikesResource/get/';
-        }else{
-            $url = self::$pinterest_url.'/resource/BoardFeedResource/get/';
-        }
 
-        $response = wp_remote_post( $url, $args );        
+        $response = wp_remote_post( $query_url, $args );        
         $body = wp_remote_retrieve_body($response);
 
         if ( is_wp_error($body) ){
@@ -580,7 +592,7 @@ class Pinim_Bridge{
             
         }
 
-        return new WP_Error('pinim',sprintf(__('Error getting pins for board %1$s by %2$s','pinim'),$username,$slug));
+        return new WP_Error('pinim',sprintf(__('Error getting pins for board %s','pinim'),$board_args['url']));
 
     }
     /*

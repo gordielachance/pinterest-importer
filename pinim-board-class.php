@@ -30,7 +30,7 @@ class Pinim_Board_Url extends Pinim_Board{
 
     function __construct($board_full_url){
         $this->populate_board_url($board_full_url);
-        $this->board_id = pinim_tool_page()->bridge->get_board_id($this->username,$this->slug);
+        $this->board_id = pinim_tool_page()->bridge->get_board_id($board_full_url);
         parent::__construct($this->username,$this->slug,$this->board_id);
     }
 
@@ -126,11 +126,13 @@ class Pinim_Board{
             if (!$boards_options) return null;
 
             //keep only our board
-            $current_board_id = $this->board_id;
+            $board_username = $this->username;
+            $board_slug = $this->slug;
             $matching_boards = array_filter(
                 $boards_options,
-                function ($e) use ($current_board_id) {
-                    return ( isset($e['board_id']) && ($e['board_id'] == $current_board_id) );
+                function ($e) use ($board_username,$board_slug) {
+                    $is_board = ( isset($e['username']) && isset($e['slug']) && ($e['username'] == $board_username) && ($e['slug'] == $board_slug) );
+                    return $is_board;
                 }
             );  
 
@@ -151,11 +153,13 @@ class Pinim_Board{
         $boards_settings = pinim_get_boards_options();
         
         //keep all but our board
-        $current_board_id = $this->board_id;
+        $board_username = $this->username;
+        $board_slug = $this->slug;
         $boards_settings = array_filter(
             (array)$boards_settings,
-            function ($e) use ($current_board_id) {
-                return ( isset($e['board_id']) && ($e['board_id'] != $current_board_id) );
+            function ($e) use ($board_username,$board_slug) {
+                    $is_board = ( isset($e['username']) && isset($e['slug']) && ($e['username'] == $board_username) && ($e['slug'] == $board_slug) );
+                    return !$is_board;
             }
         );  
         
@@ -176,11 +180,13 @@ class Pinim_Board{
         $all_boards_session = (array)pinim_tool_page()->get_session_data('user_boards');
         
         //keep only our board
-        $current_board_id = $this->board_id;
+        $board_username = $this->username;
+        $board_slug = $this->slug;
         $matching_boards = array_filter(
             $all_boards_session,
-            function ($e) use ($current_board_id) {
-                return ( $e['board_id'] == $current_board_id );
+            function ($e) use ($board_username,$board_slug) {
+                $is_board = ( isset($e['username']) && isset($e['slug']) && ($e['username'] == $board_username) && ($e['slug'] == $board_slug) );
+                return $is_board;
             }
         );  
         
@@ -212,11 +218,13 @@ class Pinim_Board{
         );
         
         //keep all but our board
-        $current_board_id = $this->board_id;
+        $board_username = $this->username;
+        $board_slug = $this->slug;
         $boards_session = array_filter(
             $boards_session,
-            function ($e) use ($current_board_id) {
-                return ( isset($e['board_id']) && ($e['board_id'] != $current_board_id) );
+            function ($e) use ($board_username,$board_slug) {
+                $is_board = ( isset($e['username']) && isset($e['slug']) && ($e['username'] == $board_username) && ($e['slug'] == $board_slug) );
+                return !$is_board;
             }
         );  
         
@@ -337,7 +345,7 @@ class Pinim_Board{
 
             if ( !$this->raw_pins || $bookmark ){
 
-                $pinterest_query = pinim_tool_page()->bridge->get_board_pins($this->username, $this->slug, $this->board_id, $this->bookmark);
+                $pinterest_query = pinim_tool_page()->bridge->get_board_pins($this->pinterest_url, $this->board_id, $this->bookmark);
 
                 if (is_wp_error($pinterest_query)){
                     $error = $pinterest_query;
