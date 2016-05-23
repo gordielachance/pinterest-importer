@@ -408,9 +408,11 @@ class Pinim_Tool_Page {
                         foreach ((array)$bulk_boards as $board){
                             //fetch form data
                             $form_data = $_POST['pinim_form_boards'];
+                            
+                            print_r($form_data);die();
  
                             $board_form_data = array_filter(
-                                $form_data,
+                                (array)$form_data,
                                 function ($e) use ($board) {
                                     return ( $e['id'] == $board->board_id );
                                 }
@@ -528,7 +530,7 @@ class Pinim_Tool_Page {
             $board_pins = $board->get_pins();
 
             if (is_wp_error($board_pins)){    
-                add_settings_error('pinim_form_boards', 'cache_single_board_pins_'.$board->board_id, $board_pins->get_error_message(),'inline');
+                add_settings_error('pinim_form_boards', 'cache_single_board_pins', $board_pins->get_error_message(),'inline');
             }
 
         }
@@ -683,6 +685,11 @@ class Pinim_Tool_Page {
             $new_input = pinim()->options_default;
             
         }else{ //sanitize values
+            
+            //delete boards settings
+            if ( isset($input['delete_boards_settings']) ){
+                delete_user_meta( get_current_user_id(), 'pinim_boards_settings');
+            }
 
             //boards per page
             if ( isset ($input['boards_per_page']) && ctype_digit($input['boards_per_page']) ){
@@ -773,6 +780,18 @@ class Pinim_Tool_Page {
             'pinim-settings-page', // Page
             'settings_system'//section
         );
+        
+        if ( pinim_get_boards_options() ){
+            add_settings_field(
+                'delete_boards_settings', 
+                __('Delete boards preferences','pinim'), 
+                array( $this, 'delete_boards_settings_callback' ), 
+                'pinim-settings-page', // Page
+                'settings_system'//section
+            );
+        }
+        
+
         
  
     }
@@ -1060,6 +1079,14 @@ class Pinim_Tool_Page {
         );
     }
     
+    function delete_boards_settings_callback(){
+        printf(
+            '<input type="checkbox" name="%1$s[delete_boards_settings]" value="on"/> %2$s',
+            PinIm::$meta_name_options,
+            __("Delete the boards preferences for the current user","pinim")
+        );
+    }
+    
     function boards_per_page_field_callback(){
         $option = (int)pinim()->get_options('boards_per_page');
         
@@ -1212,7 +1239,7 @@ class Pinim_Tool_Page {
         $session_data = $this->get_session_data('user_datas_boards');
 
         if ( !isset($session_data[$username]) ){
-            
+
             if ($username == 'me'){
                 //FIX for secret boards; which are not retrieved if username = 'me'.
                 $me_username = $this->get_user_infos('username');
@@ -1274,7 +1301,7 @@ class Pinim_Tool_Page {
         //append user boards
         if ( isset($user_datas['me']['boards']) ){
             foreach((array)$user_datas['me']['boards'] as $board_data){
-                $populate_boards[] = new Pinim_Board_Data($board_data);
+                $populate_boards[] = new Pinim_Board($board_data['url'],$board_data);
             }
         }
 
@@ -1283,7 +1310,7 @@ class Pinim_Tool_Page {
         /*
         $username = $this->get_user_infos('username');
         $url = Pinim_Bridge::get_short_url($username,'likes');
-        $populate_boards[] = new Pinim_Board_Url($url);
+        $populate_boards[] = new Pinim_Board($url);
         */
 
         //append followed boards
@@ -1292,19 +1319,17 @@ class Pinim_Tool_Page {
             if ( is_wp_error($board_args) ) continue;
             $board_username = $board_args['username'];
             $board_slug = $board_args['slug'];
+            $board_url = $board_args['url'];
             
             if ($board_slug == 'likes'){
-                
-                $url = Pinim_Bridge::get_short_url($board_username,$board_slug);
-                $populate_boards[] = new Pinim_Board_Url($url);
+                $populate_boards[] = new Pinim_Board($board_url);
                 
             }else{
-                $board_url = $board_args['url'];
                 $user_boards = $user_datas[$board_username]['boards'];
 
                 //get our board
                 $possible_boards = array_filter(
-                    $user_boards,
+                    (array)$user_boards,
                     function ($e) use ($board_url) {
                         return $e['url'] == $board_url;
                     }
@@ -1313,7 +1338,7 @@ class Pinim_Tool_Page {
                 if (empty($possible_boards)) continue;
                 $board_data = array_shift($possible_boards);
 
-                $populate_boards[] = new Pinim_Board_Data($board_data);
+                $populate_boards[] = new Pinim_Board($board_url,$board_data);
                 
             }
 
@@ -1389,7 +1414,7 @@ class Pinim_Tool_Page {
             if ( is_wp_error($all_boards) ) return $all_boards;
             
             $boards = array_filter(
-                $all_boards,
+                (array)$all_boards,
                 function ($e) use ($boards_ids) {
                     return ( in_array($e->board_id,$boards_ids) );
                 }
@@ -1411,7 +1436,7 @@ class Pinim_Tool_Page {
             
             //remove items that are not checked
             $form_boards = array_filter(
-                $_POST['pinim_form_boards'],
+                (array)$_POST['pinim_form_boards'],
                 function ($e) {
                     return isset($e['bulk']);
                 }
@@ -1440,7 +1465,7 @@ class Pinim_Tool_Page {
             
             //remove items that are not checked
             $form_pins = array_filter(
-                $_POST['pinim_form_pins'],
+                (array)$_POST['pinim_form_pins'],
                 function ($e) {
                     return isset($e['bulk']);
                 }

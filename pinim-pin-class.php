@@ -40,7 +40,7 @@ class Pinim_Pin{
         //remove unecessary items
         $current_pin_id = $this->pin_id;
         $pins = array_filter(
-            $all_pins,
+            (array)$all_pins,
             function ($e) use ($current_pin_id) {
                 return $e['id'] == $current_pin_id;
             }
@@ -63,13 +63,12 @@ class Pinim_Pin{
         $pin_board_id = $this->board_id;
         
         $boards = array_filter(
-            $boards,
+            (array)$boards,
             function ($e) use ($pin_board_id) {
                 return $e->board_id == $pin_board_id;
             }
         );  
-        
-        $boards = array_values($boards);
+
         return array_shift($boards); //keep only first
         
     }
@@ -272,8 +271,7 @@ class Pinim_Pin{
         if (isset($datas['images']['orig']['url'])){ //get best resolution
             $image = $datas['images']['orig'];
         }else{ //get first array item
-            $images = array_values($datas['images']);
-            $image = array_shift($images);
+            $image = array_shift($datas['images']);
         }
         
         if ( !isset($image['url']) ) return false;

@@ -189,16 +189,11 @@ class Pinim_Bridge{
 
         if (isset($body['resource_response']['error']['message']) and $body['resource_response']['error']['message']) {
             $api_error = $body['resource_response']['error']['message'];
+        }elseif (!isset($body['resource_response']['data']) or !$body['resource_response']['data']) {
+            $api_error = __('Unkown error while logging in','pinim');
         }
-
-        if (!isset($body['resource_response']['data']) or !$body['resource_response']['data']) {
-            
-            if (!$api_error){
-                $api_error = __('Unkown error while logging in','pinim');
-            }
-            
-            return new WP_Error('pinim',$api_error);
-        }
+        
+        if ($api_error) return new WP_Error('pinim',$api_error);
 
         $this->is_logged_in = true;
         return $this->is_logged_in;
@@ -357,7 +352,7 @@ class Pinim_Bridge{
 
             //remove items that have not the "board" type (like module items)
             $page_boards = array_filter(
-                $page_boards,
+                (array)$page_boards,
                 function ($e) {
                     return $e['type'] == 'board';
                 }
@@ -379,7 +374,7 @@ class Pinim_Bridge{
      * @return \WP_Error
      */
 
-    public function get_board_pins($url, $board_id, $bookmark=null, $max=0,$stop_at_pin_id=null){
+    public function get_board_pins($url, $board_id=null, $bookmark=null, $max=0,$stop_at_pin_id=null){
         $board_page = 0;
         $board_pins = array();
 
@@ -472,7 +467,7 @@ class Pinim_Bridge{
             'headers'       => $this->get_headers()
         );
 
-        $response = wp_remote_get( $board_args['full_url'], $args );
+        $response = wp_remote_get( self::$pinterest_url.$board_args['url'], $args );
         $body = wp_remote_retrieve_body($response);
         
         if ( is_wp_error($body) ){
@@ -576,7 +571,7 @@ class Pinim_Bridge{
 
             //remove items that have not the "pin" type (like module items)
             $page_pins = array_filter(
-                $page_pins,
+                (array)$page_pins,
                 function ($e) {
                     return $e['type'] == 'pin';
                 }

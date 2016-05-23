@@ -21,7 +21,7 @@ class PinIm {
     /**
     * @public string plugin DB version
     */
-    public $db_version = '205';
+    public $db_version = '206';
 
     /** Paths *****************************************************************/
 
@@ -141,6 +141,10 @@ class PinIm {
             */
             
         }else{
+            
+            //force delete temporary data
+            pinim_tool_page()->delete_session_data();
+            
             if($current_version < '204'){
                 $boards_settings = pinim_get_boards_options();
                 foreach((array)$boards_settings as $key=>$board){
@@ -148,6 +152,14 @@ class PinIm {
                         $boards_settings[$key]['board_id'] = $board['id'];
                         unset($boards_settings[$key]['id']);
                     }
+                }
+                update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_settings);
+            }
+            if($current_version < '206'){
+                $boards_settings = pinim_get_boards_options();
+                foreach((array)$boards_settings as $key=>$board){
+                    if (!isset($board['username']) || !isset($board['slug']) ) continue;
+                    $boards_settings[$key]['url'] = Pinim_Bridge::get_short_url($board['username'],$board['slug']);
                 }
                 update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_settings);
             }

@@ -4,37 +4,7 @@ if(!class_exists('WP_List_Table')){
     require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 }
 
-class Pinim_Board_Data extends Pinim_Board{
-    
-    var $username = null;
-    var $slug = null;
-    
-    function __construct($board_data){
 
-        if ( is_wp_error($board_data) ) return $board_data;
-        
-        $this->datas = $board_data;
-        $this->board_id = $this->get_datas(array('id'));
-        $pinterest_url = $this->get_datas(array('url'));
-        $this->populate_board_url($pinterest_url);
-
-        parent::__construct($this->username,$this->slug,$this->board_id,$this->datas);
-    }
-}
-
-class Pinim_Board_Url extends Pinim_Board{
-    
-    var $username = null;
-    var $slug = null;
-    var $board_id = null;
-
-    function __construct($board_full_url){
-        $this->populate_board_url($board_full_url);
-        $this->board_id = pinim_tool_page()->bridge->get_board_id($board_full_url);
-        parent::__construct($this->username,$this->slug,$this->board_id);
-    }
-
-}
 
 class Pinim_Board{
     
@@ -57,24 +27,21 @@ class Pinim_Board{
     
     
 
-    function __construct($username,$slug,$board_id,$datas=null){
+    function __construct($url,$datas=null){
         
-        //those are required for the bridge class.
-        $this->username = $username;
-        $this->slug = $slug;
-        $this->board_id = $board_id;
-        
-        if ($datas){
-            $this->datas = $datas;
-        }
+        $board_args = Pinim_Bridge::validate_board_url($url);
 
-        //
-        $this->pinterest_url = Pinim_Bridge::get_short_url($this->username,$this->slug);
+        $this->username = $board_args['username'];
+        $this->slug = $board_args['slug'];
+        $this->pinterest_url = $board_args['url'];
+        
+        if ($datas) $this->datas = (array)$datas;
 
         //options
         $this->options_default = array(
             'username'      => $this->username,
             'slug'          => $this->slug,
+            'url'           => $this->pinterest_url,
             'board_id'      => $this->board_id,
             'autocache'     => false,
             'private'       => false,
@@ -88,6 +55,7 @@ class Pinim_Board{
         $this->session_default = array(
             'username'      => $this->username,
             'slug'          => $this->slug,
+            'url'           => $this->pinterest_url,
             'raw_pins'      => null,
             'bookmark'      => null,
             'in_queue'      => false,
@@ -98,8 +66,8 @@ class Pinim_Board{
 
     }
     
-    function populate_board_url($board_full_url){
-        $pinterest_url = str_replace(pinim()->pinterest_url, '', $board_full_url);
+    function populate_board_url($board_url_full){
+        $pinterest_url = str_replace(pinim()->pinterest_url, '', $board_url_full);
 
         //extract username & board slug
         $pattern = '~([^/]+)/([^/]+)~';
@@ -126,17 +94,16 @@ class Pinim_Board{
             if (!$boards_options) return null;
 
             //keep only our board
-            $board_username = $this->username;
-            $board_slug = $this->slug;
+            $board_url = $this->pinterest_url;
             $matching_boards = array_filter(
-                $boards_options,
-                function ($e) use ($board_username,$board_slug) {
-                    $is_board = ( isset($e['username']) && isset($e['slug']) && ($e['username'] == $board_username) && ($e['slug'] == $board_slug) );
+                (array)$boards_options,
+                function ($e) use ($board_url) {
+                    $is_board = ( isset($e['url']) && ($e['url'] == $board_url) );
                     return $is_board;
                 }
             );  
 
-            $board_keys = array_values($matching_boards);
+            $board_keys = array_values($matching_boards);//reset keys
             $this->options = array_shift($board_keys);
 
         }
@@ -150,23 +117,30 @@ class Pinim_Board{
     function save_options(){
         
         //all boards options
-        $boards_settings = pinim_get_boards_options();
-        
+        $boards_options = pinim_get_boards_options();
+
         //keep all but our board
-        $board_username = $this->username;
-        $board_slug = $this->slug;
-        $boards_settings = array_filter(
-            (array)$boards_settings,
-            function ($e) use ($board_username,$board_slug) {
-                    $is_board = ( isset($e['username']) && isset($e['slug']) && ($e['username'] == $board_username) && ($e['slug'] == $board_slug) );
-                    return !$is_board;
+        $board_url = $this->pinterest_url;
+        $boards_options = array_filter(
+            (array)$boards_options,
+            function ($e) use ($board_url) {
+                $is_board = ( isset($e['url']) && ($e['url'] == $board_url) );
+                return !$is_board;
             }
         );  
         
-        $boards_settings[] = $this->options;
+        $boards_options = array_values($boards_options);//reset keys
 
-        if ($success = update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_settings)){
-            pinim()->user_boards_options = $boards_settings; //force reload
+        $boards_options[] = $this->options;
+        
+        if($this->slug=='variouze'){
+            print_r($boards_options);die();
+        }
+        
+ 
+
+        if ($success = update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_options)){
+            pinim()->user_boards_options = $boards_options; //force reload
             return $this->options;
         }else{
             return new WP_Error( 'pinim', sprintf(__( 'Error while saving settings for board "%1$s"', 'pinim' ),$this->get_datas('name')));
@@ -177,26 +151,28 @@ class Pinim_Board{
     function populate_session(){
 
         //get it
-        $all_boards_session = (array)pinim_tool_page()->get_session_data('user_boards');
+        $all_boards_session = pinim_tool_page()->get_session_data('user_boards');
         
         //keep only our board
-        $board_username = $this->username;
-        $board_slug = $this->slug;
+        $board_url = $this->pinterest_url;
         $matching_boards = array_filter(
-            $all_boards_session,
-            function ($e) use ($board_username,$board_slug) {
-                $is_board = ( isset($e['username']) && isset($e['slug']) && ($e['username'] == $board_username) && ($e['slug'] == $board_slug) );
+            (array)$all_boards_session,
+            function ($e) use ($board_url) {
+                $is_board = ( isset($e['url']) && ($e['url'] == $board_url) );
                 return $is_board;
             }
-        );  
-        
-        $board_keys = array_values($matching_boards);
-        
-        if ($session_loaded = array_shift($board_keys)){
-            $this->datas = $session_loaded['datas'];
-            $this->raw_pins = $session_loaded['raw_pins'];
-            $this->bookmark = $session_loaded['bookmark'];
-            $this->in_queue = $session_loaded['in_queue'];
+        );   
+
+        if ( $board_session = array_shift($matching_boards) ){
+            /*
+            print_r($board_url);
+            echo"<br/><br/>";
+            print_r($board_session);die();
+            */
+            $this->datas = $board_session['datas'];
+            $this->raw_pins = $board_session['raw_pins'];
+            $this->bookmark = $board_session['bookmark'];
+            $this->in_queue = $board_session['in_queue'];
             
         }
 
@@ -205,32 +181,32 @@ class Pinim_Board{
     function save_session(){
         
         //all boards session
-        $boards_session = (array)pinim_tool_page()->get_session_data('user_boards');
+        $matching_boards = pinim_tool_page()->get_session_data('user_boards');
 
         $session = array(
             'board_id'      => $this->board_id,
             'username'      => $this->username,
             'slug'          => $this->slug,
+            'url'           => $this->pinterest_url,
             'datas'         => $this->datas,
             'raw_pins'      => $this->raw_pins,
             'bookmark'      => $this->bookmark,
             'in_queue'      => $this->in_queue,
         );
-        
+
         //keep all but our board
-        $board_username = $this->username;
-        $board_slug = $this->slug;
-        $boards_session = array_filter(
-            $boards_session,
-            function ($e) use ($board_username,$board_slug) {
-                $is_board = ( isset($e['username']) && isset($e['slug']) && ($e['username'] == $board_username) && ($e['slug'] == $board_slug) );
+        $board_url = $this->pinterest_url;
+        $matching_boards = array_filter(
+            (array)$matching_boards,
+            function ($e) use ($board_url) {
+                $is_board = ( isset($e['url']) && ($e['url'] == $board_url) );
                 return !$is_board;
             }
         );  
-        
-        $boards_session[] = $session;
 
-        if ( $success = pinim_tool_page()->set_session_data('user_boards',$boards_session) ){
+        $matching_boards[] = $session;
+
+        if ( $success = pinim_tool_page()->set_session_data('user_boards',$matching_boards) ){
             $this->populate_session();
             return $success;
         }
@@ -276,7 +252,7 @@ class Pinim_Board{
     
     function get_count_imported_pins(){
         $imported = 0;
-        
+
         foreach ((array)$this->raw_pins as $raw_pin){
             if (in_array($raw_pin['id'],pinim_tool_page()->existing_pin_ids)) $imported++;
         }
@@ -345,7 +321,7 @@ class Pinim_Board{
 
             if ( !$this->raw_pins || $bookmark ){
 
-                $pinterest_query = pinim_tool_page()->bridge->get_board_pins($this->pinterest_url, $this->board_id, $this->bookmark);
+                $pinterest_query = pinim_tool_page()->bridge->get_board_pins($this->pinterest_url, $this->get_datas('board_id'), $this->bookmark);
 
                 if (is_wp_error($pinterest_query)){
                     $error = $pinterest_query;
@@ -474,7 +450,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             'view'                        => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$board->get_remote_url(),__('View on Pinterest','pinim'),'view'),
         );
 
-        if ($board->board_id == 'likes'){
+        if ($board->slug == 'likes'){
             $title = '<i class="fa fa-heart"></i> '.$board->get_datas('name');
         }else{
             $title = sprintf('%1$s <span class="item-id">(id:%2$s)</span>',$board->get_datas('name'),$board->board_id);
@@ -552,7 +528,7 @@ class Pinim_Boards_Table extends WP_List_Table {
     
     function column_thumbnail($board){
         if ( !$images = $board->get_datas('cover_images') ) return;
-        $image_key = array_values($images);
+        $image_key = array_values($images);//reset keys
         $image = array_shift($image_key);
         return sprintf(
             '<img src="%1$s" />',
