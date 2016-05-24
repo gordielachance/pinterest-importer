@@ -215,14 +215,15 @@ class Pinim_Pin{
         $prefix = '_pinterest-';
 
         $post_metas = array(
-            $prefix.'pin_id'     => $this->pin_id,
-            $prefix.'board_id'   => $this->board_id,
-            $prefix.'log'        => $datas
+            'pin_id'        => $this->pin_id,
+            'board_id'      => $this->board_id,
+            'db_version'    => pinim()->db_version,
+            'log'           => $datas
         );
 
-         foreach ( $post_metas as $key=>$value ) {
-             update_post_meta( $post_id, $key, $value );
-         }
+        foreach ( $post_metas as $key=>$value ) {
+            update_post_meta( $post_id, $prefix.$key, $value );
+        }
 
     }
 
