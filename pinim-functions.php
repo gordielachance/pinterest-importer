@@ -1,6 +1,30 @@
 <?php
 
 /**
+ * Get a value in a multidimensional array
+ * http://stackoverflow.com/questions/1677099/how-to-use-a-string-as-an-array-index-path-to-retrieve-a-value
+ * @param type $keys
+ * @param type $array
+ * @return type
+ */
+function pinim_get_array_value($keys = null, $array){
+    if (!$keys) return $array;
+    
+    $keys = (array)$keys;
+    $first_key = $keys[0];
+    if(count($keys) > 1) {
+        if ( isset($array[$keys[0]]) ){
+            return pinim_get_array_value(array_slice($keys, 1), $array[$keys[0]]);
+        }
+    }elseif (isset($array[$first_key])){
+        return $array[$first_key];
+    }
+    
+    return false;
+}
+
+
+/**
   * Filter a single pin :
   * Remove the Pinterest "board" multidimentional array
   * Add a single "board_id" key.
@@ -13,34 +37,6 @@
      $raw_pin['board_id'] = $raw_pin['board']['id'];
      unset($raw_pin['board']);
      return $raw_pin;
- }
-
- /**
-  * Filter a single pin :
-  * Replace the Pinterest "images" multidimentional array
-  * Add a single "image" key with the image original url for value.
-  * @param array $raw_pin
-  * @return type
-  */
-
- function pin_raw_data_images_reduce($raw_pin){
-
-     if (!isset($raw_pin['images'])) return $raw_pin;
-
-     if (isset($raw_pin['images']['orig']['url'])){ //get best resolution
-         $image = $raw_pin['images']['orig'];
-     }else{ //get first array item
-         $first_key = array_values($raw_pin['images']);
-         $image = array_shift($first_key);
-     }
-     
-     if ($image['url']){
-         $raw_pin['image'] = $image['url'];
-         unset($raw_pin['images']);
-     }
-
-     return $raw_pin;
-
  }
 
  /**
@@ -70,37 +66,6 @@
          'dominant_color'
      );
      return array_diff_key($raw_pin,array_flip($remove_keys));
- }
-
- /**
-  * Filter a single pin :
-  * Replace the Pinterest formatted date by a timestamp for the key "created_at"
-  * @param array $raw_pin
-  * @return type
-  */
-
- function pin_raw_data_date_to_timestamp($raw_pin){
-     if (!isset($raw_pin['created_at'])) return;
-     $raw_pin['created_at'] = strtotime($raw_pin['created_at']);
-     return $raw_pin;
- }
-
- /**
-  * Filter a single pin :
-  * Remove the "pinner" key if the pinner is the current logged user
-  * @param array $raw_pin
-  * @return type
-  */
-
- function pin_raw_data_remove_self_pinner($raw_pin){
-     if (!isset($raw_pin['pinner'])) return $raw_pin;
-     $user_datas = pinim_tool_page()->get_session_data('user_datas');
-
-     if ($raw_pin['pinner']['username'] != $user_datas['username']) return $raw_pin;
-
-     unset($raw_pin['pinner']);
-
-     return $raw_pin;
  }
  
 function pinim_get_hashtags($string){

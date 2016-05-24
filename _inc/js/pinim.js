@@ -1,8 +1,8 @@
 jQuery(document).ready(function($){
     
     //new boards row
-    $('#pinim-form-boards .column-new_board').hide();
-    $('#pinim-form-boards table.wp-list-table tbody tr').each(function() {
+    $('.pinim-form-boards .column-new_board').hide();
+    $('.pinim-form-boards table.wp-list-table tbody tr').each(function() {
        var row = $(this);
        var bulk = $(this).find("input.bulk");
        var form_options = $(this).find("input,select").not('.bulk');
@@ -16,10 +16,6 @@ jQuery(document).ready(function($){
           row.toggleClass("is-checked", this.checked);
         });
 
-       if ( row.find('.pinim-pc-bar').length > 0 ){ //has a progres bar = is cached
-           row.addClass('is-cached');
-       }
-       
     });
     
     //form buttons

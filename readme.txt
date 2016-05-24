@@ -18,7 +18,8 @@ This means that you can make a full backup (instead of getting only the last x p
 Better use it quick !
 
 * Nice GUI
-* Get pins from public boards, secret boards, and likes
+* Get pins from your boards, secret boards, and likes
+* Get pins from public boards by other users
 * Supports both image & video pins; and set corresponding post format
 * Import original HD images from pins
 * Can be used on an ongoing basis : pins will not be imported several times
@@ -91,6 +92,14 @@ function pin_custom_content($post){
 
 
 == Changelog ==
+= 0.4.0 =
+* Major release !
+* Supports importing boards from other users
+* Store plugin's db version with each pin
+* Improved storing/getting datas
+* New function Pinim_Bridge::get_board_id()
+* Option to delete board preferences
+* Lots of fixes
 = 0.3.1 =
 * Fixed bad code which was slowing down the plugin when displaying the processed pins
 * better handling of the pins caching stuff
@@ -142,9 +151,9 @@ function pin_custom_content($post){
 * First release
 
 == TO DO ==
+* use wp_update_term_count() ? seems posts count for categories is not updated.
 * add source in post content should be optional
 * a trashed pin should not be considered existing ?
-* pending & processed pins table : do not load all the posts (very slow !) for processed pins table.
 * use some ajax functions (Pinterest queries, etc.)
 * allow to fetch pins from any Pinterest board
 * bug when creating 'pinim_boards_settings' : last board settings are not saved, so it is detected as new board when the page refreshes.

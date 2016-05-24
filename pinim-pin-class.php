@@ -27,18 +27,19 @@ class Pinim_Pin{
 
         $this->pin_id = $pin_id;
         $this->datas = $this->get_raw_datas();
-        $this->is_like = (isset($this->datas['is_like']));
-        $this->board_id = $this->datas['board']['id'];
+        $this->board_id = $this->get_datas(array('board','id'));
+        
+        //TO FIX : we should store the username and board slug, so storing is easier ?
 
     }
     
     function get_raw_datas(){
 
-        $all_pins = pinim_tool_page()->get_all_cached_pins_raw(true);
+        $all_pins = pinim_tool_page()->get_all_raw_pins();
         //remove unecessary items
         $current_pin_id = $this->pin_id;
         $pins = array_filter(
-            $all_pins,
+            (array)$all_pins,
             function ($e) use ($current_pin_id) {
                 return $e['id'] == $current_pin_id;
             }
@@ -51,29 +52,28 @@ class Pinim_Pin{
     }
 
     function get_board(){
-        
-        if ( !isset($this->board) ){
 
-            if ($this->is_like){
-                $this->board = new Pinim_Board('likes');
-            }elseif($this->board_id){
-                $this->board = new Pinim_Board($this->board_id);
+        //load boards
+        $boards = pinim_tool_page()->get_boards();
+        
+        $pin_board_id = $this->board_id;
+
+        $boards = array_filter(
+            (array)$boards,
+            function ($e) use ($pin_board_id) {
+                return $e->board_id == $pin_board_id;
             }
+        );  
 
-        }
-        
-        return $this->board;
+        return array_shift($boards); //keep only first
         
     }
     /*
      * Get data from Pinterest
      */
     
-    function get_datas($key = null,$raw = false){
-        $pin_datas = $this->datas;
-        if (!isset($key)) return $pin_datas;
-        if (!isset($pin_datas[$key])) return false;
-        return $pin_datas[$key];
+    function get_datas($keys = null){
+        return pinim_get_array_value($keys, $this->datas);
     }
     
     /*
@@ -153,6 +153,7 @@ class Pinim_Pin{
     
     function get_post_status(){
         $board = $this->get_board();
+
         $private = $board->is_private_board();
         if ($private = $board->is_private_board()){
             return 'private';
@@ -206,19 +207,20 @@ class Pinim_Pin{
     
     function set_pin_metas($post_id){
 
-        $datas = apply_filters('pin_sanitize_before_insert',$this->get_datas());
+        $datas = $this->get_datas();
 
         $prefix = '_pinterest-';
 
         $post_metas = array(
-            $prefix.'pin_id'     => $this->pin_id,
-            $prefix.'board_id'   => $this->board_id,
-            $prefix.'log'        => $datas
+            'pin_id'        => $this->pin_id,
+            'board_id'      => $this->board_id,
+            'db_version'    => pinim()->db_version,
+            'log'           => $datas //keep the pinterest original datas, may be useful one day or another.
         );
 
-         foreach ( $post_metas as $key=>$value ) {
-             update_post_meta( $post_id, $key, $value );
-         }
+        foreach ( $post_metas as $key=>$value ) {
+            update_post_meta( $post_id, $prefix.$key, $value );
+        }
 
     }
 
@@ -251,12 +253,36 @@ class Pinim_Pin{
         return $content;
     }
     
+    /*
+     * Get best image (url) possible from datas
+     */
+    
+    function get_datas_image_url(){
+        
+        $datas = $this->get_datas();
+        $image = null;
 
+        if (!isset($datas['images'])){
+            return new WP_Error('pin_no_image',__("The current pin does not have an image file associated",'pinim'));
+        }
+
+        if (isset($datas['images']['orig']['url'])){ //get best resolution
+            $image = $datas['images']['orig'];
+        }else{ //get first array item
+            $image = array_shift($datas['images']);
+        }
+        
+        if ( !isset($image['url']) ) return false;
+        
+        return $image['url'];
+
+
+    }
     
     function save($update=false){
         
         $error = new WP_Error();
-        $datas = apply_filters('pin_sanitize_before_insert',$this->get_datas());
+        $datas = $this->get_datas();
         $board = $this->get_board();
         
         if (!$update){
@@ -265,9 +291,17 @@ class Pinim_Pin{
             $error->add('nothing_to_update',__("The current pin has never been imported and can't be updated",'pinim'));
             return $error;
         }
-        
-        if (!isset($datas['image'])){
-            $error->add('no_pin_image',__("The current pin does not have an image file associated",'pinim'));
+
+        //image
+        $image_url = $this->get_datas_image_url();
+
+        if ( is_wp_error($image_url) ){
+            
+            //TO FIX USEFUL ? maybe we should rework the pins error handling.
+            $code = $image->get_error_code();
+            $msg = $image->get_error_message($code);
+            $error->add($code,$msg);
+            
             return $error;
         }
 
@@ -288,11 +322,10 @@ class Pinim_Pin{
         $post['post_category'] = (array)$board->get_category();
         
         //set post date
-        $post['post_date'] = date('Y-m-d H:i:s', $this->get_datas('created_at'));
+        $timestamp = strtotime($this->get_datas('created_at'));
+        $post['post_date'] = date('Y-m-d H:i:s', $timestamp);
 
         $post = array_filter($post);
-        
-        $image_url = $datas['image'];
 
         //insert post
         $post_id = wp_insert_post( $post, true );
@@ -804,7 +837,14 @@ class Pinim_Pending_Pins_Table extends Pinim_Pins_Table {
            break;
 
            case 'date':
-               $result = strcmp($a->get_datas('created_at'), $b->get_datas('created_at'));
+               
+               $pinterest_date_a = $a->get_datas('created_at');
+               $pinterest_date_b = $b->get_datas('created_at');
+               
+               $timestamp_a = strtotime($pinterest_date_a);
+               $timestamp_b = strtotime($pinterest_date_b);
+               
+               $result = strcmp($timestamp_a, $timestamp_b);
            break;
 
            case 'source':
@@ -985,18 +1025,19 @@ class Pinim_Pending_Pins_Table extends Pinim_Pins_Table {
     }
     
     function column_board($pin){
-        
+
         $board = $pin->get_board();
 
-        if (!$board) return;
-        
+        if ( !$board || is_wp_error($board) ) return;
+
         $board_name = $board->get_datas('name');
 
         return $board_name;
     }
     
     function column_date($pin){
-        $timestamp = $pin->get_datas('created_at');
+        $pinterest_date = $pin->get_datas('created_at');
+        $timestamp = strtotime($pinterest_date);
         $date = date_i18n( get_option( 'date_format'), $timestamp );
         $time = date_i18n( get_option( 'time_format'), $timestamp );
         return sprintf( __('%1$s at %2$s','pinim'), $date, $time );

@@ -4,40 +4,213 @@ if(!class_exists('WP_List_Table')){
     require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
 }
 
+
+
 class Pinim_Board{
     
+    var $pinterest_url;
+    var $username;
+    var $slug;
     var $board_id;
+
+    var $datas;
     var $options;
-    var $data;
-    var $pins;
+    var $in_queue;
     
+    var $raw_pins = array();
+    var $pins = array();
     
-    function __construct($board_id){
-        $this->board_id = $board_id;
+    var $bookmark;
+
+    protected $options_default;
+    protected $session_default;
+
+    function __construct($url,$datas=null){
         
+        $board_args = Pinim_Bridge::validate_board_url($url);
+
+        $this->username = $board_args['username'];
+        $this->slug = $board_args['slug'];
+        $this->pinterest_url = $board_args['url'];
+        
+        //datas
+        if ( $this->slug == 'likes'){
+            $this->datas['id'] = pinim_tool_page()->get_user_infos('id',$this->username);
+            $this->datas['name'] = sprintf(__("%s's likes",'pinim'),$this->username).' <i class="fa fa-heart" aria-hidden="true"></i>';
+            $this->datas['pin_count'] = pinim_tool_page()->get_user_infos('like_count',$this->username);
+            $this->datas['cover_images'] = array(
+                array(
+                    'url'   => pinim_tool_page()->get_user_infos('image_medium_url',$this->username)
+                )
+            );
+            $this->datas['url'] = $this->pinterest_url;
+        }else{
+            $this->datas = (array)$datas;
+        }
+        
+        //board id
+        $this->board_id = $this->get_datas('id');
+
+
+        //options
+        $this->options_default = array(
+            'username'      => $this->username,
+            'slug'          => $this->slug,
+            'url'           => $this->pinterest_url,
+            'board_id'      => $this->board_id,
+            'autocache'     => false,
+            'private'       => false,
+            'categories'    => null
+        );
+        
+        $options = $this->get_options();
+        $this->options = wp_parse_args($options,$this->options_default);
+
+        //session
+        $this->session_default = array(
+            'username'      => $this->username,
+            'slug'          => $this->slug,
+            'url'           => $this->pinterest_url,
+            'raw_pins'      => null,
+            'bookmark'      => null,
+            'in_queue'      => false,
+        );
+        
+        $this->populate_session();
+
+
+    }
+    
+    function populate_board_url($board_url_full){
+        $pinterest_url = str_replace(pinim()->pinterest_url, '', $board_url_full);
+
+        //extract username & board slug
+        $pattern = '~([^/]+)/([^/]+)~';
+        preg_match($pattern, $pinterest_url, $matches);
+
+        if (!isset($matches[1])){
+            return;
+        }
+        
+        if (!isset($matches[2])){
+            return;
+        }
+        
+        $this->username = $matches[1];
+        $this->slug = $matches[2];
+
     }
     
     function get_options($key = null){
         
-        $boards_options = pinim_get_boards_options();
-        
-        if (!$boards_options) return null;
+        if (!$this->options){
+            $boards_options = pinim_get_boards_options();
 
+            if (!$boards_options) return null;
+
+            //keep only our board
+            $board_id = $this->board_id;
+            $board_options = array_filter(
+                (array)$boards_options,
+                function ($e) use ($board_id) {
+                    return ($e['board_id'] == $board_id);
+                }
+            );  
+
+            $this->options = array_shift($board_options); //get first one only
+
+        }
+
+        if (!isset($key)) return $this->options;
+        if (!isset($this->options[$key])) return null;
+        return $this->options[$key];
+
+    }
+
+    function save_options(){
+        
+        $boards_options = array();
+        
+        //all boards options
+        if ( $boards_options = pinim_get_boards_options() ){
+            //keep all but our board
+            $board_id = $this->board_id;
+            $boards_options = array_filter(
+                (array)$boards_options,
+                function ($e) use ($board_id) {
+                    return ($e['board_id'] != $board_id);
+                }
+            );
+        }
+
+        $boards_options[] = $this->options;
+        $boards_options = array_values((array)$boards_options);//reset keys
+
+        if ($success = update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_options)){
+            pinim()->user_boards_options = $boards_options; //force reload
+            return $this->options;
+        }else{
+            return new WP_Error( 'pinim', sprintf(__( 'Error while saving settings for board "%1$s"', 'pinim' ),$this->get_datas('name')));
+        }
+
+    }
+
+    function populate_session(){
+
+        //get it
+        $boards_sessions = pinim_tool_page()->get_session_data('user_boards');
+        
         //keep only our board
-        $current_board_id = $this->board_id;
-        $matching_boards = array_filter(
-            $boards_options,
-            function ($e) use ($current_board_id) {
-                return $e['board_id'] == $current_board_id;
+        $board_id = $this->board_id;
+        $boards_sessions = array_filter(
+            (array)$boards_sessions,
+            function ($e) use ($board_id) {
+                return ($e['board_id'] == $board_id);
+            }
+        );   
+
+        $board_session = array_shift($boards_sessions); //keep only first one
+
+        if ( $board_session ){
+            $this->datas = $board_session['datas'];
+            $this->raw_pins = $board_session['raw_pins'];
+            $this->bookmark = $board_session['bookmark'];
+            $this->in_queue = $board_session['in_queue'];
+        }
+
+    }
+    
+    function save_session(){
+        
+        //all boards session
+        $boards_sessions = pinim_tool_page()->get_session_data('user_boards');
+
+        $session = array(
+            'board_id'      => $this->board_id,
+            'username'      => $this->username,
+            'slug'          => $this->slug,
+            'url'           => $this->pinterest_url,
+            'datas'         => $this->datas,
+            'raw_pins'      => $this->raw_pins,
+            'bookmark'      => $this->bookmark,
+            'in_queue'      => $this->in_queue,
+        );
+
+        //keep all but our board
+        $board_id = $this->board_id;
+        $boards_sessions = array_filter(
+            (array)$boards_sessions,
+            function ($e) use ($board_id) {
+                return ($e['board_id'] != $board_id);
             }
         );  
-        
-        $board_keys = array_values($matching_boards);
-        $board_options = array_shift($board_keys);
 
-        if (!isset($key)) return $board_options;
-        if (!isset($board_options[$key])) return null;
-        return $board_options[$key];
+        $boards_sessions[] = $session;
+
+        if ( $success = pinim_tool_page()->set_session_data('user_boards',$boards_sessions) ){
+            $this->populate_session();
+            return $success;
+        }
 
     }
     
@@ -61,110 +234,17 @@ class Pinim_Board{
 
     }
     
-    function queue_board($add_to_queue=true){
-        //queued board
-        $queued_boards_ids = (array)pinim_tool_page()->get_session_data('queued_boards_ids');
-
-        if ( $add_to_queue ){
-            $queued_boards_ids[] = $this->board_id;
-        }else{
-            $queued_boards_ids = array_diff( $queued_boards_ids, array($this->board_id) );
-        }
-        $queued_boards_ids = array_unique($queued_boards_ids);
-        pinim_tool_page()->set_session_data('queued_boards_ids',$queued_boards_ids);
-
-    }
-    
-    function set_options($input){
-        
-        //TO FIX have defaults ?
-
-        //sanitize
-        
-        $new_input = array(
-            'board_id'    => $input['id']
-        );
-
-        //queued board
-        $do_queue_board = (isset($input['queued_board']));
-
-        $this->queue_board($do_queue_board);
-
-        //autocache
-        $new_input['autocache'] = ( isset($input['autocache']) );
-
-        //private
-        $new_input['private'] = ( isset($input['private']) );
-        
-        //custom category
-        if ( isset($input['categories']) && ($input['categories']=='custom') && isset($input['category_custom']) && get_term_by('id', $input['category_custom'], 'category') ){ //custom cat
-                $new_input['categories'] = $input['category_custom'];
-        }
-
-        
-        if ( $boards_settings = pinim_get_boards_options(true) ){ //(force) reloading boards settings...
-            //remove previous settings if they exists
-            foreach ((array)$boards_settings as $key => $single_board_settings){
-
-                if ($single_board_settings['board_id'] == $new_input['board_id']){
-                    unset($boards_settings[$key]);
-                }
-            }
-        }
-
-        //append new settings
-        $boards_settings[] = $new_input;
-        
-        //remove empty + reset keys...
-        $boards_settings = array_filter($boards_settings);
-        $boards_settings = array_values($boards_settings);
-        
-        if ($success = update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_settings)){
-            //reload all boards settings
-            pinim_get_boards_options(true);
-            return $new_input;
-        }else{
-            return new WP_Error( 'pinim', sprintf(__( 'Error while saving settings for board "%1$s"', 'pinim' ),$this->get_datas('name')));
-        }
-
-    }
-    
     /*
      * Get data from Pinterest
      */
     
-    function get_datas($key = null){
-
-        $boards_datas = pinim_tool_page()->get_boards_raw();
-
-        //keep only our board
-        $current_board_id = $this->board_id;
-        $matching_boards = array_filter(
-            $boards_datas,
-            function ($e) use ($current_board_id) {
-                return $e['id'] == $current_board_id;
-            }
-        );  
-
-        $board_keys = array_values($matching_boards);
-        $board_datas = array_shift($board_keys);
-
-        if (!$board_datas){
-            return new WP_Error( 'get_datas_board_'.$this->board_id, sprintf(__( 'Unable to load datas for board #%1$s', 'wordpress-importer' ),$this->board_id));
-        }
-
-        if (!isset($key)) return $board_datas;
-        if (!isset($board_datas[$key])) return false;
-        return $board_datas[$key];
+    function get_datas($keys = null){
+        return pinim_get_array_value($keys, $this->datas);
     }
-    
-    function get_count_cached_pins(){
-        return count( $this->get_cached_pins() );
-    }
-    
+
     function get_pc_cached_pins(){
         $percent = 0;
-        $count = $this->get_count_cached_pins();
+        $count = count( $this->raw_pins );
         if ($total_pins  = $this->get_datas('pin_count')){
             $percent = $count / $total_pins * 100;
         }
@@ -173,9 +253,8 @@ class Pinim_Board{
     
     function get_count_imported_pins(){
         $imported = 0;
-        $cached_pins = $this->get_cached_pins();
-        
-        foreach ((array)$cached_pins as $raw_pin){
+
+        foreach ((array)$this->raw_pins as $raw_pin){
             if (in_array($raw_pin['id'],pinim_tool_page()->existing_pin_ids)) $imported++;
         }
         return $imported;
@@ -207,160 +286,84 @@ class Pinim_Board{
     }
     
     function is_queue_complete(){
-        
-        $count = $this->get_count_cached_pins();
-        if ($count  < $this->get_datas('pin_count')) return false;
-        return true;
+        return ($this->bookmark == '-end-');
     }
     
+    //TO FIX TO CHECK
+    //should compare with pin ids ?
     function is_fully_imported(){
-        $cached_pins = $this->get_cached_pins();
-        if ( $this->get_count_imported_pins() < $this->get_count_cached_pins() ) return false;
+        if ( $this->get_count_imported_pins() < count( $this->raw_pins ) ) return false;
         
         return true;
         
     }
     
-    function get_pins_queue(){
-        $all_queues = (array)pinim_tool_page()->get_session_data('queues');
-        if (isset($all_queues[$this->board_id])){
-            return $all_queues[$this->board_id];
-        }
-        
-    }
     
     /*
      * Append new pins to the board.
      */
     
-    function set_pins_queue($queue){
-        $existing_pins = $new_pins = array();
-        
-        //no pins
-        if ( !isset($queue['pins']) || empty($queue['pins'])){
-            return $this->reset_pins_queue();
-        }
+    function set_pins_queue(){
 
-        $all_queues = (array)pinim_tool_page()->get_session_data('queues');
-        
-        if(isset($all_queues[$this->board_id]['pins'])){
-            $existing_pins = $all_queues[$this->board_id]['pins'];
-        }
-        
-        //special key for likes (will be used in function 'get_cached_pins' )
-        if ( ($this->board_id=='likes') && isset($queue['pins']) ){
-            foreach ($queue['pins'] as $key=>$pin_raw){
-                $pin_raw['is_like'] = true;
-                $queue['pins'][$key] = $pin_raw;
-            }
-        }
-        
-        foreach ((array)$queue['pins'] as $pin){
-            $new_pins[] = apply_filters('pin_sanitize_raw_datas',$pin);
-        }
 
-        $queue = array(
-            'pins'      => array_merge($existing_pins,$new_pins),
-            'bookmark'  => $queue['bookmark']
-        );
-
-        $all_queues[$this->board_id] = $queue;
-
-        return pinim_tool_page()->set_session_data('queues',$all_queues);
+        
     }
     
-    function reset_pins_queue(){
-        $all_queues = (array)pinim_tool_page()->get_session_data('queues');
-        unset($all_queues[$this->board_id]);
-        return pinim_tool_page()->set_session_data('queues',$all_queues);
-    }
-    
-    function get_cached_pins(){
-        $board_pins = array();
- 
-        if ($all_pins = pinim_tool_page()->get_all_cached_pins_raw()){
-            
-            foreach($all_pins as $pin){
-                if ( $this->board_id=='likes' ){
-                    if (!isset($pin['is_like']))  continue;
-                }else{
-                    if ($pin['board']['id'] != $this->board_id)  continue;
-                }
-                
-                $board_pins[] = $pin;
-            }
-        }
-
-        return $board_pins;
-    }
-    
-    /**
-     * $cache = 'auto', 'disabled', 'only'
-     * @param type $cache
-     * @return \WP_Error
-     */
-    
-    function get_pins($reset = false){
-
+    function get_pins(){
         $error = null;
         
-        if (!isset($this->pins)){
-            $pins = array();
-            $board_queue = $this->get_pins_queue();
-            $bookmark = null;
+        if (!$this->is_queue_complete()){
             
-            if ( isset($board_queue['bookmark']) && ($board_queue['bookmark']!='-end-') ){ //uncomplete queue
-                $bookmark = $board_queue['bookmark'];
-                $reset = false; //do not reset queue, it is not filled yet
-            }
+            //try to auth
+            $logged = pinim_tool_page()->do_bridge_login();
+            if ( is_wp_error($logged) ) return $logged;
 
-            if ( $reset || !$board_queue || $bookmark ){
-                
-                if ($reset){
-                    $this->reset_pins_queue();
-                }
-                
-                //try to auth
-                $logged = pinim_tool_page()->do_bridge_login();
+            $bookmark = $this->bookmark; //uncomplete queue
 
-                if ( is_wp_error($logged) ){
-                    return new WP_Error( 'pinim', $logged->get_error_message() ); 
-                }
+            if ( !$this->raw_pins || $bookmark ){
 
-                $board_queue = pinim_tool_page()->bridge->get_board_pins($this,$bookmark);
+                $pinterest_query = pinim_tool_page()->bridge->get_board_pins($this);
 
-                if (is_wp_error($board_queue)){
-                    
-                    $error = $board_queue;
-                    
-                    //check if we have an incomplete queue
+                if (is_wp_error($pinterest_query)){
+                    $error = $pinterest_query;
+                    //check if we have an error that returns an incomplete queue and keep data if any.
                     $error_code = $error->get_error_code();
-                    $board_queue = $error->get_error_data($error_code);
-                    $this->set_pins_queue($board_queue);
+                    $raw_pins = $error->get_error_data($error_code);
+                }else{
+                    $raw_pins = array_merge((array)$this->raw_pins,$pinterest_query);
+                }
+                
+                $raw_pins = array_filter($raw_pins);
+                
+                if ($this->slug=='likes'){
+                    /*
+                     * The board ID in this pin data refers to the "real" board ID of the pin,
+                     * Not our (virtual) likes board.  Let's hack this !
+                     */
+                    
+                    foreach((array)$raw_pins as $key=>$pin){
+                        $pin['board']['id'] = $this->board_id;
+                        $raw_pins[$key] = $pin;
+                    }
+                    
+                }
+                
+                $this->raw_pins = array_filter($raw_pins);
 
+                $this->save_session();
+
+                if ($error){
+                    return $error;
                 }
 
-                $this->set_pins_queue($board_queue);
-                
             }
-            
-            $board_queue = $this->get_pins_queue(); //reload queue
-
-            if (isset($board_queue['pins'])){
-                $this->pins = $board_queue['pins'];
-            }
-
         }
-
-        if ($error){
-            return $error;
-        }else{
-            return $this->pins;
-        }
+        
+        return $this->raw_pins;
         
         
     }
-
+    
     function get_remote_url(){
         $url = pinim()->pinterest_url.$this->get_datas('url');
         return $url;
@@ -445,14 +448,11 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         //Build row actions
         $actions = array(
-            'view'                        => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$board->get_remote_url(),__('View on Pinterest','pinim'),'view'),
+            'view'  => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$board->get_remote_url(),__('View on Pinterest','pinim'),'view'),
         );
 
-        if ($board->board_id == 'likes'){
-            $title = '<i class="fa fa-heart"></i> '.$board->get_datas('name');
-        }else{
-            $title = sprintf('%1$s <span class="item-id">(id:%2$s)</span>',$board->get_datas('name'),$board->board_id);
-        }
+        $title = sprintf('%1$s <span class="item-id">(id:%2$s)</span>',$board->get_datas('name'),$board->board_id);
+
         
         return $title.$this->row_actions($actions);
 
@@ -471,7 +471,7 @@ class Pinim_Boards_Table extends WP_List_Table {
     function column_cb($board){
         
         $this->board_idx++;
-        
+
         $hidden = sprintf('<input type="hidden" name="pinim_form_boards[%1$s][id]" value="%2$s" />',
             $this->board_idx,
             $board->board_id
@@ -482,6 +482,10 @@ class Pinim_Boards_Table extends WP_List_Table {
             $this->board_idx
         );
         return $hidden.$input;
+    }
+    
+    function column_username($board){
+        return $board->username;
     }
     
     function column_autocache($board){
@@ -496,16 +500,15 @@ class Pinim_Boards_Table extends WP_List_Table {
         
     }
     
-    function column_queued_board($board){
-        $queued_boards_ids = (array)pinim_tool_page()->get_session_data('queued_boards_ids');
-        $option = in_array($board->board_id,$queued_boards_ids);
-        $can_queue = (bool)!$board->get_pins_queue(); //we already did try to reach Pinterest
+    function column_in_queue($board){
+        $option = ($board->in_queue);
+        $can_queue = $board->is_queue_complete();
 
         return sprintf(
-            '<input type="checkbox" name="pinim_form_boards[%1$s][queued_board]" value="on" %2$s %3$s />',
+            '<input type="checkbox" name="pinim_form_boards[%1$s][in_queue]" value="on" %2$s %3$s />',
             $this->board_idx,
             checked($option, true, false ),
-            disabled( $can_queue, true, false )
+            disabled( $can_queue, false, false ) 
         );
         
     }
@@ -527,7 +530,7 @@ class Pinim_Boards_Table extends WP_List_Table {
     
     function column_thumbnail($board){
         if ( !$images = $board->get_datas('cover_images') ) return;
-        $image_key = array_values($images);
+        $image_key = array_values($images);//reset keys
         $image = array_shift($image_key);
         return sprintf(
             '<img src="%1$s" />',
@@ -596,7 +599,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             $pc_status_classes = array('pinim-pc-bar');
             $text_bar = $bar_width = null;
             
-            if ( $board->get_cached_pins() ){
+            if ( $board->raw_pins ){
                 $percent = $board->get_pc_imported_pins();
                 $percent = floor($percent);
             }
@@ -619,8 +622,8 @@ class Pinim_Boards_Table extends WP_List_Table {
                     $pc_status_classes[] = 'incomplete';
                 break;
             }
-            
-            if ( !$board->get_cached_pins() ){
+
+            if ( !$board->bookmark ){ //queue not started
                 $pc_status_classes[] = "offline";
                 $link = pinim_get_tool_page_url(array('step'=>'boards-settings','action'=>'boards_cache_pins','board_ids'=>$board->board_id));
                 $text_bar = sprintf('<a href="%1$s">%2$s</a>',$link,__('Not cached yet','pinim'));
@@ -662,7 +665,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             'category'              => __('Category','pinim'),
             'private'               => __('Private','pinim'),
             'pin_count_remote'      => __('Board Pins','pinim'),
-            'pin_count_imported'    => __('Status','pinim'),
+            'pin_count_imported'    => __('Status','pinim')
         );
         
         if ( pinim()->get_options('autocache') ){
@@ -670,8 +673,17 @@ class Pinim_Boards_Table extends WP_List_Table {
         }
         
         if ( pinim_tool_page()->get_screen_boards_filter() != 'not_cached' ){
-            $columns['queued_board'] = __('Queue pins','pinim');
+            $columns['in_queue'] = __('Queue pins','pinim');
         }
+
+        $followed_boards = pinim_tool_page()->filter_boards($this->input_data,'followed');
+        
+        if ($followed_boards){
+            $columns['username'] = __('Username','pinim');
+        }
+        
+        
+        
 
         return $columns;
     }
@@ -740,16 +752,24 @@ class Pinim_Boards_Table extends WP_List_Table {
 
     protected function get_views() {
 
-        $link_all = $link_cached = $link_not_cached = null;
-        $link_all_classes = $link_cached_classes = $link_not_cached_classes = $link_in_queue_classes = array();
-        $all_count = count(pinim_tool_page()->get_boards());
-        $cached_count = count(pinim_tool_page()->get_boards_cached());
-        $not_cached_count = count(pinim_tool_page()->get_boards_not_cached());
-        $in_queue_count = count(pinim_tool_page()->get_boards_in_queue());
+        $link_all = $link_user = $link_cached = $link_not_cached = null;
+        $link_all_classes = $link_user_classes = $link_cached_classes = $link_not_cached_classes = $link_in_queue_classes = $link_followed_classes = array();
+        
+        $all_boards = pinim_tool_page()->get_boards();
+
+        $all_count = count($all_boards);
+        $user_count = count(pinim_tool_page()->filter_boards($all_boards,'user'));
+        $cached_count = count(pinim_tool_page()->filter_boards($all_boards,'cached'));
+        $not_cached_count = count(pinim_tool_page()->filter_boards($all_boards,'not_cached'));
+        $in_queue_count = count(pinim_tool_page()->filter_boards($all_boards,'in_queue'));
+        $followed_count = count(pinim_tool_page()->filter_boards($all_boards,'followed'));
 
         switch (pinim_tool_page()->get_screen_boards_filter()){
             case 'all':
                 $link_all_classes[] = 'current';
+            break;
+            case 'user':
+                $link_user_classes[] = 'current';
             break;
             case 'cached':
                 $link_cached_classes[] = 'current';
@@ -760,6 +780,9 @@ class Pinim_Boards_Table extends WP_List_Table {
             case 'in_queue':
                 $link_in_queue_classes[] = 'current';
             break;
+            case 'followed':
+                $link_followed_classes[] = 'current';
+            break;
         }
         
         $link_all = sprintf(
@@ -768,6 +791,14 @@ class Pinim_Boards_Table extends WP_List_Table {
             pinim_get_classes($link_all_classes),
             __('All','pinim'),
             $all_count
+        );
+        
+        $link_user = sprintf(
+            __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'user')),
+            pinim_get_classes($link_user_classes),
+            __('My boards','pinim'),
+            $user_count
         );
 
         $link_cached = sprintf(
@@ -793,13 +824,26 @@ class Pinim_Boards_Table extends WP_List_Table {
             __('In queue','pinim'),
             $in_queue_count
         );
+        
+        $link_followed = sprintf(
+            __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'followed')),
+            pinim_get_classes($link_followed_classes),
+            __('Followed boards','pinim'),
+            $followed_count
+        );
 
         $links = array(
             'all'           => $link_all,
             'cached'        => $link_cached,
             'not_cached'    => $link_not_cached,
-            'in_queue'      => $link_in_queue,
+            'in_queue'      => $link_in_queue
         );
+        
+        if ( $followed_count ){
+            $links['user'] = $link_user;
+            $links['followed'] = $link_followed;
+        }
 
         return $links;
     }
@@ -994,6 +1038,9 @@ class Pinim_Boards_Table extends WP_List_Table {
          * to a custom query. The returned data will be pre-sorted, and this array
          * sorting technique would be unnecessary.
          */
+        
+        
+        /*
         function usort_reorder($a,$b){
 
             $orderby = 'title';
@@ -1014,7 +1061,8 @@ class Pinim_Boards_Table extends WP_List_Table {
 
             return ($order==='asc') ? $result : -$result; //Send final sort direction to usort
         }
-        usort($data, 'usort_reorder');
+        
+        //usort($data, 'usort_reorder');
         
         
         /***********************************************************************

@@ -2,7 +2,7 @@
 /*
 Plugin Name: Pinterest Importer
 Description: Backup your Pinterest.com account by importing pins as Wordpress posts.  Supports boards, secret boards and likes.  Images are downloaded as Wordpress medias.
-Version: 0.3.2
+Version: 0.4.0
 Author: G.Breant
 Author URI: http://sandbox.pencil2d.org
 Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
@@ -16,12 +16,12 @@ class PinIm {
     /**
     * @public string plugin version
     */
-    public $version = '0.3.2';
+    public $version = '0.4.0';
 
     /**
     * @public string plugin DB version
     */
-    public $db_version = '204';
+    public $db_version = '206';
 
     /** Paths *****************************************************************/
 
@@ -39,6 +39,7 @@ class PinIm {
     
     static $meta_name_options = 'pinim_options';
 
+    var $boards_followed_urls = array();
     var $user_boards_options = null;
     var $pinterest_url = 'https://www.pinterest.com';
     var $donation_url = 'http://bit.ly/gbreant';
@@ -88,22 +89,21 @@ class PinIm {
                 'boards_filter'         => 'all',
                 'pins_filter'           => 'pending',
                 'autocache'             => true,
+                'enable_follow_boards'  => true
             );
             $this->options = wp_parse_args(get_option( self::$meta_name_options), $this->options_default);
 
     }
 
-    
-    
     function includes(){
-        require $this->plugin_dir . '/pinim-class-bridge.php';      //communication with Pinterest
-        require $this->plugin_dir . '/pinim-functions.php';
-        require $this->plugin_dir . '/pinim-templates.php';
-        require $this->plugin_dir . '/pinim-pin-class.php';
-        //require $this->plugin_dir . '/pinim-ajax.php';
-        require $this->plugin_dir . '/pinim-board-class.php';
-        require $this->plugin_dir . '/pinim-dummy-importer.php';
-        require $this->plugin_dir . '/pinim-tool-page.php';
+        require $this->plugin_dir . 'pinim-class-bridge.php';      //communication with Pinterest
+        require $this->plugin_dir . 'pinim-functions.php';
+        require $this->plugin_dir . 'pinim-templates.php';
+        require $this->plugin_dir . 'pinim-pin-class.php';
+        //require $this->plugin_dir . 'pinim-ajax.php';
+        require $this->plugin_dir . 'pinim-board-class.php';
+        require $this->plugin_dir . 'pinim-dummy-importer.php';
+        require $this->plugin_dir . 'pinim-tool-page.php';
     }
 
     function setup_actions(){  
@@ -115,11 +115,6 @@ class PinIm {
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts_styles' ) );
         
         add_action( 'admin_init', array(&$this,'load_textdomain'));
-
-        add_filter( 'pin_sanitize_raw_datas','pin_raw_data_remove_unecessary_keys');
-        add_filter( 'pin_sanitize_raw_datas','pin_raw_data_date_to_timestamp');
-        add_filter( 'pin_sanitize_before_insert','pin_raw_data_images_reduce');
-        add_filter( 'pin_sanitize_before_insert','pin_raw_data_remove_self_pinner');
 
     }
     
@@ -146,7 +141,10 @@ class PinIm {
             */
             
         }else{
-
+            
+            //force destroy session
+            pinim_tool_page()->destroy_session();
+            
             if($current_version < '204'){
                 $boards_settings = pinim_get_boards_options();
                 foreach((array)$boards_settings as $key=>$board){
@@ -157,7 +155,14 @@ class PinIm {
                 }
                 update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_settings);
             }
-
+            if($current_version < '206'){
+                $boards_settings = pinim_get_boards_options();
+                foreach((array)$boards_settings as $key=>$board){
+                    if (!isset($board['username']) || !isset($board['slug']) ) continue;
+                    $boards_settings[$key]['url'] = Pinim_Bridge::get_short_url($board['username'],$board['slug']);
+                }
+                update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_settings);
+            }
         }
 
 
