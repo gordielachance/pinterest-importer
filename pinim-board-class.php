@@ -333,6 +333,21 @@ class Pinim_Board{
                     $raw_pins = array_merge((array)$this->raw_pins,$pinterest_query);
                 }
                 
+                $raw_pins = array_filter($raw_pins);
+                
+                if ($this->slug=='likes'){
+                    /*
+                     * The board ID in this pin data refers to the "real" board ID of the pin,
+                     * Not our (virtual) likes board.  Let's hack this !
+                     */
+                    
+                    foreach((array)$raw_pins as $key=>$pin){
+                        $pin['board']['id'] = $this->board_id;
+                        $raw_pins[$key] = $pin;
+                    }
+                    
+                }
+                
                 $this->raw_pins = array_filter($raw_pins);
 
                 $this->save_session();
