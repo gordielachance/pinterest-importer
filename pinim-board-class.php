@@ -356,21 +356,6 @@ class Pinim_Board{
     
 }
 
-class Pinim_Boards_Followed_Table extends Pinim_Boards_Table {
-    function get_columns(){
-        $columns = parent::get_columns();
-        $columns['username'] = __('Username','pinim');
-        return $columns;
-    }
-    function get_sortable_columns() {
-        $sortable_columns = parent::get_sortable_columns();
-        return $sortable_columns;
-    }
-    function column_username($board){
-        return $board->username;
-    }
-}
-
 class Pinim_Boards_Table extends WP_List_Table {
     
     var $input_data = array();
@@ -482,6 +467,10 @@ class Pinim_Boards_Table extends WP_List_Table {
             $this->board_idx
         );
         return $hidden.$input;
+    }
+    
+    function column_username($board){
+        return $board->username;
     }
     
     function column_autocache($board){
@@ -661,7 +650,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             'category'              => __('Category','pinim'),
             'private'               => __('Private','pinim'),
             'pin_count_remote'      => __('Board Pins','pinim'),
-            'pin_count_imported'    => __('Status','pinim'),
+            'pin_count_imported'    => __('Status','pinim')
         );
         
         if ( pinim()->get_options('autocache') ){
@@ -671,6 +660,15 @@ class Pinim_Boards_Table extends WP_List_Table {
         if ( pinim_tool_page()->get_screen_boards_filter() != 'not_cached' ){
             $columns['in_queue'] = __('Queue pins','pinim');
         }
+
+        $followed_boards = pinim_tool_page()->filter_boards($this->input_data,'followed');
+        
+        if ($followed_boards){
+            $columns['username'] = __('Username','pinim');
+        }
+        
+        
+        
 
         return $columns;
     }
