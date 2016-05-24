@@ -374,23 +374,24 @@ class Pinim_Bridge{
      * @return \WP_Error
      */
 
-    public function get_board_pins($url, $board_id=null, $bookmark=null, $max=0,$stop_at_pin_id=null){
+    public function get_board_pins($board, $max=0,$stop_at_pin_id=null){
         $board_page = 0;
         $board_pins = array();
+        $bookmark = $board->bookmark;
 
         while ($bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
 
-            $query = $this->get_board_pins_page($url, $board_id, $bookmark);
+            $query = $this->get_board_pins_page($board);
             
             if ( is_wp_error($query) ){
                 
                 if(empty($board_pins)){
                     $message = $query->get_error_message();
                 }else{
-                    $message = sprintf(__('Error getting some of the pins for board #%1$s','pinim'),$board_id);
+                    $message = sprintf(__('Error getting some of the pins for board %1$s','pinim'),'<em>'.$board->get_datas('url').'</em>');
                 }
                 
-                return new WP_Error( 'pinim', $message, array('pins'=>$board_pins,'bookmark'=>$bookmark) ); //return already loaded pins with error
+                return new WP_Error( 'pinim', $message, array('pins'=>$board_pins,'bookmark'=>$board->bookmark) ); //return already loaded pins with error
             }
 
             $bookmark = $query['bookmark'];
@@ -492,45 +493,39 @@ class Pinim_Bridge{
      * @param type $bookmark
      * @return \WP_Error
      */
-    private function get_board_pins_page($url, $board_id = null, $bookmark = null){
+    private function get_board_pins_page($board){
 
         $page_pins = array();
         $data_options = array();
         $query_url = null;
         $secret = null;
-        
-        $board_args = self::validate_board_url($url);
-        if (is_wp_error($board_args)) return $board_args;
 
         $login = $this->do_login();
         if (is_wp_error($login)) return $login;
-        
-        
 
-        $data_options = array(
-            'username'                  => $board_args['username'],
-            'add_pin_rep_with_place'    => null,
-            'board_url'                 => $board_args['url'],
-            'page_size'                 => null,
-            'prepend'                   => true,
-            'access'                    => array('write','delete'),
-            'board_layout'              => 'default',
-        );
-        
-        if ($board_args['slug'] == 'likes'){
+        if ($board->slug == 'likes'){
             $query_url = self::$pinterest_url.'/resource/UserLikesResource/get/';
+            $data_options = array_merge($data_options,array(
+                    'username'  => $board->username
+                )
+            );
         }else{
             $query_url = self::$pinterest_url.'/resource/BoardFeedResource/get/';
-            if (!$board_id){
-                $board_id = self::get_board_id($board_args['url']);
-                if ( is_wp_error($board_id) ) return $board_id;
-            }
-            $data_options['board_id'] = $board_id; //required !
+            $data_options = array_merge($data_options,array(
+                    'board_id'                  => $board->board_id,
+                    'add_pin_rep_with_place'    => null,
+                    'board_url'                 => $board->get_datas('url'),
+                    'page_size'                 => null,
+                    'prepend'                   => true,
+                    'access'                    => array('write','delete'),
+                    'board_layout'              => 'default',
+                )
+            );
             
         }
 
-        if ($bookmark){ //used for pagination. Bookmark is defined when it is not the first page.
-            $data_options['bookmarks'] = (array)$bookmark;
+        if ($board->bookmark){ //used for pagination. Bookmark is defined when it is not the first page.
+            $data_options['bookmarks'] = (array)$board->bookmark;
         }
         
         $data = array(
@@ -538,7 +533,7 @@ class Pinim_Bridge{
                 'options' => $data_options,
                 'context' => new \stdClass,
             )),
-            'source_url' => $board_args['url'],
+            'source_url' => $board->get_datas('url'),
             '_' => time()*1000 //js timestamp
         );
 

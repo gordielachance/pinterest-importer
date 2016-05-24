@@ -309,17 +309,17 @@ class Pinim_Board{
     function get_pins(){
         $error = null;
         
-        //try to auth
-        $logged = pinim_tool_page()->do_bridge_login();
-        if ( is_wp_error($logged) ) return $logged;
-        
         if (!$this->is_queue_complete()){
+            
+            //try to auth
+            $logged = pinim_tool_page()->do_bridge_login();
+            if ( is_wp_error($logged) ) return $logged;
 
             $bookmark = $this->bookmark; //uncomplete queue
 
             if ( !$this->raw_pins || $bookmark ){
 
-                $pinterest_query = pinim_tool_page()->bridge->get_board_pins($this->pinterest_url, $this->get_datas('board_id'), $this->bookmark);
+                $pinterest_query = pinim_tool_page()->bridge->get_board_pins($this);
 
                 if (is_wp_error($pinterest_query)){
                     $error = $pinterest_query;

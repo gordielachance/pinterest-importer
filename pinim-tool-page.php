@@ -603,16 +603,14 @@ class Pinim_Tool_Page {
                 }
 
                 //load boards
-                $boards = $this->get_boards();
+                $all_boards = $this->get_boards();
 
-                if ( is_wp_error($boards) ){
+                if ( is_wp_error($all_boards) ){
                     
-                    add_settings_error('pinim_form_boards', 'get_boards', $boards->get_error_message(),'inline');
-                    $boards = array(); //reset boards
+                    add_settings_error('pinim_form_boards', 'get_boards', $all_boards->get_error_message(),'inline');
+                    $all_boards = array(); //reset boards
                     
                 }else{
-
-                    $all_boards = $this->get_boards();
 
                     //cache pins for auto-cache & queued boards
                     $autocache_boards = $this->filter_boards($all_boards,'autocache');
@@ -629,7 +627,7 @@ class Pinim_Tool_Page {
                         add_settings_error('pinim_form_boards','no_boards_cached',implode('<br/>',$feedback),'updated inline');
                     }
                     
-                    $user_boards = $this->filter_boards($boards,'user');
+                    $user_boards = $this->filter_boards($all_boards,'user');
 
                     switch ( $this->get_screen_boards_filter() ){
                         case 'cached':

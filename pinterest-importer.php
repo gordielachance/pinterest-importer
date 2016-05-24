@@ -142,8 +142,8 @@ class PinIm {
             
         }else{
             
-            //force delete temporary data
-            pinim_tool_page()->delete_session_data();
+            //force destroy session
+            pinim_tool_page()->destroy_session();
             
             if($current_version < '204'){
                 $boards_settings = pinim_get_boards_options();
