@@ -36,7 +36,7 @@ class Pinim_Pin{
     
     function get_raw_datas(){
 
-        $all_pins = pinim_tool_page()->get_all_raw_pins(true);
+        $all_pins = pinim_tool_page()->get_all_raw_pins();
         //remove unecessary items
         $current_pin_id = $this->pin_id;
         $pins = array_filter(
@@ -218,7 +218,7 @@ class Pinim_Pin{
             'pin_id'        => $this->pin_id,
             'board_id'      => $this->board_id,
             'db_version'    => pinim()->db_version,
-            'log'           => $datas
+            'log'           => $datas //keep the pinterest original datas, may be useful one day or another.
         );
 
         foreach ( $post_metas as $key=>$value ) {

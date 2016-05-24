@@ -377,9 +377,8 @@ class Pinim_Bridge{
     public function get_board_pins($board, $max=0,$stop_at_pin_id=null){
         $board_page = 0;
         $board_pins = array();
-        $bookmark = $board->bookmark;
 
-        while ($bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
+        while ($board->bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
 
             $query = $this->get_board_pins_page($board);
             
@@ -391,10 +390,10 @@ class Pinim_Bridge{
                     $message = sprintf(__('Error getting some of the pins for board %1$s','pinim'),'<em>'.$board->get_datas('url').'</em>');
                 }
                 
-                return new WP_Error( 'pinim', $message, array('pins'=>$board_pins,'bookmark'=>$board->bookmark) ); //return already loaded pins with error
+                return new WP_Error( 'pinim', $message, $board_pins ); //return already loaded pins with error
             }
 
-            $bookmark = $query['bookmark'];
+            $board->bookmark = $query['bookmark'];
 
             if (isset($query['pins'])){
 
@@ -405,7 +404,7 @@ class Pinim_Bridge{
                     foreach($page_pins as $key=>$pin){
                         if (isset($pin['id']) && $pin['id']==$stop_at_pin_id){
                             $page_pins = array_slice($page_pins, 0, $key+1);
-                            $bookmark = '-end-';
+                            $board->bookmark = '-end-';
                             break;
                         }
                     }
@@ -416,7 +415,7 @@ class Pinim_Bridge{
                 //limit reached
                 if ( ($max) && ( count($board_pins)> $max) ){
                     $board_pins = array_slice($board_pins, 0, $max);
-                    $bookmark = '-end-';
+                    $board->bookmark = '-end-';
                     break;
                 }
 
@@ -425,8 +424,8 @@ class Pinim_Bridge{
             $board_page++;
             
         }
-        
-        return array('pins'=>$board_pins,'bookmark'=>$bookmark);
+
+        return $board_pins;
 
     }
     
@@ -560,9 +559,9 @@ class Pinim_Bridge{
 
         $body = $this->maybe_decode_response($body);
 
-        if (isset($body['resource_data_cache'][0]['data'])){
+        if (isset($body['resource_response']['data'])){
 
-            $page_pins = $body['resource_data_cache'][0]['data'];
+            $page_pins = $body['resource_response']['data'];
 
             //remove items that have not the "pin" type (like module items)
             $page_pins = array_filter(
@@ -582,7 +581,7 @@ class Pinim_Bridge{
             
         }
 
-        return new WP_Error('pinim',sprintf(__('Error getting pins for board %s','pinim'),$board_args['url']));
+        return new WP_Error('pinim',sprintf(__('Error getting pins for board %s','pinim'),'<em>'.$board->get_datas('url').'</em>'));
 
     }
     /*

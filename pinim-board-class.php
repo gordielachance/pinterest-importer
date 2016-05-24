@@ -43,6 +43,7 @@ class Pinim_Board{
                     'url'   => pinim_tool_page()->get_user_infos('image_medium_url',$this->username)
                 )
             );
+            $this->datas['url'] = $this->pinterest_url;
         }else{
             $this->datas = (array)$datas;
         }
@@ -128,20 +129,22 @@ class Pinim_Board{
 
     function save_options(){
         
-        //all boards options
-        $boards_options = pinim_get_boards_options();
-
-        //keep all but our board
-        $board_id = $this->board_id;
-        $boards_options = array_filter(
-            (array)$boards_options,
-            function ($e) use ($board_id) {
-                return ($e['board_id'] != $board_id);
-            }
-        );  
+        $boards_options = array();
         
-        $boards_options = array_values($boards_options);//reset keys
+        //all boards options
+        if ( $boards_options = pinim_get_boards_options() ){
+            //keep all but our board
+            $board_id = $this->board_id;
+            $boards_options = array_filter(
+                (array)$boards_options,
+                function ($e) use ($board_id) {
+                    return ($e['board_id'] != $board_id);
+                }
+            );
+        }
+
         $boards_options[] = $this->options;
+        $boards_options = array_values((array)$boards_options);//reset keys
 
         if ($success = update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_options)){
             pinim()->user_boards_options = $boards_options; //force reload
@@ -327,17 +330,16 @@ class Pinim_Board{
                     $error_code = $error->get_error_code();
                     $raw_pins = $error->get_error_data($error_code);
                 }else{
-                    $raw_pins = array_merge((array)$this->raw_pins,$pinterest_query['pins']);
-                    $this->bookmark = $pinterest_query['bookmark'];
+                    $raw_pins = array_merge((array)$this->raw_pins,$pinterest_query);
                 }
+                
+                $this->raw_pins = array_filter($raw_pins);
 
                 $this->save_session();
 
                 if ($error){
                     return $error;
                 }
-                
-                $this->raw_pins = array_filter($raw_pins);
 
             }
         }
@@ -446,14 +448,11 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         //Build row actions
         $actions = array(
-            'view'                        => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$board->get_remote_url(),__('View on Pinterest','pinim'),'view'),
+            'view'  => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$board->get_remote_url(),__('View on Pinterest','pinim'),'view'),
         );
 
-        if ($board->slug == 'likes'){
-            $title = '<i class="fa fa-heart"></i> '.$board->get_datas('name');
-        }else{
-            $title = sprintf('%1$s <span class="item-id">(id:%2$s)</span>',$board->get_datas('name'),$board->board_id);
-        }
+        $title = sprintf('%1$s <span class="item-id">(id:%2$s)</span>',$board->get_datas('name'),$board->board_id);
+
         
         return $title.$this->row_actions($actions);
 
@@ -740,19 +739,24 @@ class Pinim_Boards_Table extends WP_List_Table {
 
     protected function get_views() {
 
-        $link_all = $link_cached = $link_not_cached = null;
-        $link_all_classes = $link_cached_classes = $link_not_cached_classes = $link_in_queue_classes = array();
+        $link_all = $link_user = $link_cached = $link_not_cached = null;
+        $link_all_classes = $link_user_classes = $link_cached_classes = $link_not_cached_classes = $link_in_queue_classes = $link_followed_classes = array();
         
         $all_boards = pinim_tool_page()->get_boards();
-        
+
         $all_count = count($all_boards);
+        $user_count = count(pinim_tool_page()->filter_boards($all_boards,'user'));
         $cached_count = count(pinim_tool_page()->filter_boards($all_boards,'cached'));
         $not_cached_count = count(pinim_tool_page()->filter_boards($all_boards,'not_cached'));
         $in_queue_count = count(pinim_tool_page()->filter_boards($all_boards,'in_queue'));
+        $followed_count = count(pinim_tool_page()->filter_boards($all_boards,'followed'));
 
         switch (pinim_tool_page()->get_screen_boards_filter()){
             case 'all':
                 $link_all_classes[] = 'current';
+            break;
+            case 'user':
+                $link_user_classes[] = 'current';
             break;
             case 'cached':
                 $link_cached_classes[] = 'current';
@@ -763,6 +767,9 @@ class Pinim_Boards_Table extends WP_List_Table {
             case 'in_queue':
                 $link_in_queue_classes[] = 'current';
             break;
+            case 'followed':
+                $link_followed_classes[] = 'current';
+            break;
         }
         
         $link_all = sprintf(
@@ -771,6 +778,14 @@ class Pinim_Boards_Table extends WP_List_Table {
             pinim_get_classes($link_all_classes),
             __('All','pinim'),
             $all_count
+        );
+        
+        $link_user = sprintf(
+            __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'user')),
+            pinim_get_classes($link_user_classes),
+            __('My boards','pinim'),
+            $user_count
         );
 
         $link_cached = sprintf(
@@ -796,13 +811,26 @@ class Pinim_Boards_Table extends WP_List_Table {
             __('In queue','pinim'),
             $in_queue_count
         );
+        
+        $link_followed = sprintf(
+            __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'followed')),
+            pinim_get_classes($link_followed_classes),
+            __('Followed boards','pinim'),
+            $followed_count
+        );
 
         $links = array(
             'all'           => $link_all,
             'cached'        => $link_cached,
             'not_cached'    => $link_not_cached,
-            'in_queue'      => $link_in_queue,
+            'in_queue'      => $link_in_queue
         );
+        
+        if ( $followed_count ){
+            $links['user'] = $link_user;
+            $links['followed'] = $link_followed;
+        }
 
         return $links;
     }

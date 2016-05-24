@@ -53,7 +53,7 @@ class Pinim_Tool_Page {
                 if ( !is_wp_error($user_data) && $user_data ) return true;
             break;
             case 'pins-list':
-                if ( $this->get_all_raw_pins(true) || $this->existing_pin_ids ) return true;
+                if ( $this->get_queued_raw_pins() || $this->existing_pin_ids ) return true;
             break;
             case 'pinim-options':
                 if( current_user_can( 'manage_options' ) ) return true;
@@ -179,6 +179,26 @@ class Pinim_Tool_Page {
 
     
     function save_step(){
+        
+        //TO FIX TO REMOVE
+        if (isset($_REQUEST['destroy_appart'])){
+            //all boards session
+            $boards_sessions = pinim_tool_page()->get_session_data('user_boards');
+
+            //keep all but our board
+            $board_id = '153474368490655457';
+            $boards_sessions = array_filter(
+                (array)$boards_sessions,
+                function ($e) use ($board_id) {
+                    return ($e['board_id'] != $board_id);
+                }
+            );  
+
+            pinim_tool_page()->set_session_data('user_boards',$boards_sessions);
+            
+            echo"********************DESTROYED APPART";
+
+        }
 
         $user_id = get_current_user_id();
         
@@ -369,10 +389,12 @@ class Pinim_Tool_Page {
 
                 switch ($action) {
                     
+
+                    
                     case 'boards_save_followed':
                         
                         if ( !pinim()->get_options('enable_follow_boards') ) break;
-                        
+
                         if (!$_POST['pinim_form_boards_followed']) break;
                         
                         $boards_urls = array();
@@ -597,10 +619,6 @@ class Pinim_Tool_Page {
                 $boards = array();
                 $has_new_boards = false;
                 $this->table_boards_user = new Pinim_Boards_Table();
-                
-                if ( pinim()->get_options('enable_follow_boards') ){
-                    $this->table_boards_followed = new Pinim_Boards_Followed_Table();
-                }
 
                 //load boards
                 $all_boards = $this->get_boards();
@@ -627,29 +645,28 @@ class Pinim_Tool_Page {
                         add_settings_error('pinim_form_boards','no_boards_cached',implode('<br/>',$feedback),'updated inline');
                     }
                     
-                    $user_boards = $this->filter_boards($all_boards,'user');
+                    
 
                     switch ( $this->get_screen_boards_filter() ){
+                        case 'user':
+                            $all_boards = $this->filter_boards($all_boards,'user');
+                        break;
                         case 'cached':
-                            $user_boards = $this->filter_boards($user_boards,'cached');
+                            $all_boards = $this->filter_boards($all_boards,'cached');
                         break;
                         case 'not_cached':
-                            $user_boards = $this->filter_boards($user_boards,'not_cached');
+                            $all_boards = $this->filter_boards($all_boards,'not_cached');
                         break;
                         case 'in_queue':
-                            $user_boards = $this->filter_boards($user_boards,'in_queue');
+                            $all_boards = $this->filter_boards($all_boards,'in_queue');
+                        break;
+                        case 'followed':
+                            $all_boards = $this->filter_boards($all_boards,'followed');
                         break;
                     }
 
-                    $this->table_boards_user->input_data = $user_boards;
+                    $this->table_boards_user->input_data = $all_boards;
                     $this->table_boards_user->prepare_items();
-
-                    if ( pinim()->get_options('enable_follow_boards') ){
-                        $followed_boards = $this->filter_boards($boards,'followed');
-                        $this->table_boards_followed->input_data = $followed_boards;
-                        $this->table_boards_followed->prepare_items();
-                    }
-
 
                     //display feedback with import links
                     if ( $pending_count = $this->get_pins_count_pending() ){
@@ -894,23 +911,11 @@ class Pinim_Tool_Page {
                                     $followed_boards_urls = pinim_get_followed_boards_urls();
                                     $textarea_content = null;
                                     foreach ((array)$followed_boards_urls as $board_url){
-                                        $textarea_content.= esc_url($board_url)."\n";
+                                        $textarea_content.= esc_url(pinim()->pinterest_url.$board_url)."\n";
                                     }
 
                                     ?>
-                                    <form id="pinim-form-followed-boards"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_tool_page_url();?>" method="post">
-                                        <input type="hidden" name="step" value="<?php echo $this->current_step;?>" />
-                                        <input type="hidden" name="action" value="boards_save_followed" />
-
-                                        <h3><?php _e('Followed boards','pinim');?></h3>
-                                        <?php settings_errors('pinim_form_followed_boards');?>
-                                        
-                                        <?php
-                                        $this->table_boards_followed->views_display();
-                                        $this->table_boards_followed->views();
-                                        $this->table_boards_followed->display();                            
-                                        ?>
-                                        
+                                    <form id="pinim-form-follow-boards-input" class="pinim-form" action="<?php echo pinim_get_tool_page_url();?>" method="post">
                                         <h4><?php _e('Add board to follow','pinim');?></h4>
                                         
                                         <div id="follow-new-board" class="tab-description">
@@ -922,6 +927,8 @@ class Pinim_Tool_Page {
                                                 <textarea name="pinim_form_boards_followed"><?php echo $textarea_content;?></textarea>
                                             </p>
                                         </div>
+                                        <input type="hidden" name="step" value="<?php echo $this->current_step;?>" />
+                                        <input type="hidden" name="action" value="boards_save_followed" />
                                         <?php submit_button(__('Save boards urls','pinim'));?>
                                     </form>
                                     <?php
@@ -1469,7 +1476,8 @@ class Pinim_Tool_Page {
             $bulk_pins_ids = explode(',',$_REQUEST['pin_ids']);
         }
 
-        if ( (!$bulk_pins_ids) && ( $all_pins = pinim_tool_page()->get_all_raw_pins(true) ) && !is_wp_error($all_pins) ) {
+        if ( (!$bulk_pins_ids) && ($all_pins = pinim_tool_page()->get_queued_raw_pins()) && !is_wp_error($all_pins) ) {
+
             foreach((array)$all_pins as $pin){
                 $bulk_pins_ids[] = $pin['id'];
             }
@@ -1477,6 +1485,10 @@ class Pinim_Tool_Page {
         }
 
         return $bulk_pins_ids;
+    }
+    
+    function get_queued_raw_pins(){
+        return $this->get_all_raw_pins(true);
     }
 
     function get_all_raw_pins($only_queued_boards = false){
@@ -1486,7 +1498,7 @@ class Pinim_Tool_Page {
         $boards = $this->get_boards();
         
         if (!is_wp_error($boards)) {
-            
+
             foreach ((array)$boards as $board){
 
                 if ( !$board->raw_pins ) continue;
@@ -1504,7 +1516,6 @@ class Pinim_Tool_Page {
     
     function get_pins_count_pending(){
         $pins_ids = $this->get_requested_pins_ids();
-
         $pins_ids = array_diff($pins_ids, $this->existing_pin_ids);
         return count($pins_ids);
     }
