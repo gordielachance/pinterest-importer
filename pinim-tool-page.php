@@ -409,18 +409,18 @@ class Pinim_Tool_Page {
                             //fetch form data
                             $form_data = $_POST['pinim_form_boards'];
                             
-                            print_r($form_data);die();
+                            $board_id = $board->board_id;
  
-                            $board_form_data = array_filter(
+                            //keep only our board
+                            $form_data = array_filter(
                                 (array)$form_data,
-                                function ($e) use ($board) {
-                                    return ( $e['id'] == $board->board_id );
+                                function ($e) use ($board_id) {
+                                    return ( $e['id'] == $board_id );
                                 }
                             ); 
                             
                             //keep only first array item
-                            $board_form_data = array_slice($board_form_data, 0, 1);
-                            $input = array_shift($board_form_data);
+                            $input = array_shift($form_data);
                             
                             //update board
                             $board->in_queue = (isset($input['in_queue']));
@@ -611,7 +611,7 @@ class Pinim_Tool_Page {
                     $boards = array(); //reset boards
                     
                 }else{
-                    
+
                     $all_boards = $this->get_boards();
 
                     //cache pins for auto-cache & queued boards
@@ -1219,6 +1219,16 @@ class Pinim_Tool_Page {
     function get_user_infos($keys = null,$username = 'me'){
         $session_data = $this->get_session_data('user_datas');
         
+        /* self data is stored under 'me'.
+         * so if we are looking for our username,
+         * use the 'me' array
+         */
+        
+        if ( isset($session_data['me']) && $username ){
+            $self_username = $session_data['me']['username'];
+            if ($self_username == $username) $username = 'me';
+        }
+
         if ( !isset($session_data[$username]) ){
             
             $userdata = $this->bridge->get_user_datas($username);
@@ -1235,13 +1245,25 @@ class Pinim_Tool_Page {
 
     }
     
-    function get_user_boards($username = 'me'){
+    /**
+     * Get boards informations for a user, from session cache or from Pinterest.
+     * if $username = 'me', get logged in user boards; but use real username or 
+     * private boards won't be grabbed.
+     * @param type $username
+     * @return type
+     */
+    
+    function get_user_boards_data($username = 'me'){
         $session_data = $this->get_session_data('user_datas_boards');
 
         if ( !isset($session_data[$username]) ){
+            
+            //try to auth
+            $logged = $this->do_bridge_login();
+            if ( is_wp_error($logged) ) return $logged;
 
             if ($username == 'me'){
-                //FIX for secret boards; which are not retrieved if username = 'me'.
+                //quick fix for secret boards; which are not retrieved if username = 'me'.
                 $me_username = $this->get_user_infos('username');
                 $userdata = $this->bridge->get_user_boards($me_username);
             }else{
@@ -1259,114 +1281,84 @@ class Pinim_Tool_Page {
         return $session_data[$username];
 
     }
+    
+    function get_boards_user(){
+        $boards = array();
 
-    function get_boards(){
-
-        //try to auth
-        $logged = $this->do_bridge_login();
-        if ( is_wp_error($logged) ) return $logged;
-
-        //get users
-        $users = array(
-            'me'
-        );
+        if ( !$user_data = $this->get_user_infos() ) return $boards;
         
+        $boards_datas = $this->get_user_boards_data();
+        if ( is_wp_error($boards_datas) ) return $boards; //TO FIX output error ?
+        
+        foreach((array)$boards_datas as $single_board_datas){
+            $boards[] = new Pinim_Board($single_board_datas['url'],$single_board_datas);
+        }
+        
+        //likes
+        $username = $this->get_user_infos('username');
+        $likes_url = Pinim_Bridge::get_short_url($username,'likes');
+        $boards[] = new Pinim_Board($likes_url);
+        
+        return $boards;
+        
+    }
+    
+    function get_boards_followed(){
+        
+        $boards = array();
+        $users_boards_data = array();
+        
+        //get users from followed boards
         $followed_boards_urls = pinim_get_followed_boards_urls();
 
         foreach((array)$followed_boards_urls as $board_url){
             $board_args = Pinim_Bridge::validate_board_url($board_url);
             if ( is_wp_error($board_args) ) continue;
-            $users[] = $board_args['username'];
-        }
-
-        $users = array_unique($users);
-        $user_datas = array();
-
-        foreach((array)$users as $username){
+            $username = $board_args['username'];
+            $slug = $board_args['slug'];
+            $url = $board_args['url'];
             
-            $userdata = $this->get_user_infos(null,$username);
-            $boards = $this->get_user_boards($username);
-
-            $data = array(
-                'user'      => $userdata,
-                'boards'    => $boards
-            );
-
-            $user_datas[$username] = $data;
-        }
-
-        //populate boards
-        $populate_boards = array();
-
-        //append user boards
-        if ( isset($user_datas['me']['boards']) ){
-            foreach((array)$user_datas['me']['boards'] as $board_data){
-                $populate_boards[] = new Pinim_Board($board_data['url'],$board_data);
-            }
-        }
-
-        
-        //append user likes
-        /*
-        $username = $this->get_user_infos('username');
-        $url = Pinim_Bridge::get_short_url($username,'likes');
-        $populate_boards[] = new Pinim_Board($url);
-        */
-
-        //append followed boards
-        foreach((array)$followed_boards_urls as $board_url){
-            $board_args = Pinim_Bridge::validate_board_url($board_url);
-            if ( is_wp_error($board_args) ) continue;
-            $board_username = $board_args['username'];
-            $board_slug = $board_args['slug'];
-            $board_url = $board_args['url'];
+            //get user boards datas
+            $user_boards_data = $this->get_user_boards_data($username);
+            if ( !$user_boards_data || is_wp_error($user_boards_data) ) continue;
             
-            if ($board_slug == 'likes'){
-                $populate_boards[] = new Pinim_Board($board_url);
-                
+            if ($slug == 'likes'){
+                $boards[] = new Pinim_Board($url);
             }else{
-                $user_boards = $user_datas[$board_username]['boards'];
-
                 //get our board
-                $possible_boards = array_filter(
-                    (array)$user_boards,
+                $user_boards_data = array_filter(
+                    (array)$user_boards_data,
                     function ($e) use ($board_url) {
                         return $e['url'] == $board_url;
                     }
                 );  
 
-                if (empty($possible_boards)) continue;
-                $board_data = array_shift($possible_boards);
-
-                $populate_boards[] = new Pinim_Board($board_url,$board_data);
+                if (empty($user_boards_data)) continue;
+                $board_data = array_shift($user_boards_data);
+                $boards[] = new Pinim_Board($board_url,$board_data);
                 
             }
-
-        }
         
+        }
+
+        return $boards;
+
+    }
+
+    function get_boards(){
+
+        $user_boards = $this->get_boards_user();
+        $followed_boards = $this->get_boards_followed();
+
+        $boards = array_merge($user_boards,$followed_boards);
+
         //remove boards with errors
-        //update likes board
-        
-        foreach ((array)$populate_boards as $key=>$board){
-            if ( is_wp_error($board) ) unset($board);
-            if ( $board->slug == 'likes'){
-                $board_username = $this->get_user_infos('username',$board->username);
-                $board_like_count = $this->get_user_infos('like_count',$board->username);
-                $board_image = $this->get_user_infos('image_medium_url',$board->username);
-
-                $board->datas['name'] = sprintf(__("%s's likes",'pinim'),$board_username).' <i class="fa fa-heart" aria-hidden="true"></i>';
-                $board->datas['pin_count'] = $board_like_count;
-                $board->datas['cover_images'] = array(
-                    array(
-                        'url'   => $board_image
-                    )
-                );
-                
-            }
+        foreach ((array)$boards as $key=>$board){
+            if ( is_wp_error($board) ) unset($boards[$key]);
         }
-        
+
         //TO FIX check if we should not save some stuff in the session, at this step (eg. board id for likes)
-        return $populate_boards;
+        return $boards;
     }
     
     function get_all_pins_action(){
@@ -1407,7 +1399,7 @@ class Pinim_Tool_Page {
     
     function get_requested_boards(){
         $boards = array();
-        
+
         if ( $boards_ids = $this->get_requested_boards_ids() ){
             $all_boards = $this->get_boards();
 
@@ -1479,7 +1471,7 @@ class Pinim_Tool_Page {
             $bulk_pins_ids = explode(',',$_REQUEST['pin_ids']);
         }
 
-        if ( (!$bulk_pins_ids) && ( $all_pins = pinim_tool_page()->get_all_raw_pins(true) ) ) {
+        if ( (!$bulk_pins_ids) && ( $all_pins = pinim_tool_page()->get_all_raw_pins(true) ) && !is_wp_error($all_pins) ) {
             foreach((array)$all_pins as $pin){
                 $bulk_pins_ids[] = $pin['id'];
             }
@@ -1492,7 +1484,7 @@ class Pinim_Tool_Page {
     function get_all_raw_pins($only_queued_boards = false){
 
         $pins = array();
-        
+
         $boards = $this->get_boards();
         
         if (!is_wp_error($boards)) {

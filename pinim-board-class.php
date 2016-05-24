@@ -24,8 +24,6 @@ class Pinim_Board{
 
     protected $options_default;
     protected $session_default;
-    
-    
 
     function __construct($url,$datas=null){
         
@@ -35,7 +33,23 @@ class Pinim_Board{
         $this->slug = $board_args['slug'];
         $this->pinterest_url = $board_args['url'];
         
-        if ($datas) $this->datas = (array)$datas;
+        //datas
+        if ( $this->slug == 'likes'){
+            $this->datas['id'] = pinim_tool_page()->get_user_infos('id',$this->username);
+            $this->datas['name'] = sprintf(__("%s's likes",'pinim'),$this->username).' <i class="fa fa-heart" aria-hidden="true"></i>';
+            $this->datas['pin_count'] = pinim_tool_page()->get_user_infos('like_count',$this->username);
+            $this->datas['cover_images'] = array(
+                array(
+                    'url'   => pinim_tool_page()->get_user_infos('image_medium_url',$this->username)
+                )
+            );
+        }else{
+            $this->datas = (array)$datas;
+        }
+        
+        //board id
+        $this->board_id = $this->get_datas('id');
+
 
         //options
         $this->options_default = array(
@@ -94,17 +108,15 @@ class Pinim_Board{
             if (!$boards_options) return null;
 
             //keep only our board
-            $board_url = $this->pinterest_url;
-            $matching_boards = array_filter(
+            $board_id = $this->board_id;
+            $board_options = array_filter(
                 (array)$boards_options,
-                function ($e) use ($board_url) {
-                    $is_board = ( isset($e['url']) && ($e['url'] == $board_url) );
-                    return $is_board;
+                function ($e) use ($board_id) {
+                    return ($e['board_id'] == $board_id);
                 }
             );  
 
-            $board_keys = array_values($matching_boards);//reset keys
-            $this->options = array_shift($board_keys);
+            $this->options = array_shift($board_options); //get first one only
 
         }
 
@@ -120,24 +132,16 @@ class Pinim_Board{
         $boards_options = pinim_get_boards_options();
 
         //keep all but our board
-        $board_url = $this->pinterest_url;
+        $board_id = $this->board_id;
         $boards_options = array_filter(
             (array)$boards_options,
-            function ($e) use ($board_url) {
-                $is_board = ( isset($e['url']) && ($e['url'] == $board_url) );
-                return !$is_board;
+            function ($e) use ($board_id) {
+                return ($e['board_id'] != $board_id);
             }
         );  
         
         $boards_options = array_values($boards_options);//reset keys
-
         $boards_options[] = $this->options;
-        
-        if($this->slug=='variouze'){
-            print_r($boards_options);die();
-        }
-        
- 
 
         if ($success = update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_options)){
             pinim()->user_boards_options = $boards_options; //force reload
@@ -151,29 +155,24 @@ class Pinim_Board{
     function populate_session(){
 
         //get it
-        $all_boards_session = pinim_tool_page()->get_session_data('user_boards');
+        $boards_sessions = pinim_tool_page()->get_session_data('user_boards');
         
         //keep only our board
-        $board_url = $this->pinterest_url;
-        $matching_boards = array_filter(
-            (array)$all_boards_session,
-            function ($e) use ($board_url) {
-                $is_board = ( isset($e['url']) && ($e['url'] == $board_url) );
-                return $is_board;
+        $board_id = $this->board_id;
+        $boards_sessions = array_filter(
+            (array)$boards_sessions,
+            function ($e) use ($board_id) {
+                return ($e['board_id'] == $board_id);
             }
         );   
 
-        if ( $board_session = array_shift($matching_boards) ){
-            /*
-            print_r($board_url);
-            echo"<br/><br/>";
-            print_r($board_session);die();
-            */
+        $board_session = array_shift($boards_sessions); //keep only first one
+
+        if ( $board_session ){
             $this->datas = $board_session['datas'];
             $this->raw_pins = $board_session['raw_pins'];
             $this->bookmark = $board_session['bookmark'];
             $this->in_queue = $board_session['in_queue'];
-            
         }
 
     }
@@ -181,7 +180,7 @@ class Pinim_Board{
     function save_session(){
         
         //all boards session
-        $matching_boards = pinim_tool_page()->get_session_data('user_boards');
+        $boards_sessions = pinim_tool_page()->get_session_data('user_boards');
 
         $session = array(
             'board_id'      => $this->board_id,
@@ -195,18 +194,17 @@ class Pinim_Board{
         );
 
         //keep all but our board
-        $board_url = $this->pinterest_url;
-        $matching_boards = array_filter(
-            (array)$matching_boards,
-            function ($e) use ($board_url) {
-                $is_board = ( isset($e['url']) && ($e['url'] == $board_url) );
-                return !$is_board;
+        $board_id = $this->board_id;
+        $boards_sessions = array_filter(
+            (array)$boards_sessions,
+            function ($e) use ($board_id) {
+                return ($e['board_id'] != $board_id);
             }
         );  
 
-        $matching_boards[] = $session;
+        $boards_sessions[] = $session;
 
-        if ( $success = pinim_tool_page()->set_session_data('user_boards',$matching_boards) ){
+        if ( $success = pinim_tool_page()->set_session_data('user_boards',$boards_sessions) ){
             $this->populate_session();
             return $success;
         }
@@ -311,11 +309,11 @@ class Pinim_Board{
     function get_pins(){
         $error = null;
         
+        //try to auth
+        $logged = pinim_tool_page()->do_bridge_login();
+        if ( is_wp_error($logged) ) return $logged;
+        
         if (!$this->is_queue_complete()){
-
-            //TO FIX should not need to log for public boards ?
-            $logged = pinim_tool_page()->do_bridge_login();
-            if(is_wp_error($logged)) return $logged;
 
             $bookmark = $this->bookmark; //uncomplete queue
 
@@ -328,9 +326,8 @@ class Pinim_Board{
                     //check if we have an error that returns an incomplete queue and keep data if any.
                     $error_code = $error->get_error_code();
                     $raw_pins = $error->get_error_data($error_code);
-                    $this->raw_pins = $raw_pins;
                 }else{
-                    $this->raw_pins = array_merge((array)$this->raw_pins,$pinterest_query['pins']);
+                    $raw_pins = array_merge((array)$this->raw_pins,$pinterest_query['pins']);
                     $this->bookmark = $pinterest_query['bookmark'];
                 }
 
@@ -339,6 +336,8 @@ class Pinim_Board{
                 if ($error){
                     return $error;
                 }
+                
+                $this->raw_pins = array_filter($raw_pins);
 
             }
         }
