@@ -142,9 +142,9 @@ function pin_custom_content($post){
 * First release
 
 == TO DO ==
+* use wp_update_term_count() ? seems posts count for categories is not updated.
 * add source in post content should be optional
 * a trashed pin should not be considered existing ?
-* pending & processed pins table : do not load all the posts (very slow !) for processed pins table.
 * use some ajax functions (Pinterest queries, etc.)
 * allow to fetch pins from any Pinterest board
 * bug when creating 'pinim_boards_settings' : last board settings are not saved, so it is detected as new board when the page refreshes.

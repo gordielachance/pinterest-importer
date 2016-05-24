@@ -394,31 +394,32 @@ class Pinim_Tool_Page {
                     case 'boards_save_followed':
                         
                         if ( !pinim()->get_options('enable_follow_boards') ) break;
-
-                        if (!$_POST['pinim_form_boards_followed']) break;
                         
                         $boards_urls = array();
-                        $input_urls = $_POST['pinim_form_boards_followed'];
-                        
-                        $input_urls = trim($input_urls);
-                        $input_urls = explode("\n", $input_urls);
-                        $input_urls = array_filter($input_urls, 'trim'); // remove any extra \r characters left behind
 
-                        foreach ($input_urls as $url) {
-                            $board_args = Pinim_Bridge::validate_board_url($url);
-                            if ( is_wp_error($board_args) ) continue;
-                            $url = $board_args['url'];
-                            $boards_urls[] = esc_url($url);
-                            //TO FIX validate board URL
+                        if ($_POST['pinim_form_boards_followed']){
+                            
+                            $input_urls = $_POST['pinim_form_boards_followed'];
+
+                            $input_urls = trim($input_urls);
+                            $input_urls = explode("\n", $input_urls);
+                            $input_urls = array_filter($input_urls, 'trim'); // remove any extra \r characters left behind
+
+                            foreach ($input_urls as $url) {
+                                $board_args = Pinim_Bridge::validate_board_url($url);
+                                if ( is_wp_error($board_args) ) continue;
+                                $url = $board_args['url'];
+                                $boards_urls[] = esc_url($url);
+                                //TO FIX validate board URL
+
+                            }
                             
                         }
-                        
-                        //should we update the session ?
-                        //TO FIX
-                        
-                        //save
+
                         if ($boards_urls){
                             update_user_meta( get_current_user_id(), 'pinim_followed_boards_urls', $boards_urls);
+                        }else{
+                            delete_user_meta( get_current_user_id(), 'pinim_followed_boards_urls');
                         }
                         
                     break;
@@ -547,8 +548,11 @@ class Pinim_Tool_Page {
        }
 
         foreach((array)$boards as $board){ 
+            
+            if (!$board->is_queue_complete()){
+                $board->in_queue = true;
+            }
 
-            $board->in_queue = true;
             $board_pins = $board->get_pins();
 
             if (is_wp_error($board_pins)){    
@@ -920,7 +924,7 @@ class Pinim_Tool_Page {
                                         
                                         <div id="follow-new-board" class="tab-description">
                                             <p>
-                                                <?php _e("Enter the URLs of the boards you would like to follow.  One line per board url.","pinim");?>
+                                                <?php _e("Enter the URLs of boards from other users.  One line per board url.","pinim");?>
                                             </p>
 
                                             <p id="follow-new-board-new">
@@ -1517,6 +1521,7 @@ class Pinim_Tool_Page {
     function get_pins_count_pending(){
         $pins_ids = $this->get_requested_pins_ids();
         $pins_ids = array_diff($pins_ids, $this->existing_pin_ids);
+
         return count($pins_ids);
     }
     
@@ -1565,9 +1570,10 @@ class Pinim_Tool_Page {
             case 'in_queue':
                 
                 foreach((array)$boards as $board){
+                
                     if ( !$board->raw_pins ) continue; //empty
-                    if ( $board->is_fully_imported() ) continue; //full
-                    if ( !$board->in_queue ) continue; //not in queue
+                    if ( !$board->in_queue ) continue; //not in queue                    
+                    if ( $board->is_fully_imported() ) continue; //full                    
                     $output[] = $board;
                 }
                 

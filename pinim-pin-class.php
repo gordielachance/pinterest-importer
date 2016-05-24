@@ -27,7 +27,6 @@ class Pinim_Pin{
 
         $this->pin_id = $pin_id;
         $this->datas = $this->get_raw_datas();
-        $this->is_like = $this->get_datas('is_like');
         $this->board_id = $this->get_datas(array('board','id'));
         
         //TO FIX : we should store the username and board slug, so storing is easier ?
@@ -53,15 +52,12 @@ class Pinim_Pin{
     }
 
     function get_board(){
-        
-        //TO FIX likes board does not work (is_like, etc)
-        //print_r($this);die();
-        
+
         //load boards
         $boards = pinim_tool_page()->get_boards();
         
         $pin_board_id = $this->board_id;
-        
+
         $boards = array_filter(
             (array)$boards,
             function ($e) use ($pin_board_id) {
@@ -157,6 +153,7 @@ class Pinim_Pin{
     
     function get_post_status(){
         $board = $this->get_board();
+
         $private = $board->is_private_board();
         if ($private = $board->is_private_board()){
             return 'private';

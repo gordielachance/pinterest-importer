@@ -179,44 +179,46 @@
 .tools_page_pinim .pinim_tab_content .pinim-form.pinim-form-boards p.submit {
   text-align: center;
 }
-/* line 214, ../scss/pinim.scss */
-.tools_page_pinim .pinim_tab_content .pinim-form.pinim-form-boards #follow-new-board #follow-new-board-new input[type=text] {
-  width: 100%;
-}
-/* line 223, ../scss/pinim.scss */
+/* line 213, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form.pinim-form-boards .wp-list-table [data-colname] {
   text-align: center;
 }
-/* line 227, ../scss/pinim.scss */
+/* line 217, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form.pinim-form-boards .wp-list-table .column-pin_count_imported {
   text-align: center;
 }
-/* line 231, ../scss/pinim.scss */
+/* line 221, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form.pinim-form-boards .wp-list-table .column-private {
   width: 4em;
 }
-/* line 235, ../scss/pinim.scss */
+/* line 225, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form.pinim-form-boards .wp-list-table .column-pin_count_remote {
   width: 8em;
 }
-/* line 240, ../scss/pinim.scss */
+/* line 230, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form.pinim-form-boards .wp-list-table tbody tr.is-checked {
   background-color: #FAFFE9;
 }
-/* line 249, ../scss/pinim.scss */
+/* line 239, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form.pinim-form-boards.view-filter-simple {
   width: 65%;
   margin: auto;
 }
-/* line 254, ../scss/pinim.scss */
+/* line 244, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form.pinim-form-boards.view-filter-simple .item-id {
   display: none;
 }
-/* line 258, ../scss/pinim.scss */
+/* line 248, ../scss/pinim.scss */
 .tools_page_pinim .pinim_tab_content .pinim-form.pinim-form-boards.view-filter-simple .column-category, .tools_page_pinim .pinim_tab_content .pinim-form.pinim-form-boards.view-filter-simple .column-private, .tools_page_pinim .pinim_tab_content .pinim-form.pinim-form-boards.view-filter-simple .column-board_id {
   display: none;
 }
-/* line 268, ../scss/pinim.scss */
-.tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-followed-boards #follow-new-board textarea {
+/* line 256, ../scss/pinim.scss */
+.tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-follow-boards-input {
+  width: 65%;
+  margin: auto;
+}
+/* line 260, ../scss/pinim.scss */
+.tools_page_pinim .pinim_tab_content .pinim-form#pinim-form-follow-boards-input #follow-new-board textarea {
   width: 100%;
+  min-height: 8em;
 }

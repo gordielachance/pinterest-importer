@@ -208,16 +208,6 @@
                     text-align:center;
                 }
 
-                #follow-new-board{
-
-                    #follow-new-board-new{
-                        input[type=text]{
-                            width:100%;
-                        }
-                    }
-
-                }
-                
                 .wp-list-table {
 
                     [data-colname]{
@@ -263,10 +253,13 @@
 
             }
             
-            &#pinim-form-followed-boards{
+            &#pinim-form-follow-boards-input{
+                width: 65%;
+                margin: auto;
                 #follow-new-board{
                     textarea{
                         width:100%;
+                        min-height:8em;
                     }
                 }
 
