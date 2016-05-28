@@ -224,8 +224,8 @@ class Pinim_Pin{
 
     }
 
-    function build_post_content($post){
-        $post_format = get_post_format( $post->ID );
+    function build_post_content(){
+        $post_format = get_post_format( $this->post->ID );
         $link = $this->get_datas('link');
         $domain = $this->get_datas('domain');
         $content = null;
@@ -233,7 +233,7 @@ class Pinim_Pin{
         switch($post_format){
 
             case 'image':
-                $content = get_the_post_thumbnail($post->ID,'full');
+                $content = get_the_post_thumbnail($this->post->ID,'full');
 
                 $content ='<a href="' . $link . '" title="' . the_title_attribute('echo=0') . '" >'.$content.'</a>';
                 
@@ -259,23 +259,22 @@ class Pinim_Pin{
     
     function get_datas_image_url(){
         
-        $datas = $this->get_datas();
+        $images_arr = $this->get_datas('images');
         $image = null;
 
-        if (!isset($datas['images'])){
+        if ( !$images_arr ){
             return new WP_Error('pin_no_image',__("The current pin does not have an image file associated",'pinim'));
         }
 
-        if (isset($datas['images']['orig']['url'])){ //get best resolution
-            $image = $datas['images']['orig'];
+        if (isset($images_arr['orig']['url'])){ //get best resolution
+            $image = $images_arr['orig'];
         }else{ //get first array item
-            $image = array_shift($datas['images']);
+            $image = array_shift($images_arr);
         }
         
         if ( !isset($image['url']) ) return false;
         
         return $image['url'];
-
 
     }
     
@@ -334,7 +333,10 @@ class Pinim_Pin{
         //TO FIX : post is created before image is checked.
         // We should reverse that.
 
-        $new_post = get_post($post_id);
+        
+        //populate the post.  Can't use Pinim_Pin::get_post() here since the pin ID as not been stored yet.
+        $this->post = get_post($post_id);
+        $this->post_id = $this->post->ID;
 
         //set post format
         $post_format = $this->get_post_format();
@@ -343,7 +345,7 @@ class Pinim_Pin{
             return $error;
         }
 
-        $attachment_id = pinim_attach_remote_image($new_post,$image_url);
+        $attachment_id = pinim_attach_remote_image($this);
 
         //set featured image
         if ( !is_wp_error($attachment_id) ){
@@ -354,7 +356,7 @@ class Pinim_Pin{
                     }
                 }
             
-                set_post_thumbnail($new_post, $attachment_id);
+                set_post_thumbnail($this->post, $attachment_id);
                 $hd_file = wp_get_attachment_image_src($attachment_id, 'full');
                 $hd_url = $hd_file[0];
                 
@@ -379,11 +381,11 @@ class Pinim_Pin{
         
         //final update
         $update_post = array();
-        $update_post['ID'] = $new_post->ID;
-        $update_post['post_content'] = $this->build_post_content($new_post); //set post content
+        $update_post['ID'] = $this->post->ID;
+        $update_post['post_content'] = $this->build_post_content(); //set post content
         
         //allow to filter before updating post
-        $update_post = apply_filters('pinim_post_before_insert',$update_post);
+        $update_post = apply_filters('pinim_post_before_insert',$update_post,$this);
 
         if (!wp_update_post( $update_post )){
             //feedback

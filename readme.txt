@@ -69,14 +69,14 @@ For example :
 add_filter('pinim_post_before_insert','pin_custom_post_type');
 
 //change post content
-add_filter('pinim_post_before_insert','pin_custom_content');
+add_filter('pinim_post_before_insert','pin_custom_content',10,2);
 
 function pin_custom_post_type($post){   
     $post['post_type'] = 'MY_POST_TYPE';
     return $post;
 }
 
-function pin_custom_content($post){   
+function pin_custom_content($post,$pin){   
     $post['post_content'] = 'MY CONTENT';
     return $post;
 }
@@ -92,6 +92,9 @@ function pin_custom_content($post){
 
 
 == Changelog ==
+= 0.4.X =
+* New filter 'pinim_attachment_before_insert'
+* Added the pin instance as argument to the 'pinim_post_before_insert' filter
 = 0.4.0 =
 * Major release !
 * Supports importing boards from other users

@@ -88,7 +88,11 @@ function pinim_get_hashtags($string){
  * @param type $image_url
  * @return string|\WP_Error
  */
-function pinim_attach_remote_image( $post_parent, $image_url ) {
+function pinim_attach_remote_image( $pin ) {
+
+    $image_url = $pin->get_datas_image_url();
+    
+    if ( is_wp_error($image_url) ) return $image_url;
 
     if (!$attachment_id = pinim_image_exists($image_url)){
         
@@ -136,17 +140,13 @@ function pinim_attach_remote_image( $post_parent, $image_url ) {
         
         // Construct the attachment array.
         $attachment_data = array (
-            'post_date'     => $post_parent->post_date, //use same date than parent
-            'post_date_gmt' => $post_parent->post_date_gmt
+            'post_date'     => $pin->post->post_date, //use same date than parent
+            'post_date_gmt' => $pin->post->post_date_gmt
         );
         
-        /*
-        if ($post_parent->post_title){ //set pin title as attachment title if any
-            $attachment_data['post_title'] = $post_parent->post_title;
-        }
-         */
+        $attachment_data = apply_filters('pinim_attachment_before_insert',$attachment_data,$pin);
 
-        $attachment_id = media_handle_sideload( $file_array, $post_parent->ID, null, $attachment_data );
+        $attachment_id = media_handle_sideload( $file_array, $pin->post->ID, null, $attachment_data );
         
         // Check for handle sideload errors:
        if ( is_wp_error( $attachment_id ) ){
