@@ -421,7 +421,10 @@ class Pinim_Tool_Page {
                         }else{
                             delete_user_meta( get_current_user_id(), 'pinim_followed_boards_urls');
                         }
-
+                        
+                        //update current value
+                        pinim()->boards_followed_urls = $boards_urls;
+                        
                     break;
                     
                     case 'boards_save_settings':
