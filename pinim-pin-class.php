@@ -19,8 +19,7 @@ class Pinim_Pin{
     var $datas;
     var $board_id;
     var $board;
-    var $post_id; //wp post
-    var $post;
+    var $post; //wp post
     
     
     function __construct($pin_id){
@@ -84,11 +83,10 @@ class Pinim_Pin{
         
         if (!$this->post){
             if ($post_id = pinim_get_post_by_pin_id($this->pin_id)){
-                $this->post_id = $post_id;
-                $this->post = get_post($this->post_id);
+                $this->post = get_post($post_id);
                 
-                $this->datas = pinim_get_pin_log($this->post_id);
-                $this->board_id = pinim_get_pin_meta('board_id',$this->post_id,true);
+                $this->datas = pinim_get_pin_log($this->post->ID);
+                $this->board_id = pinim_get_pin_meta('board_id',$this->post->ID,true);
                 
             }
             
@@ -336,7 +334,6 @@ class Pinim_Pin{
         
         //populate the post.  Can't use Pinim_Pin::get_post() here since the pin ID as not been stored yet.
         $this->post = get_post($post_id);
-        $this->post_id = $this->post->ID;
 
         //set post format
         $post_format = $this->get_post_format();

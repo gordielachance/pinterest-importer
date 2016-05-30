@@ -231,9 +231,9 @@ class Pinim_Tool_Page {
                             $pin = new Pinim_Pin($pin_id);
                             $pin->get_post();
                             
-                            if ( !current_user_can('delete_posts', $pin->post_id) ) continue;
+                            if ( !current_user_can('delete_posts', $pin->post->ID) ) continue;
                             
-                            wp_delete_post( $pin->post_id );
+                            wp_delete_post( $pin->post->ID );
 
                         }
                         
@@ -421,7 +421,7 @@ class Pinim_Tool_Page {
                         }else{
                             delete_user_meta( get_current_user_id(), 'pinim_followed_boards_urls');
                         }
-                        
+
                     break;
                     
                     case 'boards_save_settings':
