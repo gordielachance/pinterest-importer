@@ -245,10 +245,16 @@ class Pinim_Pin{
         }
 
         $content .= "\n";//line break (avoid problems with embeds)
-        $link_el = sprintf(__('Source: <a href="%1$s" target="_blank">%2$s</a>','pinim'),$link,$domain);
-        $content .=sprintf('<p class="pinim-pin-source">%s</p>',$link_el);
+        $content .= $this->get_source_link();
 
         return $content;
+    }
+    
+    function get_source_link(){
+        $link = $this->get_datas('link');
+        $domain = $this->get_datas('domain');
+        $link_el = sprintf(__('Source: <a href="%1$s" target="_blank">%2$s</a>','pinim'),$link,$domain);
+        return sprintf('<p class="pinim-pin-source">%s</p>',$link_el);
     }
     
     /*
