@@ -22,51 +22,6 @@ function pinim_get_array_value($keys = null, $array){
     
     return false;
 }
-
-
-/**
-  * Filter a single pin :
-  * Remove the Pinterest "board" multidimentional array
-  * Add a single "board_id" key.
-  * @param array $raw_pin
-  * @return type
-  */
-
- function pin_raw_data_board_reduce($raw_pin){
-     if (!isset($raw_pin['board']['id'])) return $raw_pin;
-     $raw_pin['board_id'] = $raw_pin['board']['id'];
-     unset($raw_pin['board']);
-     return $raw_pin;
- }
-
- /**
-  * Filter a single pin :
-  * Remove unecessary keys
-  * @param array $raw_pin
-  * @return type
-  */
-
- function pin_raw_data_remove_unecessary_keys($raw_pin){
-     //remove some keys
-     $remove_keys = array(
-         'image_signature',
-         'like_count',
-         'price_currency',
-         'privacy',
-         'comments',
-         'access',
-         'comment_count',
-         //'board',
-         'method',
-         'price_value',
-         'is_repin',
-         'liked_by_me',
-         'is_uploaded',
-         'repin_count',
-         'dominant_color'
-     );
-     return array_diff_key($raw_pin,array_flip($remove_keys));
- }
  
 function pinim_get_hashtags($string){
    $tags = array();
@@ -80,86 +35,6 @@ function pinim_get_hashtags($string){
    }
 
    return $tags;
-}
-
-/**
- * Import and pin image; store original URL as attachment meta
- * @param type $post_parent
- * @param type $image_url
- * @return string|\WP_Error
- */
-function pinim_attach_remote_image( $pin ) {
-
-    $image_url = $pin->get_datas_image_url();
-    
-    if ( is_wp_error($image_url) ) return $image_url;
-
-    if (!$attachment_id = pinim_image_exists($image_url)){
-        
-        //TO FIX is this needed ?
-        if ( !current_user_can('upload_files') ) {
-            return new WP_Error('upload_capability',__("User cannot upload files",'pinim'));
-        }
-        
-        if (empty($image_url)){
-            return new WP_Error('upload_empty_url',__("Image url is empty",'pinim'));
-        }
-        
-        // Image base name:
-        $name = basename( $image_url );
-        
-        // Save as a temporary file
-        $tmp = download_url( $image_url );
-        
-        $file_array = array(
-            'name'     => $name,
-            'tmp_name' => $tmp
-        );
-        
-        // Check for download errors
-        if ( is_wp_error( $tmp ) ) {
-            @unlink( $file_array[ 'tmp_name' ] );
-            return $tmp;
-        }
-        
-        // Get file extension (without downloading the whole file)
-        $extension = image_type_to_extension( exif_imagetype( $file_array['tmp_name'] ) );
-
-        // Take care of image files without extension:
-        $path = pathinfo( $tmp );
-        if( ! isset( $path['extension'] ) ):
-            $tmpnew = $tmp . '.tmp';
-            if( ! rename( $tmp, $tmpnew ) ):
-                return '';
-            else:
-                $ext  = pathinfo( $image_url, PATHINFO_EXTENSION );
-                $name = pathinfo( $image_url, PATHINFO_FILENAME )  . $extension;
-                $tmp = $tmpnew;
-            endif;
-        endif;
-        
-        // Construct the attachment array.
-        $attachment_data = array (
-            'post_date'     => $pin->post->post_date, //use same date than parent
-            'post_date_gmt' => $pin->post->post_date_gmt
-        );
-        
-        $attachment_data = apply_filters('pinim_attachment_before_insert',$attachment_data,$pin);
-
-        $attachment_id = media_handle_sideload( $file_array, $pin->post->ID, null, $attachment_data );
-        
-        // Check for handle sideload errors:
-       if ( is_wp_error( $attachment_id ) ){
-           @unlink( $file_array['tmp_name'] );
-           return $attachment_id;
-       }
-       
-        //save URL in meta (so we can check if image already exists)
-        add_post_meta($attachment_id, '_pinterest-image-url',$image_url);
-
-    }
-
-    return $attachment_id;
 }
 
 /**

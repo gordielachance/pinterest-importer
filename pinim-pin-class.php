@@ -342,7 +342,7 @@ class Pinim_Pin{
             return $error;
         }
 
-        $attachment_id = pinim_attach_remote_image($this);
+        $attachment_id = $this->attach_remote_image();
 
         //set featured image
         if ( !is_wp_error($attachment_id) ){
@@ -393,6 +393,84 @@ class Pinim_Pin{
 
         return $post_id;
 
+    }
+    
+    /**
+     * Import and pin image; store original URL as attachment meta
+     * @return \WP_Error|string
+     */
+    function attach_remote_image() {
+
+        $image_url = $this->get_datas_image_url();
+
+        if ( is_wp_error($image_url) ) return $image_url;
+
+        if (!$attachment_id = pinim_image_exists($image_url)){
+
+            //TO FIX is this needed ?
+            if ( !current_user_can('upload_files') ) {
+                return new WP_Error('upload_capability',__("User cannot upload files",'pinim'));
+            }
+
+            if (empty($image_url)){
+                return new WP_Error('upload_empty_url',__("Image url is empty",'pinim'));
+            }
+
+            // Image base name:
+            $name = basename( $image_url );
+
+            // Save as a temporary file
+            $tmp = download_url( $image_url );
+
+            $file_array = array(
+                'name'     => $name,
+                'tmp_name' => $tmp
+            );
+
+            // Check for download errors
+            if ( is_wp_error( $tmp ) ) {
+                @unlink( $file_array[ 'tmp_name' ] );
+                return $tmp;
+            }
+
+            // Get file extension (without downloading the whole file)
+            $extension = image_type_to_extension( exif_imagetype( $file_array['tmp_name'] ) );
+
+            // Take care of image files without extension:
+            $path = pathinfo( $tmp );
+            if( ! isset( $path['extension'] ) ):
+                $tmpnew = $tmp . '.tmp';
+                if( ! rename( $tmp, $tmpnew ) ):
+                    return '';
+                else:
+                    $ext  = pathinfo( $image_url, PATHINFO_EXTENSION );
+                    $name = pathinfo( $image_url, PATHINFO_FILENAME )  . $extension;
+                    $tmp = $tmpnew;
+                endif;
+            endif;
+
+            // Construct the attachment array.
+            $attachment_data = array (
+                'post_date'     => $this->post->post_date, //use same date than parent
+                'post_date_gmt' => $this->post->post_date_gmt
+            );
+
+            $attachment_data = apply_filters('pinim_attachment_before_insert',$attachment_data,$this);
+
+            $attachment_id = media_handle_sideload( $file_array, $this->post->ID, null, $attachment_data );
+
+            // Check for handle sideload errors:
+           if ( is_wp_error( $attachment_id ) ){
+               @unlink( $file_array['tmp_name'] );
+               return $attachment_id;
+           }
+
+            //save URL in meta (so we can check if image already exists)
+            add_post_meta($attachment_id, '_pinterest-image-url',$image_url);
+
+        }
+
+        return $attachment_id;
     }
     
 }
