@@ -92,9 +92,10 @@ function pin_custom_content($post,$pin){
 
 
 == Changelog ==
-= 0.4.X =
+= 0.4.1 =
 * New filter 'pinim_attachment_before_insert'
 * Added the pin instance as argument to the 'pinim_post_before_insert' filter
+* Some fixes
 = 0.4.0 =
 * Major release !
 * Supports importing boards from other users
