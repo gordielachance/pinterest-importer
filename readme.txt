@@ -3,7 +3,7 @@ Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
 Tags: importer,Pinterest,pins,backup
 Requires at least: 3.5
-Tested up to: 4.5.2
+Tested up to: 4.5.3
 Stable tag: trunk
 License: GPLv2 or later
 
@@ -59,24 +59,24 @@ If you are a plugin developer, [we would like to hear from you](https://github.c
 
 = How could I change how pins are saved ? =
 
-Use the filter *pinim_post_before_insert*.  
+If you want to change how a pin is saved (for example to change its post type), you can hook actions on the filter 'pinim_before_save_pin'.
 
 For example :
 
 `<?php
 
 //switch the default post type to a custom one
-add_filter('pinim_post_before_insert','pin_custom_post_type');
+add_filter('pinim_before_save_pin','pin_custom_post_type');
 
 //change post content
-add_filter('pinim_post_before_insert','pin_custom_content',10,2);
+add_filter('pinim_before_save_pin','pin_custom_content',10,2);
 
 function pin_custom_post_type($post){   
     $post['post_type'] = 'MY_POST_TYPE';
     return $post;
 }
 
-function pin_custom_content($post,$pin){   
+function pin_custom_content($post,$pin,$is_update){   
     $post['post_content'] = 'MY CONTENT';
     return $post;
 }
@@ -92,6 +92,10 @@ function pin_custom_content($post,$pin){
 
 
 == Changelog ==
+= 0.4.2 =
+* two new options about post stati when importing pins.
+* removed functions get_blank_post() and get_post_status(), which have been merged with Pinim_Pin::save()
+* renamed the filter 'pinim_before_pin_insert' to 'pinim_before_save_pin'.
 = 0.4.1 =
 * New filter 'pinim_attachment_before_insert'
 * Added the pin instance as argument to the 'pinim_post_before_insert' filter
@@ -155,6 +159,7 @@ function pin_custom_content($post,$pin){
 * First release
 
 == TO DO ==
+* Unchecked checkboxes won't save in the plugin's options (erased by default options as their values are false ?)
 * use wp_update_term_count() ? seems posts count for categories is not updated.
 * add source in post content should be optional
 * a trashed pin should not be considered existing ?

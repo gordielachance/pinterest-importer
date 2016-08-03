@@ -137,29 +137,6 @@ class Pinim_Pin{
         return $link;
     }
 
-    function get_blank_post(){
-        $blank_post = array(
-            'post_author'       => get_current_user_id(),
-            'post_type'         => 'post',
-            'post_status'       =>'publish',
-            'post_category'     => array(pinim_get_root_category_id()),
-            'tags_input'        => array()
-        );
-
-        return apply_filters('pinim_get_blank_post',$blank_post);
-    }
-    
-    function get_post_status(){
-        $board = $this->get_board();
-
-        $private = $board->is_private_board();
-        if ($private = $board->is_private_board()){
-            return 'private';
-        }else{
-            return 'publish';
-        }
-    }
-    
     function get_post_tags(){
         $tags = array();
         if ($description = $this->get_datas('description')){
@@ -282,14 +259,39 @@ class Pinim_Pin{
 
     }
     
-    function save($update=false){
+    static function get_allowed_stati(){
+        //$stati = get_post_stati();
         
+        $stati = array(
+            'publish'   => __('publish'),
+            'pending'   => __('pending'),
+            'draft'     => __('draft')
+        );
+
+        return $stati;
+    }
+    
+    function save($is_update=false){
+        
+        $post = array();
+
         $error = new WP_Error();
         $datas = $this->get_datas();
         $board = $this->get_board();
         
-        if (!$update){
-            $post = $this->get_blank_post();
+        if (!$is_update){
+            
+            //create a new pin BUT with a 'auto-draft' status.
+            //This will be switched when post is updated below.
+            $post = array(
+                'post_status'       => 'auto-draft',
+                'post_author'       => get_current_user_id(),
+                'post_type'         => 'post',
+                'post_category'     => array(pinim_get_root_category_id()),
+                'tags_input'        => array()
+            );
+            
+            
         }elseif(!$post = (array)$this->get_post()){
             $error->add('nothing_to_update',__("The current pin has never been imported and can't be updated",'pinim'));
             return $error;
@@ -317,10 +319,12 @@ class Pinim_Pin{
             $tags_input = $post['tags_input'];
         }
         $post['tags_input'] = array_merge( $tags_input,$this->get_post_tags() );
-        
-        //set post status
-        $post['post_status'] = $this->get_post_status();
-        
+
+        //set private post status
+        if ( pinim()->get_options('auto_private') && $board->is_private_board() ){
+            $post['post_status'] = 'private';
+        }
+
         //set post categories
         $post['post_category'] = (array)$board->get_category();
         
@@ -353,7 +357,7 @@ class Pinim_Pin{
         //set featured image
         if ( !is_wp_error($attachment_id) ){
             
-                if ($update){ //delete old thumb
+                if ($is_update){ //delete old thumb
                     if ($old_thumb_id = get_post_thumbnail_id( $post_id )){
                         wp_delete_attachment( $old_thumb_id, true );
                     }
@@ -381,14 +385,18 @@ class Pinim_Pin{
 
         //set post metas
         $this->set_pin_metas($post_id);
-        
-        //final update
+
+        //finalize post
         $update_post = array();
         $update_post['ID'] = $this->post->ID;
         $update_post['post_content'] = $this->build_post_content(); //set post content
+
+        if (!$is_update){ //new pin
+            $update_post['post_status'] = pinim()->get_options('default_status');
+        }
         
-        //allow to filter before updating post
-        $update_post = apply_filters('pinim_post_before_insert',$update_post,$this);
+        $update_post = apply_filters('pinim_before_save_pin',$update_post,$this,$is_update); //allow to filter
+
 
         if (!wp_update_post( $update_post )){
             //feedback

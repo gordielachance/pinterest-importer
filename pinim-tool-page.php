@@ -725,6 +725,18 @@ class Pinim_Tool_Page {
             
             //autocache
             $new_input['autocache']  = isset ($input['autocache']) ? true : false;
+            
+            //default post status
+            if ( isset ($input['default_status']) ){
+                $stati = Pinim_Pin::get_allowed_stati();
+                $stati_keys = array_keys($stati);
+                if (in_array($input['default_status'],$stati_keys)){
+                    $new_input['default_status'] = $input['default_status'];
+                }
+            }
+
+            //auto private
+            $new_input['auto_private']  = isset ($input['auto_private']) ? true : false;
 
         }
         
@@ -779,13 +791,36 @@ class Pinim_Tool_Page {
             'pinim-settings-page', // Page
             'settings_general'//section
         );
-
+        
+        add_settings_section(
+            'settings_import', // ID
+            __('Import','pinim'), // Title
+            array( $this, 'pinim_settings_import_desc' ), // Callback
+            'pinim-settings-page' // Page
+        );
+        
+        add_settings_field(
+            'default_status', 
+            __('Defaut post status','pinim'), 
+            array( $this, 'default_status_callback' ), 
+            'pinim-settings-page', // Page
+            'settings_import'//section
+        );
+        
+        add_settings_field(
+            'auto_private', 
+            __('Auto private status','pinim'), 
+            array( $this, 'auto_private_callback' ), 
+            'pinim-settings-page', // Page
+            'settings_import'//section
+        );
+        
         add_settings_field(
             'enable_update_pins', 
             __('Enable pin updating','pinim'), 
             array( $this, 'update_pins_field_callback' ), 
             'pinim-settings-page', // Page
-            'settings_general' //section
+            'settings_import' //section
         );
         
         add_settings_section(
@@ -1079,6 +1114,56 @@ class Pinim_Tool_Page {
         echo '<div class="tab-description"><p>'.sprintf(__('Your login, password and datas retrieved from Pinterest will be stored for %1$s minutes in a PHP session. It is not stored in the database.','pinim'),$session_cache)."</p></div>";
     }
     
+    function pinim_settings_import_desc(){
+        
+    }
+    
+    function default_status_callback(){
+        $option = pinim()->get_options('default_status');
+        $stati = Pinim_Pin::get_allowed_stati();
+
+        $select_options = array();
+
+        foreach ((array)$stati as $slug=>$status){
+            $selected = selected( $option, $slug, false);
+            $select_options[] = sprintf('<option value="%1$s" %2$s>%3$s</option>',$slug,$selected,$status);
+        }
+
+        printf(
+            '<select name="%1$s[default_status]">%2$s</select>',
+            PinIm::$meta_name_options,
+            implode('',$select_options)
+        );
+    }
+    
+    function auto_private_callback(){
+        $option = (int)pinim()->get_options('auto_private');
+
+        printf(
+            '<input type="checkbox" name="%1$s[auto_private]" value="on" %2$s/> %3$s<br/>',
+            PinIm::$meta_name_options,
+            checked( (bool)$option, true, false ),
+            __("Set post status to private if the pin's board is secret.","pinim")
+        );
+    }
+    
+    function update_pins_field_callback(){
+        $option = pinim()->get_options('enable_update_pins');
+
+        $disabled = true;
+        
+        $desc = __('Enable pin updating, which will add links to reload the content of a pin that already has been imported.','pinim');
+        $desc .= '  <small>'.__('(Not yet implemented)','pinim').'</small>';
+        
+        printf(
+            '<input type="checkbox" name="%1$s[playlist_link]" value="on" %2$s %3$s/> %4$s',
+            PinIm::$meta_name_options,
+            checked( (bool)$option, true, false ),
+            disabled( $disabled , true, false),
+            $desc
+        );
+    }
+    
     function pinim_settings_system_desc(){
         
     }
@@ -1120,23 +1205,6 @@ class Pinim_Tool_Page {
             $option
         );
         
-    }
-    
-    function update_pins_field_callback(){
-        $option = pinim()->get_options('enable_update_pins');
-
-        $disabled = true;
-        
-        $desc = __('Enable pin updating, which will add links to reload the content of a pin that already has been imported.','pinim');
-        $desc .= '  <small>'.__('(Not yet implemented)','pinim').'</small>';
-        
-        printf(
-            '<input type="checkbox" name="%1$s[playlist_link]" value="on" %2$s %3$s/> %4$s',
-            PinIm::$meta_name_options,
-            checked( (bool)$option, true, false ),
-            disabled( $disabled , true, false),
-            $desc
-        );
     }
     
     function login_field_callback(){
