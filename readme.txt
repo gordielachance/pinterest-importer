@@ -69,7 +69,7 @@ For example :
 add_filter('pinim_before_save_pin','pin_custom_post_type');
 
 //change post content
-add_filter('pinim_before_save_pin','pin_custom_content',10,2);
+add_filter('pinim_before_save_pin','pin_custom_content',10,3);
 
 function pin_custom_post_type($post){   
     $post['post_type'] = 'MY_POST_TYPE';
