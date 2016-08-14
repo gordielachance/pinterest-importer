@@ -145,20 +145,25 @@ class Pinim_Pin{
         return $tags;
     }
     
+    function get_post_content(){
+        $content = null;
+        if ($content = $this->get_datas('description')){
+            $tags = pinim_get_hashtags($content);
+            foreach ((array)$tags as $tag){
+                $content = str_replace('#'.$tag,'',$content); //remove tags here
+            }
+        }
+        return $content;
+    }
+    
     function get_post_title(){
         
         $title = $this->get_datas('title');
-        
-        
+
         if (!$title = $this->get_datas('title')){
-            if ($description = $this->get_datas('description')){
-                $tags = pinim_get_hashtags($description);
-                foreach ((array)$tags as $tag){
-                    $description = str_replace('#'.$tag,'',$description);
-                }
-                $title = wp_trim_words( $description, 30, '...' );
+            if ( $content = $this->get_post_content() ){
+                $title = wp_trim_words( $content, 30, '...' );
             }
-            
         }
         
         if (!$title) {
@@ -199,7 +204,7 @@ class Pinim_Pin{
 
     }
 
-    function build_post_content(){
+    function append_medias(){
         $post_format = get_post_format( $this->post->ID );
         $link = $this->get_datas('link');
         $domain = $this->get_datas('domain');
@@ -208,9 +213,8 @@ class Pinim_Pin{
         switch($post_format){
 
             case 'image':
-                $content = get_the_post_thumbnail($this->post->ID,'full');
-
-                $content ='<a href="' . $link . '" title="' . the_title_attribute('echo=0') . '" >'.$content.'</a>';
+                $thumb = get_the_post_thumbnail($this->post->ID,'full');
+                $content =sprintf('<a href="%s" title="%s">%s</a>',$link,the_title_attribute('echo=0'),$thumb);
                 
             break;
 
@@ -220,18 +224,16 @@ class Pinim_Pin{
 
             break;
         }
-
-        $content .= "\n";//line break (avoid problems with embeds)
-        $content .= $this->get_source_link();
-
-        return $content;
+        
+        return sprintf("\n%s\n",$content);//wrap into linke breaks (avoid problems with embeds)
     }
     
     function get_source_link(){
-        $link = $this->get_datas('link');
-        $domain = $this->get_datas('domain');
-        $link_el = sprintf(__('Source: <a href="%1$s" target="_blank">%2$s</a>','pinim'),$link,$domain);
-        return sprintf('<p class="pinim-pin-source">%s</p>',$link_el);
+        if ( $link = $this->get_datas('link') ){ //ignore if uploaded by user
+            $domain = $this->get_datas('domain');
+            $link_el = sprintf(__('Source: <a href="%1$s" target="_blank">%2$s</a>','pinim'),$link,$domain);
+            return sprintf('<p class="pinim-pin-source">%s</p>',$link_el);
+        }
     }
     
     /*
@@ -313,6 +315,10 @@ class Pinim_Pin{
         //set title
         $post['post_title'] = $this->get_post_title();
         
+        //set content
+        //we will add our custom content (embed image or video) later with Pinim_Pin::append_medias()
+        $post['post_content'] = $this->get_post_content();
+        
         //set tags
         $tags_input = array();
         if (isset($post['tags_input'])){
@@ -389,14 +395,13 @@ class Pinim_Pin{
         //finalize post
         $update_post = array();
         $update_post['ID'] = $this->post->ID;
-        $update_post['post_content'] = $this->build_post_content(); //set post content
+        $update_post['post_content'] = $this->post->post_content.$this->append_medias()."\n".$this->get_source_link(); //set post content
 
         if (!$is_update){ //new pin
             $update_post['post_status'] = pinim()->get_options('default_status');
         }
         
         $update_post = apply_filters('pinim_before_save_pin',$update_post,$this,$is_update); //allow to filter
-
 
         if (!wp_update_post( $update_post )){
             //feedback
@@ -1105,8 +1110,9 @@ class Pinim_Pending_Pins_Table extends Pinim_Pins_Table {
 
         $text = $pin->get_datas('domain');
         $url = $pin->get_datas('link');
+        
 
-        //if (!$text || !$url) return;
+        if (!$text || !$url) return; //ignore if uploaded by user
 
         return sprintf(
             '<a target="_blank" href="%1$s">%2$s</a>',

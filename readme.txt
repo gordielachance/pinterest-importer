@@ -92,6 +92,10 @@ function pin_custom_content($post,$pin,$is_update){
 
 
 == Changelog ==
+= 0.4.3 =
+* new function Pinim_Pin::get_post_content()
+* renamed Pinim_Pin::build_post_content() to Pinim_Pin::append_medias()
+* ignore pin source if does not exists (pin uploaded by user on Pinterest)
 = 0.4.2 =
 * two new options about post stati when importing pins.
 * removed functions get_blank_post() and get_post_status(), which have been merged with Pinim_Pin::save()
