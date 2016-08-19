@@ -160,6 +160,11 @@ class Pinim_Tool_Page {
     }
     
     function form_do_login($login=null,$password=null){
+        
+        //force use Pinterest username
+        if (strpos($login, '@') !== false) {
+            return new WP_Error( 'pinim',__('Use your Pinterest username here, not an email address.','pinim').' <code>https://www.pinterest.com/USERNAME/</code>' );
+        }
 
         //try to auth
         $logged = $this->do_bridge_login($login,$password);
@@ -1213,7 +1218,7 @@ class Pinim_Tool_Page {
         $has_user_datas = ( !is_wp_error($user_data) && $user_data );
         $disabled = disabled($has_user_datas, true, false);
         $el_id = 'pinim_form_login_username';
-        $el_txt = __('Username or Email');
+        $el_txt = __('Username');
         $input = sprintf(
             '<input type="text" id="%1$s" name="%2$s[username]" value="%3$s"%4$s/>',
             $el_id,
@@ -1291,23 +1296,15 @@ class Pinim_Tool_Page {
     
     /**
      * Get datas for a user, from session cache or from Pinterest.
-     * if $username = 'me', get logged in user datas.
      * @param type $username
      * @return type
      */
     
-    function get_user_infos($keys = null,$username = 'me'){
+    function get_user_infos($keys = null,$username = null){
+        
+        if (!$username) $username = $this->get_session_data('login');
+        
         $session_data = $this->get_session_data('user_datas');
-        
-        /* self data is stored under 'me'.
-         * so if we are looking for our username,
-         * use the 'me' array
-         */
-        
-        if ( isset($session_data['me']) && $username ){
-            $self_username = $session_data['me']['username'];
-            if ($self_username == $username) $username = 'me';
-        }
 
         if ( !isset($session_data[$username]) ){
             
@@ -1333,7 +1330,8 @@ class Pinim_Tool_Page {
      * @return type
      */
     
-    function get_user_boards_data($username = 'me'){
+    function get_user_boards_data($username = null){
+        if (!$username) $username = $this->get_session_data('login');
         $session_data = $this->get_session_data('user_datas_boards');
 
         if ( !isset($session_data[$username]) ){
@@ -1342,14 +1340,7 @@ class Pinim_Tool_Page {
             $logged = $this->do_bridge_login();
             if ( is_wp_error($logged) ) return $logged;
 
-            if ($username == 'me'){
-                //quick fix for secret boards; which are not retrieved if username = 'me'.
-                $me_username = $this->get_user_infos('username');
-                if ( is_wp_error($me_username) ) return $me_username;
-                $userdata = $this->bridge->get_user_boards($me_username);
-            }else{
-                $userdata = $this->bridge->get_user_boards($username);
-            }
+            $userdata = $this->bridge->get_user_boards($username);
 
             if ( is_wp_error($userdata) ) return $userdata;
 
@@ -1366,7 +1357,10 @@ class Pinim_Tool_Page {
     function get_boards_user(){
         $boards = array();
 
-        if ( !$user_data = $this->get_user_infos() ) return $boards;
+        $user_data = $this->get_user_infos();
+        if ( is_wp_error($user_data) ) return $user_data;
+        if ( !$user_data ) return $boards;
+        
         
         $boards_datas = $this->get_user_boards_data();
         if ( is_wp_error($boards_datas) ) return $boards; //TO FIX output error ?
@@ -1429,6 +1423,8 @@ class Pinim_Tool_Page {
     function get_boards(){
 
         $user_boards = $this->get_boards_user();
+        if ( is_wp_error($user_boards) ) return $user_boards;
+        
         $followed_boards = $this->get_boards_followed();
 
         $boards = array_merge($user_boards,$followed_boards);

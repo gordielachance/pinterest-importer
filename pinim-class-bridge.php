@@ -246,16 +246,18 @@ class Pinim_Bridge{
         return new WP_Error('pinim',__('Error getting App Version.  You may have been temporary blocked by Pinterest because of too much login attemps.','pinim'));
     }
     
-    public function api_response($body){
+    public function api_response($bodyraw){
         
-        if ( is_wp_error($body) ) return $body;
+        if ( is_wp_error($bodyraw) ) return $bodyraw;
         
         $data = null;
-        $body = $this->maybe_decode_response($body);
+
+        
+        $body = $this->maybe_decode_response($bodyraw);
         
         $response = null;
         
-        if (isset($body['resource_response'])) {
+        if (isset($body['resource_response']) && ( (isset($body['resource_response']['data']) && $body['resource_response']['data']) or (isset($body['resource_response']['error']) && $body['resource_response']['error']) ) ) {
             $response = $body['resource_response'];
             
         }elseif ( isset($body['resource_data_cache'][0]) ){
@@ -274,20 +276,21 @@ class Pinim_Bridge{
             
         }
         
-        if(!$data) return new WP_Error('pinim',__('Unknown error while fetching datas','pinim'));
-        
+        if(!$data){
+            return new WP_Error('pinim',__('Unknown error','pinim'));
+        }
+
         return $data;
     }
     
     /**
      * Get datas for a user.
-     * if $username = 'me', get logged in user datas.
      * @return \WP_Error
      */
-    public function get_user_datas($username = 'me'){
-
+    public function get_user_datas($username = null){
         $login = $this->do_login();
         if (is_wp_error($login)) return $login;
+        if (!$username) $username = $this->login;
 
         $extra_headers = array(
             //'Referer'   => '/'
@@ -309,7 +312,7 @@ class Pinim_Bridge{
         $body = wp_remote_retrieve_body($response);
 
         $api_response = $this->api_response($body);
-        
+
         if ( is_wp_error($api_response) ){
             return new WP_Error( 'pinim',sprintf(__('Error while getting user data: %s','pinim'),$api_response->get_error_message()) );
         }
