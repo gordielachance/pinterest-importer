@@ -253,18 +253,24 @@ class Pinim_Bridge{
         $data = null;
         $body = $this->maybe_decode_response($body);
         
-        if (isset($body['resource_response']['error'])) {
+        $response = null;
+        
+        if (isset($body['resource_response'])) {
+            $response = $body['resource_response'];
             
-            $error = $body['resource_response']['error'];
-            return new WP_Error('pinim',$error['message'],$error);
+        }elseif ( isset($body['resource_data_cache'][0]) ){
+            $response = $body['resource_data_cache'][0];
+        }
+        
+        if (isset($response['error'])) {
+
+            $error_msg = $response['error']['code'];
+            if ( isset($error['message']) ) $error_msg = $response['error']['message'];
+            return new WP_Error('pinim',$error_msg,$response['error']);
             
-        }elseif ( isset($body['resource_response']['data']) ){
+        }elseif ( isset($response['data']) ){
             
-            $data = $body['resource_response']['data'];
-            
-        }elseif ( isset($body['resource_data_cache'][0]['data']) ){
-            
-            $data = $body['resource_data_cache'][0]['data'];
+            $data = $response['data'];
             
         }
         
