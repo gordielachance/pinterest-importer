@@ -1345,6 +1345,7 @@ class Pinim_Tool_Page {
             if ($username == 'me'){
                 //quick fix for secret boards; which are not retrieved if username = 'me'.
                 $me_username = $this->get_user_infos('username');
+                if ( is_wp_error($me_username) ) return $me_username;
                 $userdata = $this->bridge->get_user_boards($me_username);
             }else{
                 $userdata = $this->bridge->get_user_boards($username);
