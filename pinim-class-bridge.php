@@ -180,23 +180,19 @@ class Pinim_Bridge{
         $response = wp_remote_post( $url, $args );
         $body = wp_remote_retrieve_body($response);
 
-        if ( is_wp_error($body) ){
-            return $body;
-        }
+        if ( is_wp_error($body) )return $body;
 
         $this->set_auth($response); //udpate token & cookies for further requests
-        $body = $this->maybe_decode_response($body);
 
-        if (isset($body['resource_response']['error']['message']) and $body['resource_response']['error']['message']) {
-            $api_error = $body['resource_response']['error']['message'];
-        }elseif (!isset($body['resource_response']['data']) or !$body['resource_response']['data']) {
-            $api_error = __('Unkown error while logging in','pinim');
-        }
+        $api_response = $this->api_response($body);
         
-        if ($api_error) return new WP_Error('pinim',$api_error);
+        if ( is_wp_error($api_response) ){
+            return new WP_Error( 'pinim',sprintf(__('Error while trying to login: %s','pinim'),$api_response->get_error_message()) );
+        }
 
         $this->is_logged_in = true;
         return $this->is_logged_in;
+
     }
     
     private function extract_header_json($body){
@@ -250,6 +246,33 @@ class Pinim_Bridge{
         return new WP_Error('pinim',__('Error getting App Version.  You may have been temporary blocked by Pinterest because of too much login attemps.','pinim'));
     }
     
+    public function api_response($body){
+        
+        if ( is_wp_error($body) ) return $body;
+        
+        $data = null;
+        $body = $this->maybe_decode_response($body);
+        
+        if (isset($body['resource_response']['error'])) {
+            
+            $error = $body['resource_response']['error'];
+            return new WP_Error('pinim',$error['message'],$error);
+            
+        }elseif ( isset($body['resource_response']['data']) ){
+            
+            $data = $body['resource_response']['data'];
+            
+        }elseif ( isset($body['resource_data_cache'][0]['data']) ){
+            
+            $data = $body['resource_data_cache'][0]['data'];
+            
+        }
+        
+        if(!$data) return new WP_Error('pinim',__('Unknown error while fetching datas','pinim'));
+        
+        return $data;
+    }
+    
     /**
      * Get datas for a user.
      * if $username = 'me', get logged in user datas.
@@ -272,23 +295,22 @@ class Pinim_Bridge{
             'cookies'       => $this->cookies
         );
 
-        $response = wp_remote_get( sprintf('%1$s/%2$s/',self::$pinterest_url,$username), $args );
+        $url = sprintf('%1$s/%2$s/',self::$pinterest_url,$username);
+
+        $response = wp_remote_get( $url, $args );
         $this->set_auth($response); //udpate token & cookies
         
         $body = wp_remote_retrieve_body($response);
 
-        if ( is_wp_error($body) ){
-            return $body;
+        $api_response = $this->api_response($body);
+        
+        if ( is_wp_error($api_response) ){
+            return new WP_Error( 'pinim',sprintf(__('Error while getting user data: %s','pinim'),$api_response->get_error_message()) );
         }
 
-        $body = $this->maybe_decode_response($body);
-
-        if (isset($body['resource_data_cache'][0]['data'])) {
-            $data = $body['resource_data_cache'][0]['data'];
-            return array_filter($data);
-        }
-
-        return new WP_Error('pinim',__('Unknown error while getting user data','pinim'));
+        return array_filter($api_response);
+        
+        
     }
 
 
@@ -298,7 +320,7 @@ class Pinim_Bridge{
      */
     
     public function get_user_boards($username){
-        
+
         $login = $this->do_login();
 
         if (is_wp_error($login)){
@@ -339,29 +361,22 @@ class Pinim_Bridge{
         $response = wp_remote_post( self::$pinterest_url.'/resource/BoardsResource/get/', $args );
         
         $body = wp_remote_retrieve_body($response);
-
-        if ( is_wp_error($body) ){
-            return $body;
-        }
-
-        $body = $this->maybe_decode_response($body);
-
-        if (isset($body['resource_response']['data'])){
-
-            $page_boards = $body['resource_response']['data'];
-
-            //remove items that have not the "board" type (like module items)
-            $page_boards = array_filter(
-                (array)$page_boards,
-                function ($e) {
-                    return $e['type'] == 'board';
-                }
-            );  
-            return array_values($page_boards); //reset keys
-
-        }
+        $api_response = $this->api_response($body);
         
-        return new WP_Error('pinim',sprintf(__("Error getting boards from user %s.  Try refreshing the page !",'pinim'),'</em>'.$username.'</em>' ) );
+        if ( is_wp_error($api_response) ){
+            return new WP_Error( 'pinim',sprintf(__('Error getting boards from user %s : %s.  Try refreshing the page !','pinim'),'</em>'.$username.'</em>',$api_response->get_error_message()) );
+        }
+
+        //remove items that have not the "board" type (like module items)
+        $page_boards = array_filter(
+            (array)$api_response,
+            function ($e) {
+                return $e['type'] == 'board';
+            }
+        );  
+        return array_values($page_boards); //reset keys
+        
+        
 
     }
     
@@ -553,35 +568,30 @@ class Pinim_Bridge{
         $response = wp_remote_post( $query_url, $args );        
         $body = wp_remote_retrieve_body($response);
 
-        if ( is_wp_error($body) ){
-            return $body;
+        if ( is_wp_error($body) ) return $body;
+        
+        $api_response = $this->api_response($body);
+        
+        if ( is_wp_error($api_response) ){
+            return new WP_Error( 'pinim',sprintf(__('Error getting pins for board %s: %s','pinim'),'<em>'.$board->get_datas('url').'</em>',$api_response->get_error_message()) );
         }
 
-        $body = $this->maybe_decode_response($body);
-
-        if (isset($body['resource_response']['data'])){
-
-            $page_pins = $body['resource_response']['data'];
-
-            //remove items that have not the "pin" type (like module items)
-            $page_pins = array_filter(
-                (array)$page_pins,
-                function ($e) {
-                    return $e['type'] == 'pin';
-                }
-            );  
-            $page_pins = array_values($page_pins); //reset keys
-
-            //bookmark (pagination)
-            if (isset($body['resource']['options']['bookmarks'][0])){
-                $bookmark = $body['resource']['options']['bookmarks'][0];
+        //remove items that have not the "pin" type (like module items)
+        $page_pins = array_filter(
+            (array)$api_response,
+            function ($e) {
+                return $e['type'] == 'pin';
             }
+        );  
+        $page_pins = array_values($page_pins); //reset keys
 
-            return array('pins'=>$page_pins,'bookmark'=>$bookmark);
-            
+        //bookmark (pagination)
+        $body = $this->maybe_decode_response($body);
+        if (isset($body['resource']['options']['bookmarks'][0])){
+            $bookmark = $body['resource']['options']['bookmarks'][0];
         }
 
-        return new WP_Error('pinim',sprintf(__('Error getting pins for board %s','pinim'),'<em>'.$board->get_datas('url').'</em>'));
+        return array('pins'=>$page_pins,'bookmark'=>$bookmark);
 
     }
     /*
