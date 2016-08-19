@@ -3,7 +3,7 @@ Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
 Tags: importer,Pinterest,pins,backup
 Requires at least: 3.5
-Tested up to: 4.5.3
+Tested up to: 4.6
 Stable tag: trunk
 License: GPLv2 or later
 
@@ -92,6 +92,9 @@ function pin_custom_content($post,$pin,$is_update){
 
 
 == Changelog ==
+= 0.4.4 =
+* Improved errors & responses from pinim-class-bridge
+* TO FIX error while getting pins from 'me' username...
 = 0.4.3 =
 * new function Pinim_Pin::get_post_content()
 * renamed Pinim_Pin::build_post_content() to Pinim_Pin::append_medias()
