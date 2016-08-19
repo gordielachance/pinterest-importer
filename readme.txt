@@ -93,8 +93,8 @@ function pin_custom_content($post,$pin,$is_update){
 
 == Changelog ==
 = 0.4.4 =
-* Improved errors & responses from pinim-class-bridge
-* TO FIX error while getting pins from 'me' username...
+* Improved errors & responses from pinim-class-bridge; plugin was crashing
+* !!! Plugin doesn't work for the moment, see the [issue#11](https://github.com/gordielachance/pinterest-importer/issues/11) on Github.
 = 0.4.3 =
 * new function Pinim_Pin::get_post_content()
 * renamed Pinim_Pin::build_post_content() to Pinim_Pin::append_medias()
