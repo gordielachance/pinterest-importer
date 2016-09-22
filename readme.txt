@@ -3,7 +3,7 @@ Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
 Tags: importer,Pinterest,pins,backup
 Requires at least: 3.5
-Tested up to: 4.6
+Tested up to: 4.6.1
 Stable tag: trunk
 License: GPLv2 or later
 
@@ -13,7 +13,7 @@ Backup your Pinterest.com account by importing pins as Wordpress posts.  Support
 
 Pinterest Importer allows you to connect to your Pinterest.com account; to grab all your pins (including from secret boards); and to import them as Wordpress posts.
 
-The difference with other plugins is that it is not based on the (very limited) official Pinterest API.  
+The difference with other plugins is that it is not based on the (very limited) official Pinterest API; which also requires SSL.
 This means that you can make a full backup (instead of getting only the last x pins); but it also means the plugin may broke one day or another.
 Better use it quick !
 
@@ -92,6 +92,13 @@ function pin_custom_content($post,$pin,$is_update){
 
 
 == Changelog ==
+
+= 0.4.6 =
+* Pinim_Bridge::get_user_datas() : return data from module>tree>data instead of resourceDataCache>0>data
+* improved Pinim_Bridge::api_response()
+* store AppVersion in session cache
+* new function Pinim_Bridge::email_exists() - not used for the moment
+
 = 0.4.5 =
 * Improved errors & responses from pinim-class-bridge; plugin was crashing
 * Removed the ‘me’ stuff, so force user to login with username (so we got it) instead of username or email.

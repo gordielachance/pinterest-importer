@@ -333,7 +333,7 @@ class Pinim_Board{
                     $raw_pins = array_merge((array)$this->raw_pins,$pinterest_query);
                 }
                 
-                $raw_pins = array_filter($raw_pins);
+                $raw_pins = array_filter((array)$raw_pins);
                 
                 if ($this->slug=='likes'){
                     /*

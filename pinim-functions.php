@@ -22,6 +22,47 @@ function pinim_get_array_value($keys = null, $array){
     
     return false;
 }
+
+function pinim_array_keys_exists($keys = null, $array){
+    if (!$keys) return true;
+    
+    $keys = (array)$keys;
+    $first_key = $keys[0];
+    if(count($keys) > 1) {
+        if ( isset($array[$keys[0]]) ){
+            return pinim_array_keys_exists(array_slice($keys, 1), $array[$keys[0]]);
+        }
+    }elseif (isset($array[$first_key])){
+        return true;
+    }
+    
+    return false;
+}
+
+function pinim_get_transients_by_prefix( $prefix ) {
+	global $wpdb;
+    
+    $names = array();
+    
+	// Add our prefix after concating our prefix with the _transient prefix
+	$name = sprintf('_transient_%s_',$prefix);
+	// Build up our SQL query
+	$sql = "SELECT `option_name` FROM $wpdb->options WHERE `option_name` LIKE '%s'";
+	// Execute our query
+	$transients = $wpdb->get_col( $wpdb->prepare( $sql, $name . '%' ) );
+
+	// If if looks good, pass it back
+	if ( $transients && ! is_wp_error( $transients ) ) {
+        
+        foreach((array)$transients as $real_key){
+            $names[] = str_replace( '_transient_', '', $real_key );
+        }
+        
+		return $names;
+	}
+	// Otherise return false
+	return false;
+}
  
 function pinim_get_hashtags($string){
    $tags = array();

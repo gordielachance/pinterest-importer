@@ -160,11 +160,6 @@ class Pinim_Tool_Page {
     }
     
     function form_do_login($login=null,$password=null){
-        
-        //force use Pinterest username
-        if (strpos($login, '@') !== false) {
-            return new WP_Error( 'pinim',__('Use your Pinterest username here, not an email address.','pinim').' <code>https://www.pinterest.com/USERNAME/</code>' );
-        }
 
         //try to auth
         $logged = $this->do_bridge_login($login,$password);
@@ -530,12 +525,21 @@ class Pinim_Tool_Page {
        
         if ($this->bridge->is_logged_in) return $this->bridge->is_logged_in;
 
-        if (!$login){
-            $login = $this->get_session_data('login');
+        if (!$login) $login = $this->get_session_data('login');
+        $login = trim($login);
+       
+        if (!$password) $password = $this->get_session_data('password');
+        $password = trim($password);
+       
+        if (!$login || !$password){
+            return new WP_Error( 'pinim',__('Missing login and/or password','pinim') );
         }
-        if (!$password){
-            $password = $this->get_session_data('password');
+       
+       //force use Pinterest username
+        if (strpos($login, '@') !== false) {
+            return new WP_Error( 'pinim',__('Use your Pinterest username here, not an email address.','pinim').' <code>https://www.pinterest.com/USERNAME/</code>' );
         }
+       
 
         //try to auth
         $this->bridge->set_login($login)->set_password($password);
@@ -1214,9 +1218,7 @@ class Pinim_Tool_Page {
     
     function login_field_callback(){
         $option = $this->get_session_data('login');
-        $user_data = $this->get_user_infos();
-        $has_user_datas = ( !is_wp_error($user_data) && $user_data );
-        $disabled = disabled($has_user_datas, true, false);
+        $disabled = disabled( (bool)$option , true, false);;
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Username');
         $input = sprintf(
@@ -1233,9 +1235,7 @@ class Pinim_Tool_Page {
     
     function password_field_callback(){
         $option = $this->get_session_data('password');
-        $user_data = $this->get_user_infos();
-        $has_user_datas = ( !is_wp_error($user_data) && $user_data );
-        $disabled = disabled($has_user_datas, true, false);
+        $disabled = disabled( (bool)$option, true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Password');
         
