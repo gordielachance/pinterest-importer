@@ -39,31 +39,6 @@ function pinim_array_keys_exists($keys = null, $array){
     return false;
 }
 
-function pinim_get_transients_by_prefix( $prefix ) {
-	global $wpdb;
-    
-    $names = array();
-    
-	// Add our prefix after concating our prefix with the _transient prefix
-	$name = sprintf('_transient_%s_',$prefix);
-	// Build up our SQL query
-	$sql = "SELECT `option_name` FROM $wpdb->options WHERE `option_name` LIKE '%s'";
-	// Execute our query
-	$transients = $wpdb->get_col( $wpdb->prepare( $sql, $name . '%' ) );
-
-	// If if looks good, pass it back
-	if ( $transients && ! is_wp_error( $transients ) ) {
-        
-        foreach((array)$transients as $real_key){
-            $names[] = str_replace( '_transient_', '', $real_key );
-        }
-        
-		return $names;
-	}
-	// Otherise return false
-	return false;
-}
- 
 function pinim_get_hashtags($string){
    $tags = array();
    if ($string){
