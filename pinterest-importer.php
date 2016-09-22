@@ -38,6 +38,7 @@ class PinIm {
     public $plugin_dir = '';
     
     public $plugin_url = '';
+    public $donate_link = 'http://bit.ly/gbreant';
     
     public $options_default = array();
     public $options = array();
@@ -114,15 +115,11 @@ class PinIm {
     }
 
     function setup_actions(){  
-        
-        //upgrade
-        add_action( 'plugins_loaded', array($this, 'upgrade'));        
-        add_action( 'add_meta_boxes', array($this, 'pinim_metabox'));
-        
-        add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts_styles' ) );
-        
+        add_action( 'plugins_loaded', array($this, 'upgrade'));//upgrade
+        add_filter( 'plugin_action_links_' . $this->basename, array($this, 'plugin_bottom_links')); //bottom links
         add_action( 'admin_init', array(&$this,'load_textdomain'));
-
+        add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts_styles' ) );
+        add_action( 'add_meta_boxes', array($this, 'pinim_metabox'));
     }
     
     function load_textdomain() {
@@ -178,6 +175,23 @@ class PinIm {
         //update DB version
         update_option("_pinterest-importer-db_version", $this->db_version );
 
+    }
+    
+    function plugin_bottom_links($links){
+        
+        $links[] = sprintf('<a target="_blank" href="%s">%s</a>',$this->donate_link,__('Donate','pinim'));//donate
+        
+        if (current_user_can('manage_options')) {
+            $settings_page_url = add_query_arg(
+                array(
+                    'step'  => 'pinim-options'
+                ),
+                pinim_get_tool_page_url()
+            );
+            $links[] = sprintf('<a href="%s">%s</a>',esc_url($settings_page_url),__('Settings'));
+        }
+        
+        return $links;
     }
 
     function enqueue_scripts_styles($hook){
