@@ -93,6 +93,10 @@ function pin_custom_content($post,$pin,$is_update){
 
 == Changelog ==
 
+= 0.4.7 =
+* Less API calls
+* !!! Secret boards are currently unsupported.  TO FIX.
+
 = 0.4.6 =
 * Pinim_Bridge::get_user_datas() : return data from module>tree>data instead of resourceDataCache>0>data
 * improved Pinim_Bridge::api_response()

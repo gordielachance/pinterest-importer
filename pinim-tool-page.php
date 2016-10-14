@@ -608,6 +608,10 @@ class Pinim_Tool_Page {
             
             case 'boards-settings': //boards settings
                 
+                //TO FIX TO REMOVE
+                //warn users secret boards are temporary disabled()
+                add_settings_error('pinim_form_boards','secret_boards_ignored',__("The plugin is currently unable to load secret boards. We'll try to fix this in the next release.",'pinim'),'error inline');
+                
                 //we should not be here !
                 if ( !$this->can_show_step('boards-settings') ){
                     $url = pinim_get_tool_page_url(array('step'=>'pinterest-login'));
@@ -1259,7 +1263,7 @@ class Pinim_Tool_Page {
         
         //public boards
         $list[] = sprintf(
-            '<span>'.__('%1$s private boards','pinim').'</span>',
+            '<span><strike>'.__('%1$s private boards','pinim').'</strike></span>',
             '<strong>'.$secret_board_count.'</strong>'
         );
         
