@@ -83,9 +83,16 @@ class Pinim_Tool_Page {
             die();
             
         }
+        
+        if ( isset($_REQUEST['logout']) ){
+            $this->destroy_session();
+            add_settings_error('pinim_form_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated inline');
+        }else{
+            $this->save_step();
+            $this->init_step();
+        }
 
-        $this->save_step();
-        $this->init_step();
+
 
     }
     
@@ -179,26 +186,6 @@ class Pinim_Tool_Page {
 
     
     function save_step(){
-        
-        //TO FIX TO REMOVE
-        if (isset($_REQUEST['destroy_appart'])){
-            //all boards session
-            $boards_sessions = pinim_tool_page()->get_session_data('user_boards');
-
-            //keep all but our board
-            $board_id = '153474368490655457';
-            $boards_sessions = array_filter(
-                (array)$boards_sessions,
-                function ($e) use ($board_id) {
-                    return ($e['board_id'] != $board_id);
-                }
-            );  
-
-            pinim_tool_page()->set_session_data('user_boards',$boards_sessions);
-            
-            echo"********************DESTROYED APPART";
-
-        }
 
         $user_id = get_current_user_id();
         
@@ -486,13 +473,6 @@ class Pinim_Tool_Page {
             break;
             case 'pinterest-login':
 
-                //logout
-                if ( $this->get_session_data() && isset($_REQUEST['logout']) ){
-                    $this->delete_session_data();
-                    add_settings_error('pinim_form_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated inline');
-                    return;
-                }
-
                 if ( !isset($_POST['pinim_form_login']) ) return;
 
                 $login = ( isset($_POST['pinim_form_login']['username']) ? $_POST['pinim_form_login']['username'] : null);
@@ -519,36 +499,39 @@ class Pinim_Tool_Page {
             break;
         }
         
+        
     }
     
    function do_bridge_login($login = null, $password = null){
        
-        if ($this->bridge->is_logged_in) return $this->bridge->is_logged_in;
+        if ( !$logged = $this->bridge->is_logged_in() ){
+            
+            if (!$login) $login = $this->get_session_data('login');
+            $login = trim($login);
 
-        if (!$login) $login = $this->get_session_data('login');
-        $login = trim($login);
-       
-        if (!$password) $password = $this->get_session_data('password');
-        $password = trim($password);
-       
-        if (!$login || !$password){
-            return new WP_Error( 'pinim',__('Missing login and/or password','pinim') );
-        }
-       
-       //force use Pinterest username
-        if (strpos($login, '@') !== false) {
-            return new WP_Error( 'pinim',__('Use your Pinterest username here, not an email address.','pinim').' <code>https://www.pinterest.com/USERNAME/</code>' );
-        }
-       
+            if (!$password) $password = $this->get_session_data('password');
+            $password = trim($password);
 
-        //try to auth
-        $this->bridge->set_login($login)->set_password($password);
-        $logged = $this->bridge->do_login();
+            if (!$login || !$password){
+                return new WP_Error( 'pinim',__('Missing login and/or password','pinim') );
+            }
 
-        if ( is_wp_error($logged) ){
-            return new WP_Error( 'pinim',$logged->get_error_message() );
+           //force use Pinterest username
+            if (strpos($login, '@') !== false) {
+                return new WP_Error( 'pinim',__('Use your Pinterest username here, not an email address.','pinim').' <code>https://www.pinterest.com/USERNAME/</code>' );
+            }
+
+
+            //try to auth
+            $this->bridge->set_login($login)->set_password($password);
+            $logged = $this->bridge->do_login();
+
+            if ( is_wp_error($logged) ){
+                return new WP_Error( 'pinim',$logged->get_error_message() );
+            }
+            
         }
-        
+
         return $logged;
 
    }
@@ -1259,9 +1242,9 @@ class Pinim_Tool_Page {
         
         $user_icon = $this->get_user_infos('image_medium_url');
         $username = $this->get_user_infos('username');
-        $board_count = $this->get_user_infos('board_count');
-        $secret_board_count = $this->get_user_infos('secret_board_count');
-        $like_count = $this->get_user_infos('like_count');
+        $board_count = (int)$this->get_user_infos('board_count');
+        $secret_board_count = (int)$this->get_user_infos('secret_board_count');
+        $like_count = (int)$this->get_user_infos('like_count');
         
         //names
         $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$username.'</strong>');
@@ -1302,6 +1285,9 @@ class Pinim_Tool_Page {
     
     function get_user_infos($keys = null,$username = null){
         
+        //ignore when logging out
+        if ( isset($_REQUEST['logout']) ) return;
+        
         if (!$username) $username = $this->get_session_data('login');
         
         $session_data = $this->get_session_data('user_datas');
@@ -1335,19 +1321,20 @@ class Pinim_Tool_Page {
         $session_data = $this->get_session_data('user_datas_boards');
 
         if ( !isset($session_data[$username]) ){
-            
+
             //try to auth
             $logged = $this->do_bridge_login();
             if ( is_wp_error($logged) ) return $logged;
 
             $userdata = $this->bridge->get_user_boards($username);
-
-            if ( is_wp_error($userdata) ) return $userdata;
-
-            $session_data[$username] = $userdata;
-
-            $this->set_session_data('user_datas_boards',$session_data);
             
+            if ( is_wp_error($userdata) ){
+                return $userdata;
+            }
+            
+            $session_data[$username] = $userdata;
+            $this->set_session_data('user_datas_boards',$session_data);
+
         }
 
         return $session_data[$username];
@@ -1363,8 +1350,8 @@ class Pinim_Tool_Page {
         
         
         $boards_datas = $this->get_user_boards_data();
-        if ( is_wp_error($boards_datas) ) return $boards; //TO FIX output error ?
-        
+        if ( is_wp_error($boards_datas) ) return $boards_datas;
+
         foreach((array)$boards_datas as $single_board_datas){
             $boards[] = new Pinim_Board($single_board_datas['url'],$single_board_datas);
         }

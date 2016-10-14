@@ -16,20 +16,13 @@ class Pinim_Bridge{
      * @var Pinterest App version loaded from pinterest.com
      */
     private $_app_version = null;
+    private $_csrftoken = null;
     
     private $login = null;
     private $password = null;
     
-    /**
-     * @var CSRF token loaded from pinterest.com
-     */
-    private $_csrftoken = null;
-    
     private $cookies = array();
-    
     protected $headers = array();
-    
-    public $is_logged_in = false;
 
     public function __construct(){
         // Default HTTP headers for requests
@@ -55,8 +48,8 @@ class Pinim_Bridge{
         return $this;
     }
     
-    function get_headers($headers = array()){
-        $default = array(
+    function get_default_headers(){
+        return array(
             'Host'              => str_replace('https://', '', self::$pinterest_url),
             'Origin'            => self::$pinterest_url,
             'Referer'           => self::$pinterest_url,
@@ -66,32 +59,44 @@ class Pinim_Bridge{
             'Accept-Language'   => 'en-US,en;q=0.5',
             'User-Agent'        => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML => like Gecko) Iron/31.0.1700.0 Chrome/31.0.1700.0' 
         );
-        
-        return wp_parse_args($headers,$default);
     }
     
-    function get_logged_headers($headers = array()){
-        
+    function get_app_headers(){
+
         $app_version = $this->_getAppVersion();
-        
         if ( is_wp_error($app_version) ) return $app_version;
-        
+
         $login_headers = array(
                 'Accept'                => 'application/json, text/javascript, */*; q=0.01',
                 'X-APP-VERSION'         => $app_version,
-                'X-CSRFToken'           => $this->_csrftoken,
                 'X-NEW-APP'             => 1,
                 'X-Pinterest-AppState'  => 'active',
                 'X-Requested-With'      => 'XMLHttpRequest',
-                'X-Requested-With'  => 'XMLHttpRequest',
+                'X-Requested-With'      => 'XMLHttpRequest',
         );
 
-        $default = wp_parse_args(
-                $this->get_headers(),
+        $login_headers = wp_parse_args(
+                $this->get_default_headers(),
                 $login_headers
         );
         
-        return wp_parse_args($headers,$default);
+        return $login_headers;
+    }
+    
+    function get_logged_headers($reset_token = false,$extra_headers = array()){
+
+        $app_headers = $this->get_app_headers();
+        if ( is_wp_error($app_headers) ) return $app_headers;
+
+        $token = $this->get_csrftoken($reset_token);
+        if ( is_wp_error($token) ) return $token;
+
+        $logged_headers = wp_parse_args($extra_headers,$app_headers);
+        $logged_headers['X-CSRFToken'] = $token;
+        
+        pinim()->debug_log( json_encode($logged_headers) );
+
+        return $logged_headers;
         
     }
     
@@ -102,49 +107,68 @@ class Pinim_Bridge{
         return $response;
     }
     
-    public function set_auth($response){
+    public function set_csrftoken($response){
         
-        if (is_wp_error($response)) return false;
-
+        /*
+        Sets the csrftoken
+        */
+        
+        $token = null;
+        
+        if ( is_wp_error($response) ) return false;
+        
         $this->cookies = $response['cookies'];
 
         foreach ((array)$this->cookies as $cookie){
             if ($cookie->name !='csrftoken') continue;
-            $this->_csrftoken = $cookie->value;
+            $token = $cookie->value;
             break;
         }
-        if (!$this->_csrftoken){
+        if (!$token){
             pinim()->debug_log('Missing required CSRF token');
             pinim()->debug_log($this->cookies);
             return new WP_Error('pinim',__('Missing required CSRF token','pinim'));
         }
-        return $this->_csrftoken;
+        
+        $current_token = pinim_tool_page()->get_session_data('csrftoken',$token);
+        
+        if ($current_token != $token){
+            pinim_tool_page()->set_session_data('csrftoken',$token);
+            pinim()->debug_log('set_csrftoken() : ' . $token);
+        }
+
+        return $token;
     }
     
-    private function refresh_token($url = null){
+    private function get_csrftoken($reset = false){
         
-        $extra_headers = array();
+        if ( ( !$token = pinim_tool_page()->get_session_data('csrftoken') ) || ($reset) ){
+
+            $headers = $this->get_app_headers();
+            if ( is_wp_error($headers) ) return $headers;
+
+            $args = array(
+                'headers'       => $headers,
+                'cookies'       => $this->cookies
+            );
+
+            $response = wp_remote_get( self::$pinterest_url, $args );
+
+            $token = $this->set_csrftoken($response); //udpate token & cookies for further requests
+
+        }
         
-        $headers = $this->get_logged_headers($extra_headers);
-        if ( is_wp_error($headers) ) return $headers;
+        return $token;
         
-        $args = array(
-            'headers'       => $headers,
-            'cookies'       => $this->cookies
-        );
-        
-        $response = wp_remote_get( self::$pinterest_url.$url, $args );
-        
-        $has_set_auth = $this->set_auth($response); //udpate token & cookies for further requests
-        if ( is_wp_error($has_set_auth) ) return $has_set_auth;
-        
-        return $this->_csrftoken;
+
     }
     
     /**
     Check if the email exists in the Pinterest database
     */
     public function email_exists($email){
+        
+        pinim()->debug_log('email_exists()');
         
         $data_options = array(
             'email' => $email
@@ -158,12 +182,8 @@ class Pinim_Bridge{
             )),
             '_' => time()*1000 //js timestamp
         );
-        
-        $extra_headers = array(
-            //'Referer'   => self::$pinterest_url
-        );
-        
-        $headers = $this->get_logged_headers($extra_headers);
+
+        $headers = $this->get_logged_headers();
         if (is_wp_error($headers)) return $headers;
 
         $args = array(
@@ -176,57 +196,65 @@ class Pinim_Bridge{
         return $api_response['data'];
     }
     
+    public function is_logged_in(){
+        return pinim_tool_page()->get_session_data('is_logged_in');
+    }
+    
     /**
      * Try to log in to Pinterest.
      * @return \WP_Error
      */
     public function do_login(){
         
-        $api_error = null;
+        if ( !$is_logged_in = $this->is_logged_in() ){
+            
+            pinim()->debug_log('do_login()');
+            
+            if (!isset($this->login) or !isset($this->password)) {
+                return new WP_Error('pinim',__('Missing login and/or password','pinim'));
+            }
 
-        if ($this->is_logged_in) return $this->is_logged_in;
-        
-        if (!isset($this->login) or !isset($this->password)) {
-            return new WP_Error('pinim',__('Missing login and/or password','pinim'));
+
+            $data = array(
+                'data' => json_encode(array(
+                    'options' => array(
+                        'username_or_email' => $this->login,
+                        'password' => $this->password,
+                    ),
+                    'context' => new \stdClass,
+                )),
+                'source_url' => '/login/',
+                'module_path' => 'App()>LoginPage()>Login()>Button(class_name=primary, text=Log In, type=submit, size=large)',
+            );
+
+            $extra_headers = array(
+                'Referer'           => self::$pinterest_login_url,
+                //'Content-Type'      => 'application/x-www-form-urlencoded; charset=UTF-8'
+            );
+
+            $headers = $this->get_logged_headers(true,$extra_headers);
+            if ( is_wp_error($headers) ) return $headers;
+
+            $args = array(
+                'headers'       => $headers,
+                'body'          => http_build_query($data),
+                'cookies'       => $this->cookies
+            );
+
+            $api_response = $this->api_response('resource/UserSessionResource/create/',$args);
+
+            if ( is_wp_error($api_response) ){
+                return new WP_Error( 'pinim',sprintf(__('Error while trying to login: %s','pinim'),$api_response->get_error_message()) );
+            }
+
+            pinim()->debug_log('has logged in');
+            $is_logged_in = true;
+            pinim_tool_page()->set_session_data('is_logged_in',$is_logged_in);
+            
+            
         }
-        
-        $has_refreshed_token = $this->refresh_token();
-        if ( is_wp_error($has_refreshed_token) ) return $has_refreshed_token;
 
-        $data = array(
-            'data' => json_encode(array(
-                'options' => array(
-                    'username_or_email' => $this->login,
-                    'password' => $this->password,
-                ),
-                'context' => new \stdClass,
-            )),
-            'source_url' => '/login/',
-            'module_path' => 'App()>LoginPage()>Login()>Button(class_name=primary, text=Log In, type=submit, size=large)',
-        );
-
-        $extra_headers = array(
-            'Referer'           => self::$pinterest_login_url,
-            //'Content-Type'      => 'application/x-www-form-urlencoded; charset=UTF-8'
-        );
-
-        $headers = $this->get_logged_headers($extra_headers);
-        if ( is_wp_error($headers) ) return $headers;
-
-        $args = array(
-            'headers'       => $headers,
-            'body'          => http_build_query($data),
-            'cookies'       => $this->cookies
-        );
-
-        $api_response = $this->api_response('resource/UserSessionResource/create/',$args,'POST',true);
-        
-        if ( is_wp_error($api_response) ){
-            return new WP_Error( 'pinim',sprintf(__('Error while trying to login: %s','pinim'),$api_response->get_error_message()) );
-        }
-        
-        $this->is_logged_in = true;
-        return $this->is_logged_in;
+        return $is_logged_in;
 
     }
     
@@ -258,11 +286,13 @@ class Pinim_Bridge{
         if ($this->_app_version) return $this->_app_version;
 
         if ( !$app_version = pinim_tool_page()->get_session_data('app_version') ){
+            
+            pinim()->debug_log('_getAppVersion():');
         
             $url = self::$pinterest_login_url;
 
             $args = array(
-                'headers'       => $this->get_headers()
+                'headers'       => $this->get_default_headers()
             );
 
             $response = wp_remote_get( $url, $args );
@@ -279,6 +309,8 @@ class Pinim_Bridge{
                 $app_version = $json['context']['app_version'];
                 pinim_tool_page()->set_session_data('app_version',$app_version);
             }
+            
+            pinim()->debug_log($app_version);
         }
         
         if (!$app_version){
@@ -299,7 +331,7 @@ class Pinim_Bridge{
         $keys_path : path (array keys) of the datas to return from the response - default is ['resource_response']['data']
     */
     
-    public function api_response( $path = null,$args,$method='POST',$update_auth=false,$keys_path=array('resource_response','data') ){
+    public function api_response( $path = null,$args,$method='POST',$keys_path=array('resource_response','data') ){
         
         $url = self::$pinterest_url . '/' . $path;
         
@@ -312,16 +344,14 @@ class Pinim_Bridge{
         }
         
         pinim()->debug_log('api_response for: '.$url);
-        pinim()->debug_log('with args:');
-        pinim()->debug_log($args);
+        pinim()->debug_log( json_encode($args) );
 
         $bodyraw = wp_remote_retrieve_body($response);
         if ( is_wp_error($bodyraw) ) return $bodyraw;
-        
-        if ($update_auth){
-            $has_set_auth = $this->set_auth($response); //udpate token & cookies for further requests
-            if ( is_wp_error($has_set_auth) ) return $has_set_auth;
-        }
+
+        $token = $this->set_csrftoken($response); //udpate token & cookies for further requests
+        if ( is_wp_error($token) ) return $token;
+
         
         $data = null;
 
@@ -340,6 +370,8 @@ class Pinim_Bridge{
         if ( $key_exists = pinim_array_keys_exists($keys_path, $body) ){
             $data = pinim_get_array_value($keys_path, $body);
         }else{
+            pinim()->debug_log('Unable to get path from response : ' . implode('>',$keys_path) );
+            pinim()->debug_log( json_encode($body) );
             return new WP_Error('pinim',sprintf( __('Unable to get %s from the response','pinim'),'<em>'.implode('>',$keys_path).'</em>' ) );
         }
         
@@ -357,36 +389,36 @@ class Pinim_Bridge{
      * Get datas for a user.
      * @return \WP_Error
      */
-    public function get_user_datas($username = null){
-
-            $login = $this->do_login();
-            if (is_wp_error($login)) return $login;
-            if (!$username) $username = $this->login;
-
-            $extra_headers = array(
-                //'Referer'   => '/'
-            );
-
-            $headers = $this->get_logged_headers($extra_headers);
-            if ( is_wp_error($headers) ) return $headers;
-
-            $args = array(
-                'headers'       => $headers,
-                'cookies'       => $this->cookies
-            );
-
-            $api_response = $this->api_response( $username,$args,'GET',true,array('module','tree','data') );
-
-            if ( is_wp_error($api_response) ){
-                return new WP_Error( 'pinim',sprintf(__('Error while getting user data: %s','pinim'),$api_response->get_error_message()) );
-            }
+    public function get_user_datas($username){
         
-            $userdata = $api_response['data'];
+            if ( !$userdata = pinim_tool_page()->get_session_data('userdata') ){
+                
+                pinim()->debug_log('get_user_datas() for user:' . $username);
 
-            pinim_tool_page()->set_session_data('userdata',$userdata);
+                $login = $this->do_login();
+                if (is_wp_error($login)) return $login;
+
+                $headers = $this->get_logged_headers();
+                if ( is_wp_error($headers) ) return $headers;
+
+                $args = array(
+                    'headers'       => $headers,
+                    'cookies'       => $this->cookies
+                );
+
+                $api_response = $this->api_response( $username,$args,'GET',array('module','tree','data') );
+
+                if ( is_wp_error($api_response) ){
+                    return new WP_Error( 'pinim',sprintf(__('Error while getting user data: %s','pinim'),$api_response->get_error_message()) );
+                }
+
+                $userdata = $api_response['data'];
+
+                pinim_tool_page()->set_session_data('userdata',$userdata);
+                
+            }
 
             return $userdata;
-        
         
     }
 
@@ -422,12 +454,8 @@ class Pinim_Bridge{
             'source_url' => sprintf('/%s/',$username),
             '_' => time()*1000 //js timestamp
         );
-        
-        $extra_headers = array(
-            //'Referer'   => '/'
-        );
-        
-        $headers = $this->get_logged_headers($extra_headers);
+
+        $headers = $this->get_logged_headers(true);
         if (is_wp_error($headers)) return $headers;
 
         $args = array(
@@ -554,7 +582,7 @@ class Pinim_Bridge{
         if (is_wp_error($board_args)) return $board_args;
 
         $args = array(
-            'headers'       => $this->get_headers()
+            'headers'       => $this->get_default_headers()
         );
 
         $response = wp_remote_get( self::$pinterest_url.$board_args['url'], $args );
@@ -583,6 +611,8 @@ class Pinim_Bridge{
      * @return \WP_Error
      */
     private function get_board_pins_page($board){
+        
+        pinim()->debug_log('get_board_pins_page() : '. $board->slug);
 
         $page_pins = array();
         $data_options = array();
@@ -590,7 +620,6 @@ class Pinim_Bridge{
         $secret = null;
 
         $login = $this->do_login();
-
         if (is_wp_error($login)) return $login;
 
         if ($board->slug == 'likes'){
@@ -632,7 +661,7 @@ class Pinim_Bridge{
             'X-Pinterest-AppState'  => 'background'
         );
         
-        $headers = $this->get_logged_headers($extra_headers);
+        $headers = $this->get_logged_headers(true,$extra_headers);
         if (is_wp_error($headers)) return $headers;
 
         $args = array(
