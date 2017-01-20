@@ -34,8 +34,6 @@ This would be very appreciated — Thanks !
 
 = Instruction =
 
-This plugin requires at least php 5.3.6 with the [exif extension enabled](http://stackoverflow.com/questions/23978360/php-fatal-error-call-to-undefined-function-exif-imagetype/23978385#23978385).
-
 1. Go to Tools -> Pinterest Importer.
 2. Select "My Account" tab; and login to Pinterest
 3. Select the "Boards Settings" tab and choose the boards you want to backup.
@@ -51,6 +49,8 @@ For feature request and bug reports, [please use the forums](http://wordpress.or
 If you are a plugin developer, [we would like to hear from you](https://github.com/gordielachance/pinterest-importer). Any contribution would be very welcome.
 
 == Installation ==
+
+This plugin requires at least php 5.3.6 with the [exif extension enabled](http://stackoverflow.com/questions/23978360/php-fatal-error-call-to-undefined-function-exif-imagetype/23978385#23978385).
 
 1. Upload the plugin to your blog and Activate it.
 2. Go to Tools -> Pinterest Importer.
