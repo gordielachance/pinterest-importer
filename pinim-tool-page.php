@@ -692,7 +692,14 @@ class Pinim_Tool_Page {
     }
     
     function admin_menu(){
-        $this->options_page = add_submenu_page('tools.php', __('Pinterest Importer','pinim'), __('Pinterest Importer','pinim'), 'manage_options', 'pinim', array($this, 'importer_page'));
+        $this->options_page = add_submenu_page(
+            sprintf('edit.php?post_type=%s',pinim()->pin_post_type), 
+            __('Settings','pinim'), 
+            __('Settings','pinim'), 
+            'manage_options', 
+            'pinim', 
+            array($this, 'importer_page')
+        );
     }
     
     function settings_sanitize( $input ){
