@@ -48,7 +48,6 @@ class PinIm {
     var $boards_followed_urls = array();
     var $user_boards_options = null;
     var $pinterest_url = 'https://www.pinterest.com';
-    var $donation_url = 'http://bit.ly/gbreant';
     var $root_term_name = 'Pinterest.com';
 
 
