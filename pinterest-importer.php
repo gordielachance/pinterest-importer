@@ -149,6 +149,14 @@ class PinIm {
             //force destroy session
             pinim_tool_page()->destroy_session();
             
+            if($current_version < '208'){ //switch post type to 'pin'
+                
+                $querystr = $wpdb->prepare( "UPDATE $wpdb->posts table_posts LEFT JOIN $wpdb->postmeta table_metas ON table_posts.ID = table_metas.post_id SET table_posts.post_type = REPLACE(table_posts.post_type, %s, %s) WHERE table_metas.meta_key = '%s'", 'post', $this->pin_post_type,'_pinterest-pin_id' );
+                
+                $result = $wpdb->get_results ( $querystr );
+                
+            }
+            
             if($current_version < '204'){
                 $boards_settings = pinim_get_boards_options();
                 foreach((array)$boards_settings as $key=>$board){
@@ -158,15 +166,6 @@ class PinIm {
                     }
                 }
                 update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_settings);
-            }
-            
-            
-            if($current_version <= '207'){ //switch post type to 'pin'
-                
-                $querystr = $wpdb->prepare( "UPDATE $wpdb->posts table_posts LEFT JOIN $wpdb->postmeta table_metas ON table_posts.ID = table_metas.post_id SET table_posts.post_type = REPLACE(table_posts.post_type, %s, %s) WHERE table_metas.meta_key = '%s'", 'post', $this->pin_post_type,'_pinterest-pin_id' );
-                
-                $result = $wpdb->get_results ( $querystr );
-                
             }
             
             if($current_version < '206'){
