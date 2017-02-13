@@ -49,7 +49,8 @@ function pinim_get_tool_page_url($args = array()){
 
 function pinim_get_post_by_pin_id($pin_id){
     $query_args = array(
-        'post_status'   => array('publish','pending','draft','future','private'),
+        'post_type'         => pinim()->pin_post_type,
+        'post_status'       => array('publish','pending','draft','future','private'),
         'meta_query'        => array(
             array(
                 'key'     => '_pinterest-pin_id',
@@ -57,7 +58,7 @@ function pinim_get_post_by_pin_id($pin_id){
                 'compare' => '='
             )
         ),
-        'posts_per_page' => 1
+        'posts_per_page'    => 1
     );
     $query = new WP_Query($query_args);
     if (!$query->have_posts()) return false;

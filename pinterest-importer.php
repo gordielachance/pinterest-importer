@@ -43,7 +43,7 @@ class PinIm {
     public $options_default = array();
     public $options = array();
 
-    static $pin_post_type = 'pin';
+    public $pin_post_type = 'pin';
     static $meta_name_options = 'pinim_options';
 
     var $boards_followed_urls = array();
@@ -163,7 +163,7 @@ class PinIm {
             
             if($current_version <= '207'){ //switch post type to 'pin'
                 
-                $querystr = $wpdb->prepare( "UPDATE $wpdb->posts table_posts LEFT JOIN $wpdb->postmeta table_metas ON table_posts.ID = table_metas.post_id SET table_posts.post_type = REPLACE(table_posts.post_type, %s, %s) WHERE table_metas.meta_key = '%s'", 'post', self::$pin_post_type,'_pinterest-pin_id' );
+                $querystr = $wpdb->prepare( "UPDATE $wpdb->posts table_posts LEFT JOIN $wpdb->postmeta table_metas ON table_posts.ID = table_metas.post_id SET table_posts.post_type = REPLACE(table_posts.post_type, %s, %s) WHERE table_metas.meta_key = '%s'", 'post', $this->pin_post_type,'_pinterest-pin_id' );
                 
                 $result = $wpdb->get_results ( $querystr );
                 
@@ -237,7 +237,7 @@ class PinIm {
             'publicly_queryable'    => true,
             'capability_type'       => 'post',
         );
-        register_post_type( self::$pin_post_type, $args );
+        register_post_type( $this->pin_post_type, $args );
 
     }
     

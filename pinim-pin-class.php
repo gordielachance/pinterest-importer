@@ -1157,12 +1157,8 @@ class Pinim_Processed_Pins_Table extends Pinim_Pins_Table {
         $this->per_page = pinim()->get_options('pins_per_page');
         
         $default = array(
-            'post_status'   => array('publish','pending','draft','future','private'),
-            'meta_query'        => array(
-                array(
-                    'key'     => '_pinterest-pin_id',
-                )
-            ),
+            'post_type'         => pinim()->pin_post_type,
+            'post_status'       => array('publish','pending','draft','future','private'),
             'posts_per_page' => $this->per_page,
             'orderby'   => $this->orderby,
             'order'     => $this->order,
