@@ -121,6 +121,10 @@ class PinIm {
         add_action( 'admin_init', array(&$this,'load_textdomain'));
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts_styles' ) );
         add_action( 'add_meta_boxes', array($this, 'pinim_metabox'));
+        
+        //handle pins columns
+        add_filter( 'manage_'.$this->pin_post_type.'_posts_columns', array($this, 'pins_table_columns') );
+        add_action( 'manage_'.$this->pin_post_type.'_posts_custom_column', array($this, 'pins_table_columns_content'), 10, 2 );
     }
     
     function load_textdomain() {
@@ -240,17 +244,44 @@ class PinIm {
 
     }
     
+    function pins_table_columns($columns){
+        $columns['pin_source'] = __( 'Source', 'pinim' );
+        $columns['pin_thumbnail'] = '';
+        return $columns;
+    }
+    
+    function pins_table_columns_content($column, $post_id){
+        switch ( $column ) {
+            case 'pin_thumbnail':
+                printf(
+                    '<img src="%1$s" />',
+                    get_the_post_thumbnail_url($post_id)
+                );
+            break;
+            case 'pin_source':
+                $text = $url = null;
+                $log = pinim_get_pin_log($post_id);
+
+                $text = $log['domain'];
+                $url = $log['link'];
+
+                //if (!$text || !$url) return;
+
+                printf(
+                    '<a target="_blank" href="%1$s">%2$s</a>',
+                    esc_url($url),
+                    $text
+                );
+            break;
+        }
+    }
+    
     function plugin_bottom_links($links){
         
         $links[] = sprintf('<a target="_blank" href="%s">%s</a>',$this->donate_link,__('Donate','pinim'));//donate
         
         if (current_user_can('manage_options')) {
-            $settings_page_url = add_query_arg(
-                array(
-                    'step'  => 'pinim-options'
-                ),
-                pinim_get_tool_page_url()
-            );
+            $settings_page_url = pinim_get_menu_url(array('page'  => 'settings'));
             $links[] = sprintf('<a href="%s">%s</a>',esc_url($settings_page_url),__('Settings'));
         }
         
@@ -258,9 +289,10 @@ class PinIm {
     }
 
     function enqueue_scripts_styles($hook){
-        
         $screen = get_current_screen();
-        if ($screen->id != pinim_tool_page()->options_page) return;
+
+        if ( $screen->post_type != $this->pin_post_type ) return;
+        
         wp_enqueue_script('pinim', $this->plugin_url.'_inc/js/pinim.js', array('jquery'),$this->version);
         wp_enqueue_style('font-awesome', '//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css',false,'4.3.0');
         wp_enqueue_style('pinim', $this->plugin_url . '_inc/css/pinim.css',false,$this->version);

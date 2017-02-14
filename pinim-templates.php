@@ -1,32 +1,7 @@
 <?php
-
-
-
-function pinim_is_tool_page(){
-    global $pagenow;
-
-    switch($pagenow){
-        case 'tools.php':
-            if ( isset($_REQUEST['page']) && ($_REQUEST['page'] == 'pinim') ) return true;
-        break;
-        case 'options.php':
-            if ( isset($_REQUEST['option_page']) && ($_REQUEST['option_page'] == 'pinim') ) return true;
-        break;
-    }
-
-    return false;
-}
-
-function pinim_get_tool_page_step(){
-    if (!pinim_is_tool_page()) return false;
-    if (!isset($_REQUEST['step'])) return false;
-    return $_REQUEST['step'];
-}
-
-function pinim_get_tool_page_url($args = array()){
-    
+function pinim_get_menu_url($args = array()){
     $defaults = array(
-        'page'=>'pinim'
+        'post_type' => pinim()->pin_post_type
     );
 
     $args = wp_parse_args($args, $defaults);
@@ -37,8 +12,7 @@ function pinim_get_tool_page_url($args = array()){
             array_map( 'rawurlencode', array_values( $args ) )
     );
 
-    return add_query_arg($args,admin_url('tools.php'));
-
+    return add_query_arg($args,admin_url('edit.php'));
 }
 
 /**

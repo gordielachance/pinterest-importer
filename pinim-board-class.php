@@ -528,7 +528,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         
     }
     
-    function column_thumbnail($board){
+    function column_board_thumbnail($board){
         if ( !$images = $board->get_datas('cover_images') ) return;
         $image_key = array_values($images);//reset keys
         $image = array_shift($image_key);
@@ -625,7 +625,13 @@ class Pinim_Boards_Table extends WP_List_Table {
 
             if ( !$board->bookmark ){ //queue not started
                 $pc_status_classes[] = "offline";
-                $link = pinim_get_tool_page_url(array('step'=>'boards-settings','action'=>'boards_cache_pins','board_ids'=>$board->board_id));
+                $link = pinim_get_menu_url(
+                    array(
+                        'page'      => 'boards',
+                        'action'    => 'boards_cache_pins',
+                        'board_ids' => $board->board_id
+                    )
+                );
                 $text_bar = sprintf('<a href="%1$s">%2$s</a>',$link,__('Not cached yet','pinim'));
             }else{
    
@@ -660,7 +666,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         $columns = array(
             'cb'                    => '<input type="checkbox" />', //Render a checkbox instead of text
-            'thumbnail'             => '',
+            'board_thumbnail'       => '',
             'title'                 => __('Board Title','pinim'),
             'category'              => __('Category','pinim'),
             'private'               => __('Private','pinim'),
@@ -787,7 +793,12 @@ class Pinim_Boards_Table extends WP_List_Table {
         
         $link_all = sprintf(
             __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'all')),
+            pinim_get_menu_url(
+                array(
+                    'page'          => 'boards',
+                    'boards_filter' =>'all'
+                )
+            ),
             pinim_get_classes($link_all_classes),
             __('All','pinim'),
             $all_count
@@ -795,7 +806,12 @@ class Pinim_Boards_Table extends WP_List_Table {
         
         $link_user = sprintf(
             __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'user')),
+            pinim_get_menu_url(
+                array(
+                    'page'          => 'boards',
+                    'boards_filter' => 'user'
+                )
+            ),
             pinim_get_classes($link_user_classes),
             __('My boards','pinim'),
             $user_count
@@ -803,7 +819,12 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         $link_cached = sprintf(
             __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'cached')),
+            pinim_get_menu_url(
+                array(
+                    'page'          => 'boards',
+                    'boards_filter' => 'cached'
+                )
+            ),
             pinim_get_classes($link_cached_classes),
             __('Cached','pinim'),
             $cached_count
@@ -811,7 +832,12 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         $link_not_cached = sprintf(
             __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'not_cached')),
+            pinim_get_menu_url(
+                array(
+                    'page'          => 'boards',
+                    'boards_filter' => 'not_cached'
+                )
+            ),
             pinim_get_classes($link_not_cached_classes),
             __('Not cached','pinim'),
             $not_cached_count
@@ -819,7 +845,12 @@ class Pinim_Boards_Table extends WP_List_Table {
         
         $link_in_queue = sprintf(
             __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'in_queue')),
+            pinim_get_menu_url(
+                array(
+                    'page'          => 'boards',
+                    'boards_filter' =>'in_queue'
+                )
+            ),
             pinim_get_classes($link_in_queue_classes),
             __('In queue','pinim'),
             $in_queue_count
@@ -827,7 +858,12 @@ class Pinim_Boards_Table extends WP_List_Table {
         
         $link_followed = sprintf(
             __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_filter'=>'followed')),
+            pinim_get_menu_url(
+                array(
+                    'page'          => 'boards',
+                    'boards_filter' => 'followed'
+                )
+            ),
             pinim_get_classes($link_followed_classes),
             __('Followed boards','pinim'),
             $followed_count
@@ -875,14 +911,24 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         $link_simple = sprintf(
             __('<a href="%1$s"%2$s>%3$s</a>'),
-            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_view_filter'=>'simple')),
+            pinim_get_menu_url(
+                array(
+                    'page'                  => 'boards',
+                    'boards_view_filter'    => 'simple'
+                )
+            ),
             pinim_get_classes($link_simple_classes),
             __('Simple','pinim')
         );
 
         $link_advanced = sprintf(
             __('<a href="%1$s"%2$s>%3$s</a>'),
-            pinim_get_tool_page_url(array('step'=>'boards-settings','boards_view_filter'=>'advanced')),
+            pinim_get_menu_url(
+                array(
+                    'page'                  => 'boards',
+                    'boards_view_filter'    =>'advanced'
+                )
+            ),
             pinim_get_classes($link_advanced_classes),
             __('Advanced','pinim')
         );

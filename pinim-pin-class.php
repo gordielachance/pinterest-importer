@@ -98,6 +98,7 @@ class Pinim_Pin{
     function get_link_action_import(){
         //Refresh cache
         $link_args = array(
+            'page'      => 'boards',
             'step'      => 'pins-list',
             'action'    => 'pins_import_pins',
             'pin_ids'  => $this->pin_id,
@@ -106,7 +107,7 @@ class Pinim_Pin{
 
         $link = sprintf(
             '<a href="%1$s">%2$s</a>',
-            pinim_get_tool_page_url($link_args),
+            pinim_get_menu_url($link_args),
             __('Import pin','pinim')
 
         );
@@ -121,15 +122,16 @@ class Pinim_Pin{
         if (!in_array($this->pin_id,pinim_tool_page()->existing_pin_ids)) return;
 
         $link_args = array(
-            'step'          => 'pins-list',
-            'action'        => 'pins_update_pins',
-            'pin_ids'       => $this->pin_id,
-            //'paged'         => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
+            'page'      => 'boards',
+            'step'      => 'pins-list',
+            'action'    => 'pins_update_pins',
+            'pin_ids'   => $this->pin_id,
+            //'paged'   => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
         );
 
         $link = sprintf(
             '<a href="%1$s">%2$s</a>',
-            pinim_get_tool_page_url($link_args),
+            pinim_get_menu_url($link_args),
             __('Update pin','pinim')
 
         );
@@ -733,7 +735,8 @@ abstract class Pinim_Pins_Table extends WP_List_Table {
 	protected function get_views() {
             
             $link_args = array(
-                'step'          => 'pins-list'
+                'page'  => 'boards',
+                'step'  => 'pins-list'
             );
             $link_args = array_filter($link_args);
             
@@ -763,7 +766,7 @@ abstract class Pinim_Pins_Table extends WP_List_Table {
 
             $link_processed = sprintf(
                 __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-                pinim_get_tool_page_url($link_processed_args),
+                pinim_get_menu_url($link_processed_args),
                 pinim_get_classes($link_processed_classes),
                 __('Processed','pinim'),
                 $processed_count
@@ -771,7 +774,7 @@ abstract class Pinim_Pins_Table extends WP_List_Table {
             
             $link_pending = sprintf(
                 __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-                pinim_get_tool_page_url($link_pending_args),
+                pinim_get_menu_url($link_pending_args),
                 pinim_get_classes($link_pending_classes),
                 __('Pending','pinim'),
                 $pending_count
