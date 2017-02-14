@@ -93,6 +93,10 @@ function pin_custom_content($post,$pin,$is_update){
 
 == Changelog ==
 
+= 0.4.X =
+* Now uses a 'pin' post type instead of the 'post' default post types.  This makes it easier to handle pins, use specific theme templates or capabilities, etc. + Upgrade routine for previous versions.
+* New 'Pins' menu in the backend with a 'Pinterest Account', 'Pinterest Boards' and 'Settings' pages; which replaces the page tabs from the previous versions.
+
 = 0.4.7 =
 * Less API calls
 * !!! Secret boards are currently unsupported.  TO FIX.

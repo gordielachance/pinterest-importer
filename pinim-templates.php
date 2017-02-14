@@ -64,8 +64,6 @@ function pinim_image_exists($img_url){
     return $query->posts[0]->ID;
 }
 
-
-
 /**
  * Get a Pinterest pin url from its ID
  * @param type $pin_id
@@ -139,8 +137,6 @@ function pinim_get_pin_log($post_id){
     return unserialize(pinim_get_pin_meta('log',$post_id,true));
 }
 
-
-
 function pinim_get_followed_boards_urls(){
     
     $output = array();
@@ -196,9 +192,5 @@ function pinim_get_pinterest_pin_url($pin_id){
     $url = pinim()->pinterest_url.'/pin/'.$pin_id;
     return $url;
 }
-
-
-
-
 
 ?>
