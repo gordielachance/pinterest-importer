@@ -762,7 +762,11 @@ class Pinim_Boards_Table extends WP_List_Table {
         $link_all_classes = $link_user_classes = $link_cached_classes = $link_not_cached_classes = $link_in_queue_classes = $link_followed_classes = array();
         
         $all_boards = pinim_tool_page()->get_boards();
-
+        
+        if ( is_wp_error($all_boards) ){
+            $all_boards = array(); //reset it or it will count errors
+        }
+        
         $all_count = count($all_boards);
         $user_count = count(pinim_tool_page()->filter_boards($all_boards,'user'));
         $cached_count = count(pinim_tool_page()->filter_boards($all_boards,'cached'));

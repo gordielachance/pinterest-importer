@@ -210,15 +210,17 @@ class Pinim_Tool_Page {
         if ( is_wp_error($user_data) || !$user_data ){
             $login_url = pinim_get_menu_url(array('page'=>'account'));
             add_settings_error('pinim_form_boards','not_logged',sprintf(__('Please <a href="%s">login</a> to be able to list your board.','pinim'),$login_url),'error inline');
-            return;
+        }else{
+            $all_boards = $this->get_boards();
+            
+            //warn users secret boards are temporary disabled()
+            add_settings_error('pinim_form_boards','secret_boards_ignored',__("The plugin is currently unable to load secret boards. We'll try to fix this in the next release.",'pinim'),'error inline');
+            
         }
-        
-        $all_boards = $this->get_boards();
 
-        //warn users secret boards are temporary disabled()
-        add_settings_error('pinim_form_boards','secret_boards_ignored',__("The plugin is currently unable to load secret boards. We'll try to fix this in the next release.",'pinim'),'error inline');
 
-        $boards = array();
+
+        $all_boards = array();
         $has_new_boards = false;
         $this->table_boards_user = new Pinim_Boards_Table();
         $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
@@ -227,8 +229,6 @@ class Pinim_Tool_Page {
         
         if ( is_wp_error($all_boards) ){
             add_settings_error('pinim_form_boards', 'get_boards', $all_boards->get_error_message(),'inline');
-            $all_boards = array(); //reset boards
-
         }else{
             //cache pins for auto-cache & queued boards
             $autocache_boards = $this->filter_boards($all_boards,'autocache');
@@ -239,7 +239,7 @@ class Pinim_Tool_Page {
             $boards_cached = $this->filter_boards($all_boards,'cached');
 
             //no boards cached message
-            if ( !$boards_cached ){
+            if ( $all_boards && !$boards_cached ){
                 $feedback = array(__("Start by caching a bunch of boards so we can get informations about their pins !",'pinim') );
                 $feedback[] =   __("You could also check the <em>auto-cache</em> option for some of your boards, so they will always be preloaded.",'pinim');
                 add_settings_error('pinim_form_boards','no_boards_cached',implode('<br/>',$feedback),'updated inline');
@@ -264,7 +264,7 @@ class Pinim_Tool_Page {
                     $all_boards = $this->filter_boards($all_boards,'followed');
                 break;
             }
-            
+
             $this->table_boards_user->input_data = $all_boards;
             $this->table_boards_user->prepare_items();
 
@@ -891,55 +891,50 @@ class Pinim_Tool_Page {
             $form_classes[] = 'view-filter-'.pinim_tool_page()->get_screen_boards_view_filter();
             $form_classes[] = 'pinim-form-boards';
 
-            //user boards                             
-            $boards = pinim_tool_page()->get_boards();
-
             settings_errors('pinim_form_boards');
 
-            if (!is_wp_error($boards)){ //TO FIX and is logged
-                ?>  
-                <form id="pinim-form-user-boards"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_menu_url(array('page'=>'boards'));?>" method="post">
+            ?>  
+            <form id="pinim-form-user-boards"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_menu_url(array('page'=>'boards'));?>" method="post">
 
-                    <div class="tab-description">
+                <div class="tab-description">
+                    <p>
+                        <?php _e("This is the list of all the boards we've fetched from your profile, including your likes.","pinim");?>
+                    </p>
+                </div>
+                <?php
+                $this->table_boards_user->views_display();
+                $this->table_boards_user->views();
+                $this->table_boards_user->display();                            
+                ?>
+            </form>
+
+            <?php
+            //followed boards
+            if ( pinim()->get_options('enable_follow_boards') ){
+
+                $followed_boards_urls = pinim_get_followed_boards_urls();
+                $textarea_content = null;
+                foreach ((array)$followed_boards_urls as $board_url){
+                    $textarea_content.= esc_url(pinim()->pinterest_url.$board_url)."\n";
+                }
+
+                ?>
+                <form id="pinim-form-follow-boards-input" class="pinim-form" action="<?php echo pinim_get_menu_url(array('page'=>'boards'));?>" method="post">
+                    <h4><?php _e('Add board to follow','pinim');?></h4>
+
+                    <div id="follow-new-board" class="tab-description">
                         <p>
-                            <?php _e("This is the list of all the boards we've fetched from your profile, including your likes.","pinim");?>
+                            <?php _e("Enter the URLs of boards from other users.  One line per board url.","pinim");?>
+                        </p>
+
+                        <p id="follow-new-board-new">
+                            <textarea name="pinim_form_boards_followed"><?php echo $textarea_content;?></textarea>
                         </p>
                     </div>
-                    <?php
-                    $this->table_boards_user->views_display();
-                    $this->table_boards_user->views();
-                    $this->table_boards_user->display();                            
-                    ?>
+                    <input type="hidden" name="action" value="boards_save_followed" />
+                    <?php submit_button(__('Save boards urls','pinim'));?>
                 </form>
-
                 <?php
-                //followed boards
-                if ( pinim()->get_options('enable_follow_boards') ){
-
-                    $followed_boards_urls = pinim_get_followed_boards_urls();
-                    $textarea_content = null;
-                    foreach ((array)$followed_boards_urls as $board_url){
-                        $textarea_content.= esc_url(pinim()->pinterest_url.$board_url)."\n";
-                    }
-
-                    ?>
-                    <form id="pinim-form-follow-boards-input" class="pinim-form" action="<?php echo pinim_get_menu_url(array('page'=>'boards'));?>" method="post">
-                        <h4><?php _e('Add board to follow','pinim');?></h4>
-
-                        <div id="follow-new-board" class="tab-description">
-                            <p>
-                                <?php _e("Enter the URLs of boards from other users.  One line per board url.","pinim");?>
-                            </p>
-
-                            <p id="follow-new-board-new">
-                                <textarea name="pinim_form_boards_followed"><?php echo $textarea_content;?></textarea>
-                            </p>
-                        </div>
-                        <input type="hidden" name="action" value="boards_save_followed" />
-                        <?php submit_button(__('Save boards urls','pinim'));?>
-                    </form>
-                    <?php
-                }
             }
             ?>
         </div>
@@ -1229,8 +1224,7 @@ class Pinim_Tool_Page {
         $user_data = $this->get_user_infos();
         if ( is_wp_error($user_data) ) return $user_data;
         if ( !$user_data ) return $boards;
-        
-        
+
         $boards_datas = $this->get_user_boards_data();
         if ( is_wp_error($boards_datas) ) return $boards_datas;
 
@@ -1469,6 +1463,7 @@ class Pinim_Tool_Page {
     function filter_boards($boards,$filter){
 
         $output = array();
+        if( is_wp_error($boards) ) return $output;
         
         $username = $this->get_user_infos('username');
         
