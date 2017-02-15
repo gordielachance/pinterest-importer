@@ -192,87 +192,74 @@
 
         }
 
-        .pinim-form {
-            &.pinim-form-loading{
-                opacity:0.5;
-                pointer-events: none;
+        .pinim-form-boards{
 
-                #submit{
-
-                }
+            p.submit{
+                text-align:center;
             }
 
+            .wp-list-table {
 
-            &.pinim-form-boards{
-
-                p.submit{
+                [data-colname]{
                     text-align:center;
                 }
 
-                .wp-list-table {
-
-                    [data-colname]{
-                        text-align:center;
-                    }
-
-                    .column-pin_count_imported{
-                        text-align:center;
-                    }
-
-                    .column-private {
-                      width: 4em;
-                    }
-
-                    .column-pin_count_remote {
-                      width: 8em;
-                    }
-
-                    tbody tr{
-                        &.is-checked{
-                            background-color:#FAFFE9;
-                        }
-                    }
-
+                .column-pin_count_imported{
+                    text-align:center;
                 }
 
-
-
-                &.view-filter-simple{
-
-                    width:65%;
-                    margin:auto;
-
-                    .item-id{
-                        display:none;
-                    }
-
-                    .column-category,.column-private,.column-board_id{
-                        display:none;
-                    }
+                .column-private {
+                  width: 4em;
                 }
 
+                .column-pin_count_remote {
+                  width: 8em;
+                }
 
-            }
-
-            &#pinim-form-follow-boards-input{
-                width: 65%;
-                margin: auto;
-                #follow-new-board{
-                    textarea{
-                        width:100%;
-                        min-height:8em;
+                tbody tr{
+                    &.is-checked{
+                        background-color:#FAFFE9;
                     }
                 }
 
             }
 
-            &#pinim-form-pins{
-                .wp-list-table {
-                    tbody tr{
-                    }
+
+
+            &.view-filter-simple{
+
+                width:65%;
+                margin:auto;
+
+                .item-id{
+                    display:none;
+                }
+
+                .column-category,.column-private,.column-board_id{
+                    display:none;
                 }
             }
 
+
+        }
+
+        &#pinim-form-follow-boards-input{
+            width: 65%;
+            margin: auto;
+            #follow-new-board{
+                textarea{
+                    width:100%;
+                    min-height:8em;
+                }
+            }
+
+        }
+
+        &#pinim-form-pins{
+            .wp-list-table {
+                tbody tr{
+                }
+            }
         }
 
     }
