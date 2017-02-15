@@ -323,81 +323,26 @@ class PinIm {
      */
     
     function pinim_metabox(){
-        $metas = pinim_get_pin_meta();
-        
-        if (empty($metas)) return;
-        
         add_meta_box(
-                'pinterest_datas',
-                __( 'Pinterest', 'pinim' ),
-                array(&$this,'pinim_metabox_content'),
-                'post'
+                'pinterest_log',
+                __( 'Pinterest Log', 'pinim' ),
+                array(&$this,'pinim_metabox_log_content'),
+                $this->pin_post_type
         );
     }
     
-    function pinim_metabox_content( $post ) {
+    function pinim_metabox_log_content( $post ) {
         
-        $metas = pinim_get_pin_meta();
+        $log = pinim_get_pin_log($post->ID);
 
+        if ( $log = pinim_get_pin_log($post->ID) ){
+            $list = pinim_get_list_from_array($log);
+            printf('<div>%s</div>',$list);
+        }
         
-        ?>
-        <table id="pinterest-list-table">
-                <thead>
-                <tr>
-                        <th class="left"><?php _ex( 'Name', 'meta name' ) ?></th>
-                        <th><?php _e( 'Value' ) ?></th>
-                </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    foreach ( $metas as $meta_key => $meta ) {
-                        
-                        $content = null;
-                        
-                         switch ($meta_key){
-                            case 'pin_id':
-                                $meta_key = __('Pin URL','pinim');
-                                
-                                $links = array();
-                                $links_str = null;
-                                
-                                foreach((array)$meta as $pin_id){
-                                    $pin_url = pinim_get_pin_url($pin_id);
-                                    $links[] = '<a href="'.$pin_url.'" target="_blank">'.$pin_url.'</a>';
-                                }
-                                
-                                $content = implode('<br/>',$links);
-                                
-
-                            break;
-                            case 'log':
-                                //nothing for now
-                            break;
-                            default:
-                                $content = $meta[0];
-                            break;
-                        }
-                        
-                            if ($content){
-                        
-                                ?>
-                                <tr class="alternate">
-                                    <td class="left">
-                                        <?php echo $meta_key;?>
-                                    </td>
-                                    <td>
-                                        <?php echo $content;?>
-                                    </td>
-                                </tr>
-                                <?php
-                            
-                            }
-                    }
-
-                    ?>
-                </tbody>
-        </table>
-        <?php
+        $db_version = pinim_get_pin_meta('db_version')[0];
+        echo '<small id="pinim-db-version">' . sprintf(__( 'Pinterest Importer DB version: %s', 'pinim' ),'<strong>' . $db_version . '</strong>') . '</small>';
+        
     }
     
     public function debug_log($message,$title = null) {

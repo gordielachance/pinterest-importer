@@ -85,3 +85,52 @@ function pinim_get_meta_value_by_key($meta_key,$limit = null){
     else
         return $value = $wpdb->get_col( $wpdb->prepare("SELECT meta_value FROM $wpdb->postmeta WHERE meta_key = %s" , $meta_key) );
 }
+
+/**
+* Make a nested HTML list from a multi-dimensionnal array.
+*/
+
+function pinim_get_list_from_array($input,$parent_slugs=array() ){
+    
+    $output = null;
+    $output_classes = array("pure-tree");
+    if ( empty($parent_slugs) ){
+        $output_classes[] =  'main-tree';
+    }
+    
+    
+   foreach($input as $key=>$value){
+        
+       //if (!$value) continue; //ignore empty values
+       
+        $data_attr = $label = null;
+        $checkbox_classes = array("checkbox-tree-checkbox");
+        $item_classes = array("checkbox-tree-item");
+       
+        if( is_array($value) ){
+            $parent_slugs[] = $key;
+            $li_value = pinim_get_list_from_array($value,$parent_slugs);
+
+            $item_classes[] = 'checkbox-tree-parent';
+        }else{
+            $li_value = $value;
+        }
+       
+       if (!$li_value) continue;
+
+        $u_key = implode('-',$parent_slugs);
+        $data_attr = sprintf(' data-array-key="%s"',$key);
+
+        $checkbox_classes_str = pinim_get_classes($checkbox_classes);
+        $item_classes_str = pinim_get_classes($item_classes);
+        $checkbox = sprintf('<input type="checkbox" %1$s id="%2$s"><label for="%2$s" class="checkbox-tree-icon">%3$s</label>',$checkbox_classes_str,$u_key,$key);
+
+        $output.= sprintf('<li%1$s%2$s>%3$s%4$s</li>',$item_classes_str,$data_attr,$checkbox,$li_value);
+    }
+    
+    if ($output){
+        $output_classes_str = pinim_get_classes($output_classes);
+        return sprintf('<ul %s>%s</ul>',$output_classes_str,$output);
+    }
+
+}
