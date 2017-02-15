@@ -121,15 +121,15 @@ function pinim_get_list_from_array($input,$parent_slugs=array() ){
         $u_key = implode('-',$parent_slugs);
         $data_attr = sprintf(' data-array-key="%s"',$key);
 
-        $checkbox_classes_str = pinim_get_classes($checkbox_classes);
-        $item_classes_str = pinim_get_classes($item_classes);
+        $checkbox_classes_str = pinim_get_classes_attr($checkbox_classes);
+        $item_classes_str = pinim_get_classes_attr($item_classes);
         $checkbox = sprintf('<input type="checkbox" %1$s id="%2$s"><label for="%2$s" class="checkbox-tree-icon">%3$s</label>',$checkbox_classes_str,$u_key,$key);
 
         $output.= sprintf('<li%1$s%2$s>%3$s%4$s</li>',$item_classes_str,$data_attr,$checkbox,$li_value);
     }
     
     if ($output){
-        $output_classes_str = pinim_get_classes($output_classes);
+        $output_classes_str = pinim_get_classes_attr($output_classes);
         return sprintf('<ul %s>%s</ul>',$output_classes_str,$output);
     }
 

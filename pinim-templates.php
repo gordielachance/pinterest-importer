@@ -170,11 +170,11 @@ function pinim_get_boards_options(){
 
 }
 
-function pinim_classes($classes){
-    echo pinim_get_classes($classes);
+function pinim_classes_attr($classes){
+    echo pinim_get_classes_attr($classes);
 }
 
-function pinim_get_classes($classes){
+function pinim_get_classes_attr($classes){
     if (empty($classes)) return;
     return' class="'.implode(' ',$classes).'"';
 }

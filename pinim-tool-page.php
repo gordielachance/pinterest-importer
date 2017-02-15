@@ -894,7 +894,7 @@ class Pinim_Tool_Page {
             settings_errors('pinim_form_boards');
 
             ?>  
-            <form id="pinim-form-user-boards"<?php pinim_classes($form_classes);?> action="<?php echo pinim_get_menu_url(array('page'=>'boards'));?>" method="post">
+            <form id="pinim-form-user-boards"<?php pinim_classes_attr($form_classes);?> action="<?php echo pinim_get_menu_url(array('page'=>'boards'));?>" method="post">
 
                 <div class="tab-description">
                     <p>

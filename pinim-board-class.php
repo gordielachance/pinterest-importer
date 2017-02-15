@@ -640,7 +640,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                 }
             }
 
-            $pc_status_classes = pinim_get_classes($pc_status_classes);
+            $pc_status_classes = pinim_get_classes_attr($pc_status_classes);
             $red_opacity = (100 - $percent) / 100;
 
             return sprintf('<span %1$s><span class="pinim-pc-bar-fill" style="width:%2$s"><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-yellow"></span><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-red" style="opacity:%3$s"></span><span class="pinim-pc-bar-text">%4$s</span></span>',$pc_status_classes,$bar_width.'%',$red_opacity,$text_bar);
@@ -803,7 +803,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                     'boards_filter' =>'all'
                 )
             ),
-            pinim_get_classes($link_all_classes),
+            pinim_get_classes_attr($link_all_classes),
             __('All','pinim'),
             $all_count
         );
@@ -816,7 +816,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                     'boards_filter' => 'user'
                 )
             ),
-            pinim_get_classes($link_user_classes),
+            pinim_get_classes_attr($link_user_classes),
             __('My boards','pinim'),
             $user_count
         );
@@ -829,7 +829,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                     'boards_filter' => 'cached'
                 )
             ),
-            pinim_get_classes($link_cached_classes),
+            pinim_get_classes_attr($link_cached_classes),
             __('Cached','pinim'),
             $cached_count
         );
@@ -842,7 +842,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                     'boards_filter' => 'not_cached'
                 )
             ),
-            pinim_get_classes($link_not_cached_classes),
+            pinim_get_classes_attr($link_not_cached_classes),
             __('Not cached','pinim'),
             $not_cached_count
         );
@@ -855,7 +855,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                     'boards_filter' =>'in_queue'
                 )
             ),
-            pinim_get_classes($link_in_queue_classes),
+            pinim_get_classes_attr($link_in_queue_classes),
             __('In queue','pinim'),
             $in_queue_count
         );
@@ -868,7 +868,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                     'boards_filter' => 'followed'
                 )
             ),
-            pinim_get_classes($link_followed_classes),
+            pinim_get_classes_attr($link_followed_classes),
             __('Followed boards','pinim'),
             $followed_count
         );
@@ -921,7 +921,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                     'boards_view_filter'    => 'simple'
                 )
             ),
-            pinim_get_classes($link_simple_classes),
+            pinim_get_classes_attr($link_simple_classes),
             __('Simple','pinim')
         );
 
@@ -933,7 +933,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                     'boards_view_filter'    =>'advanced'
                 )
             ),
-            pinim_get_classes($link_advanced_classes),
+            pinim_get_classes_attr($link_advanced_classes),
             __('Advanced','pinim')
         );
 

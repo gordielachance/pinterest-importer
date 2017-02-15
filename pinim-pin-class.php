@@ -767,7 +767,7 @@ abstract class Pinim_Pins_Table extends WP_List_Table {
             $link_processed = sprintf(
                 __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
                 pinim_get_menu_url($link_processed_args),
-                pinim_get_classes($link_processed_classes),
+                pinim_get_classes_attr($link_processed_classes),
                 __('Processed','pinim'),
                 $processed_count
             );
@@ -775,7 +775,7 @@ abstract class Pinim_Pins_Table extends WP_List_Table {
             $link_pending = sprintf(
                 __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
                 pinim_get_menu_url($link_pending_args),
-                pinim_get_classes($link_pending_classes),
+                pinim_get_classes_attr($link_pending_classes),
                 __('Pending','pinim'),
                 $pending_count
             );
@@ -1104,7 +1104,7 @@ class Pinim_Pending_Pins_Table extends Pinim_Pins_Table {
         }else{
             $icon_classes[] = 'post-format-image';
         }
-        return sprintf('<span%1$s></span>',pinim_get_classes($icon_classes));
+        return sprintf('<span%1$s></span>',pinim_get_classes_attr($icon_classes));
     }
     
     function column_source($pin){
@@ -1283,7 +1283,7 @@ class Pinim_Processed_Pins_Table extends Pinim_Pins_Table {
             break;
         }
 
-        return sprintf('<span%1$s></span>',pinim_get_classes($icon_classes));
+        return sprintf('<span%1$s></span>',pinim_get_classes_attr($icon_classes));
     }
     
     function get_actions($post){
