@@ -70,78 +70,66 @@
 }
 
 /* line 6, ../scss/pinim.scss */
-.post-type-pin #header-feedback-notice {
+.post-type-pin #pinim-page-header {
   padding: 1em;
-  margin-bottom: 2em;
-  font-size: 1.1em;
   text-align: center;
 }
+/* line 9, ../scss/pinim.scss */
+.post-type-pin #pinim-page-header #pinim-page-header-feedback {
+  font-size: 1.1em;
+}
 /* line 11, ../scss/pinim.scss */
-.post-type-pin #header-feedback-notice a {
+.post-type-pin #pinim-page-header #pinim-page-header-feedback a {
   text-decoration: none;
 }
-/* line 17, ../scss/pinim.scss */
+/* line 15, ../scss/pinim.scss */
+.post-type-pin #pinim-page-header #pinim-page-header-account {
+  padding: 1em;
+  position: relative;
+  text-align: right;
+  font-size: .9em;
+}
+/* line 21, ../scss/pinim.scss */
+.post-type-pin #pinim-page-header #pinim-page-header-account #user-info-thumb {
+  background-color: #DDD;
+  margin-right: 0.5em;
+  height: 2.5em;
+  width: 2.5em;
+  vertical-align: middle;
+}
+/* line 31, ../scss/pinim.scss */
+.post-type-pin #pinim-page-header #pinim-page-header-account span {
+  display: inline-block;
+}
+/* line 39, ../scss/pinim.scss */
 .post-type-pin .postbox#pinterest_log #pinim-db-version {
   display: block;
   text-align: right;
 }
-/* line 23, ../scss/pinim.scss */
-.post-type-pin #user-info {
-  height: 3em;
-  line-height: 3em;
-  position: relative;
-  text-align: right;
-}
-/* line 29, ../scss/pinim.scss */
-.post-type-pin #user-info img {
-  max-height: 2em;
-  width: auto;
-  padding-right: 0.5em;
-  vertical-align: middle;
-}
-/* line 38, ../scss/pinim.scss */
-.post-type-pin #user-info span {
-  display: inline-block;
-}
-/* line 43, ../scss/pinim.scss */
+/* line 45, ../scss/pinim.scss */
 .post-type-pin .wrap .nav-tab-wrapper {
   margin-bottom: 1em;
 }
-/* line 49, ../scss/pinim.scss */
+/* line 51, ../scss/pinim.scss */
 .post-type-pin .wp-list-table .column-pin_thumbnail, .post-type-pin .wp-list-table .column-board_thumbnail {
-  width: 150px;
+  width: 100px;
   position: relative;
   overflow: hidden;
   text-align: left;
 }
-/* line 54, ../scss/pinim.scss */
+/* line 57, ../scss/pinim.scss */
 .post-type-pin .wp-list-table .column-pin_thumbnail img, .post-type-pin .wp-list-table .column-board_thumbnail img {
-  object-fit: cover;
-  max-width: 100%;
+  height: 100px;
 }
-/* line 60, ../scss/pinim.scss */
-.post-type-pin .wp-list-table td.column-pin_thumbnail {
-  padding: 0;
-}
-/* line 62, ../scss/pinim.scss */
-.post-type-pin .wp-list-table td.column-pin_thumbnail img {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  background-size: 100%;
-  background-repeat: no-repeat;
-  opacity: 0.6;
-}
-/* line 74, ../scss/pinim.scss */
+/* line 63, ../scss/pinim.scss */
 .post-type-pin .wp-list-table tr:hover td.column-thumbnail img {
   opacity: 1;
 }
-/* line 78, ../scss/pinim.scss */
+/* line 67, ../scss/pinim.scss */
 .post-type-pin .wp-list-table tr .item-id {
   color: silver;
 }
-/* line 90, ../scss/pinim.scss */
+/* line 79, ../scss/pinim.scss */
 .post-type-pin.pin_page_account #pinim_login_box {
   max-width: 250px;
   margin: auto;
@@ -149,15 +137,15 @@
   margin: 2em auto;
   text-align: center;
 }
-/* line 97, ../scss/pinim.scss */
+/* line 86, ../scss/pinim.scss */
 .post-type-pin.pin_page_account #pinim_login_box #pinim_login_icon {
   margin-bottom: 2em;
 }
-/* line 99, ../scss/pinim.scss */
+/* line 88, ../scss/pinim.scss */
 .post-type-pin.pin_page_account #pinim_login_box #pinim_login_icon i {
   font-size: 5em;
 }
-/* line 104, ../scss/pinim.scss */
+/* line 93, ../scss/pinim.scss */
 .post-type-pin.pin_page_account #pinim_login_box input[type=text], .post-type-pin.pin_page_account #pinim_login_box input[type=password] {
   font-size: 24px;
   width: 100%;
@@ -165,15 +153,15 @@
   margin: 2px 6px 16px 0;
   background: #fbfbfb;
 }
-/* line 114, ../scss/pinim.scss */
+/* line 103, ../scss/pinim.scss */
 .post-type-pin.pin_page_account p.submit {
   text-align: center;
 }
-/* line 124, ../scss/pinim.scss */
+/* line 113, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .view_filter {
   float: right;
 }
-/* line 128, ../scss/pinim.scss */
+/* line 117, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar {
   position: relative;
   display: block;
@@ -183,7 +171,7 @@
   height: 1.3em;
   line-height: 1.3em;
 }
-/* line 137, ../scss/pinim.scss */
+/* line 126, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar .pinim-pc-bar-fill {
   display: block;
   height: 100%;
@@ -194,95 +182,103 @@
   transition: all 0.5s ease-out;
   position: relative;
 }
-/* line 143, ../scss/pinim.scss */
+/* line 132, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-fill-color {
   width: 100%;
   height: 100%;
   position: absolute;
 }
-/* line 147, ../scss/pinim.scss */
+/* line 136, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-fill-color.pinim-pc-bar-fill-yellow {
   background-color: #FFE000;
 }
-/* line 150, ../scss/pinim.scss */
+/* line 139, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-fill-color.pinim-pc-bar-fill-red {
   background-color: red;
 }
-/* line 155, ../scss/pinim.scss */
+/* line 144, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-text {
   margin: auto;
   display: block;
   text-align: center;
 }
-/* line 159, ../scss/pinim.scss */
+/* line 148, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-text i.fa {
   padding: 0 0.5em;
 }
-/* line 166, ../scss/pinim.scss */
+/* line 155, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar.color-light .pinim-pc-bar-text {
   color: white;
 }
-/* line 171, ../scss/pinim.scss */
+/* line 160, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar.offline .pinim-pc-bar-fill, .post-type-pin.pin_page_boards .pinim-pc-bar.empty .pinim-pc-bar-fill {
   width: 100% !important;
 }
-/* line 175, ../scss/pinim.scss */
+/* line 164, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar.offline .pinim-pc-bar-fill-color, .post-type-pin.pin_page_boards .pinim-pc-bar.empty .pinim-pc-bar-fill-color {
   display: none;
 }
-/* line 178, ../scss/pinim.scss */
+/* line 167, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar.offline .pinim-pc-bar-text, .post-type-pin.pin_page_boards .pinim-pc-bar.empty .pinim-pc-bar-text {
   color: inherit;
   font-size: 0.8em;
 }
-/* line 188, ../scss/pinim.scss */
+/* line 177, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar.incomplete .pinim-pc-bar-text {
   text-align: right;
 }
-/* line 197, ../scss/pinim.scss */
+/* line 186, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-form-boards p.submit {
   text-align: center;
 }
-/* line 203, ../scss/pinim.scss */
+/* line 192, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-form-boards .wp-list-table [data-colname] {
   text-align: center;
 }
-/* line 207, ../scss/pinim.scss */
+/* line 196, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-form-boards .wp-list-table .column-pin_count_imported {
   text-align: center;
 }
-/* line 211, ../scss/pinim.scss */
+/* line 200, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-form-boards .wp-list-table .column-private {
   width: 4em;
 }
-/* line 215, ../scss/pinim.scss */
+/* line 204, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-form-boards .wp-list-table .column-pin_count_remote {
   width: 8em;
 }
-/* line 220, ../scss/pinim.scss */
+/* line 209, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-form-boards .wp-list-table tbody tr.is-checked {
   background-color: #FAFFE9;
 }
-/* line 229, ../scss/pinim.scss */
+/* line 218, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-form-boards.view-filter-simple {
   width: 65%;
   margin: auto;
 }
-/* line 234, ../scss/pinim.scss */
+/* line 223, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-form-boards.view-filter-simple .item-id {
   display: none;
 }
-/* line 238, ../scss/pinim.scss */
+/* line 227, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-form-boards.view-filter-simple .column-category, .post-type-pin.pin_page_boards .pinim-form-boards.view-filter-simple .column-private, .post-type-pin.pin_page_boards .pinim-form-boards.view-filter-simple .column-board_id {
   display: none;
 }
-/* line 246, ../scss/pinim.scss */
+/* line 235, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards#pinim-form-follow-boards-input {
   width: 65%;
   margin: auto;
 }
-/* line 250, ../scss/pinim.scss */
+/* line 239, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards#pinim-form-follow-boards-input #follow-new-board textarea {
   width: 100%;
   min-height: 8em;
+}
+
+/* line 257, ../scss/pinim.scss */
+img.img-cover, .img-cover > img {
+  vertical-align: top;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
 }

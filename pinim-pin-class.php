@@ -638,7 +638,7 @@ abstract class Pinim_Pins_Table extends WP_List_Table {
     function column_thumbnail($item){
 
         return sprintf(
-            '<img src="%1$s" />',
+            '<img src="%1$s" class="img-cover"/>',
             $this->get_thumbnail_url($item)
         );
 

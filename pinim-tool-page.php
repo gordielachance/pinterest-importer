@@ -837,13 +837,16 @@ class Pinim_Tool_Page {
             $rate_link = '<a href="'.$rate_link_wp.'" target="_blank" href=""><i class="fa fa-star"></i> '.__('Reviewing the plugin','pinim').'</a>';
             $donate_link = '<a href="'.pinim()->donate_link.'" target="_blank" href=""><i class="fa fa-usd"></i> '.__('make a donation','pinim').'</a>';
             ?>
-            <p class="description" id="header-feedback-notice">
-                <?php printf(__('<i class="fa fa-pinterest-p"></i>roudly already imported %1$s pins !  Happy with that ? %2$s and %3$s would help!','pinim'),'<strong>'.$pins_count.'</strong>',$rate_link,$donate_link);?>
-            </p>
+            <div id="pinim-page-header">
+                <p class="description" id="pinim-page-header-feedback">
+                    <?php printf(__('<i class="fa fa-pinterest-p"></i>roudly already imported %1$s pins !  Happy with that ? %2$s and %3$s would help!','pinim'),'<strong>'.$pins_count.'</strong>',$rate_link,$donate_link);?>
+                </p>
+                <?php $this->user_infos_block();?>
+            </div>
             <?php
         }
 
-        $this->user_infos_block();
+        
 
         //general notices
         settings_errors('pinim'); 
@@ -854,42 +857,52 @@ class Pinim_Tool_Page {
         $user_icon = $user_text = $user_stats = null;
 
         $user_data = $this->get_user_infos();
-        if ( is_wp_error($user_data) || !$user_data ) return;
+        if ( !is_wp_error($user_data) && $user_data ) { //logged
+            
+            $user_icon = $this->get_user_infos('image_medium_url');
+            $username = $this->get_user_infos('username');
+            $board_count = (int)$this->get_user_infos('board_count');
+            $secret_board_count = (int)$this->get_user_infos('secret_board_count');
+            $like_count = (int)$this->get_user_infos('like_count');
+
+            //names
+            $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$username.'</strong>');
+
+            $list = array();
+
+            //public boards
+            $list[] = sprintf(
+                '<span>'.__('%1$s public boards','pinim').'</span>',
+                '<strong>'.$board_count.'</strong>'
+            );
+
+            //public boards
+            $list[] = sprintf(
+                '<span><strike>'.__('%1$s private boards','pinim').'</strike></span>',
+                '<strong>'.$secret_board_count.'</strong>'
+            );
+
+            //likes
+            $list[] = sprintf(
+                '<span>'.__('%1$s likes','pinim').'</span>',
+                '<strong>'.$like_count.'</strong>'
+            );
+
+            $user_stats = implode(",",$list);
+
+            $user_icon = sprintf('<img src="%s" class="img-cover"/>',$user_icon);
+            $logout_link = pinim_get_menu_url(array('page'=>'account','logout'=>true));
+
+            $content = sprintf('<span id="user-info-thumb">%1$s</span><span id="user-info-username">%2$s</span> <small id="user-info-stats">(%3$s)</small> — <a id="user-logout-link" href="%4$s">%5$s</a>',$user_icon,$user_text,$user_stats,$logout_link,__('Logout','pinim'));
+            
+        }else{ // not logged
+            $user_icon = '';
+            $user_text = '<strong>' . __('Not logged to Pinterest','pinim') . '</strong>';
+            $login_link = pinim_get_menu_url(array('page'=>'account'));
+            $content = sprintf('<span id="user-info-thumb">%1$s</span><span id="user-info-username">%2$s</span> — <a id="user-logout-link" href="%3$s">%4$s</a>',$user_icon,$user_text,$login_link,__('Login','pinim'));
+        }
         
-        $user_icon = $this->get_user_infos('image_medium_url');
-        $username = $this->get_user_infos('username');
-        $board_count = (int)$this->get_user_infos('board_count');
-        $secret_board_count = (int)$this->get_user_infos('secret_board_count');
-        $like_count = (int)$this->get_user_infos('like_count');
-        
-        //names
-        $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$username.'</strong>');
-        
-        $list = array();
-        
-        //public boards
-        $list[] = sprintf(
-            '<span>'.__('%1$s public boards','pinim').'</span>',
-            '<strong>'.$board_count.'</strong>'
-        );
-        
-        //public boards
-        $list[] = sprintf(
-            '<span><strike>'.__('%1$s private boards','pinim').'</strike></span>',
-            '<strong>'.$secret_board_count.'</strong>'
-        );
-        
-        //likes
-        $list[] = sprintf(
-            '<span>'.__('%1$s likes','pinim').'</span>',
-            '<strong>'.$like_count.'</strong>'
-        );
-        
-        $user_stats = implode(",",$list);
-        
-        $logout_link = pinim_get_menu_url(array('page'=>'account','logout'=>true));
-        
-        printf('<div id="user-info"><span id="user-info-username"><img src="%1$s"/>%2$s</span> <small id="user-info-stats">(%3$s)</small> — <a id="user-logout-link" href="%4$s">%5$s</a></div>',$user_icon,$user_text,$user_stats,$logout_link,__('Logout','pinim'));
+        printf('<div id="pinim-page-header-account">%s</div>',$content);
 
     }
     

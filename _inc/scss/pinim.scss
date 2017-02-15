@@ -3,40 +3,42 @@
 
 .post-type-pin{
     
-    #header-feedback-notice {
+    #pinim-page-header{
         padding:1em;
-        margin-bottom: 2em;
-        font-size:1.1em;
         text-align:center;
-        a {
-            text-decoration: none;
+        #pinim-page-header-feedback{
+            font-size:1.1em;
+            a {
+                text-decoration: none;
+            }
         }
+        #pinim-page-header-account{
+                padding: 1em;
+                position:relative;
+                text-align:right;
+                font-size:.9em;
+            
+                #user-info-thumb{
+                    background-color:#DDD;
+                    margin-right:0.5em;
+                    height: 2.5em;
+                    width: 2.5em;
+                    vertical-align: middle;
+                }
+
+
+
+                span{
+                    display:inline-block;
+                }
+            }
+
     }
     
     .postbox#pinterest_log{
         #pinim-db-version{
             display:block;
             text-align:right;
-        }
-    }
-
-    #user-info{
-        height:3em;
-        line-height:3em;
-        position:relative;
-        text-align:right;
-
-        img{
-            //TO FIX weird behaviour, should be max-height;100% but is not working !
-            //max-height:100%;
-            max-height:2em;
-            width:auto;
-            padding-right:0.5em;
-            vertical-align:middle;
-        }
-
-        span{
-            display:inline-block;
         }
     }
 
@@ -47,27 +49,14 @@
     .wp-list-table {
 
         .column-pin_thumbnail,.column-board_thumbnail {
-          width: 150px;
-          position: relative;
-          overflow: hidden;
-          text-align:left;
-          img {
-            object-fit: cover;
-            max-width: 100%;
-          }
-        }
-
-        td.column-pin_thumbnail {
-        padding: 0;
-        img {
-          position: absolute;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          background-size: 100%;
-          background-repeat: no-repeat;
-          opacity: 0.6;
-        }
+            width: 100px;
+            position: relative;
+            overflow: hidden;
+            text-align:left;
+            
+            img{
+                height:100px;
+            }
         }
 
         tr{
@@ -263,5 +252,12 @@
         }
 
     }
+}
+
+img.img-cover,.img-cover > img {
+  vertical-align: top;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
 }
 

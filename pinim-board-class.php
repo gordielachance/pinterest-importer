@@ -533,7 +533,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         $image_key = array_values($images);//reset keys
         $image = array_shift($image_key);
         return sprintf(
-            '<img src="%1$s" />',
+            '<img src="%1$s" class="img-cover"/>',
             $image['url']
         );
     }
