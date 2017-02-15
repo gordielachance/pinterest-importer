@@ -26,6 +26,7 @@ class Pinim_Tool_Page {
     
     function init(){
         
+        $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
         $this->bridge = new Pinim_Bridge;
 
         $this->all_action_str = array(
@@ -45,6 +46,8 @@ class Pinim_Tool_Page {
         
         add_action('wp_logout', array( $this, 'destroy_session' ) );
         add_action('wp_login', array( $this, 'destroy_session' ) );
+        
+        add_action( 'all_admin_notices', array($this, 'plugin_header_feedback_notice') );
         
     }
 
@@ -84,7 +87,6 @@ class Pinim_Tool_Page {
     function page_boards_init(){
         
         $screen = get_current_screen();
-        
         if ($screen->id != 'pin_page_boards') return;
         
         /*
@@ -223,7 +225,6 @@ class Pinim_Tool_Page {
         $all_boards = array();
         $has_new_boards = false;
         $this->table_boards_user = new Pinim_Boards_Table();
-        $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
 
         //load boards
         
@@ -830,14 +831,18 @@ class Pinim_Tool_Page {
 
     }
     
-    function page_header(){
+    function plugin_header_feedback_notice(){
+        $screen = get_current_screen();
+        if ( $screen->post_type != pinim()->pin_post_type ) return;
+        
+
         $pins_count = count($this->existing_pin_ids);
         if ($pins_count > 1){
             $rate_link_wp = 'https://wordpress.org/support/view/plugin-reviews/pinterest-importer?rate#postform';
             $rate_link = '<a href="'.$rate_link_wp.'" target="_blank" href=""><i class="fa fa-star"></i> '.__('Reviewing the plugin','pinim').'</a>';
             $donate_link = '<a href="'.pinim()->donate_link.'" target="_blank" href=""><i class="fa fa-usd"></i> '.__('make a donation','pinim').'</a>';
             ?>
-            <p class="description" id="header-links">
+            <p class="description" id="header-feedback-notice">
                 <?php printf(__('<i class="fa fa-pinterest-p"></i>roudly already imported %1$s pins !  Happy with that ? %2$s and %3$s would help!','pinim'),'<strong>'.$pins_count.'</strong>',$rate_link,$donate_link);?>
             </p>
             <?php
@@ -849,11 +854,54 @@ class Pinim_Tool_Page {
         settings_errors('pinim'); 
     }
     
+    function user_infos_block(){
+        
+        $user_icon = $user_text = $user_stats = null;
+
+        $user_data = $this->get_user_infos();
+        if ( is_wp_error($user_data) || !$user_data ) return;
+        
+        $user_icon = $this->get_user_infos('image_medium_url');
+        $username = $this->get_user_infos('username');
+        $board_count = (int)$this->get_user_infos('board_count');
+        $secret_board_count = (int)$this->get_user_infos('secret_board_count');
+        $like_count = (int)$this->get_user_infos('like_count');
+        
+        //names
+        $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$username.'</strong>');
+        
+        $list = array();
+        
+        //public boards
+        $list[] = sprintf(
+            '<span>'.__('%1$s public boards','pinim').'</span>',
+            '<strong>'.$board_count.'</strong>'
+        );
+        
+        //public boards
+        $list[] = sprintf(
+            '<span><strike>'.__('%1$s private boards','pinim').'</strike></span>',
+            '<strong>'.$secret_board_count.'</strong>'
+        );
+        
+        //likes
+        $list[] = sprintf(
+            '<span>'.__('%1$s likes','pinim').'</span>',
+            '<strong>'.$like_count.'</strong>'
+        );
+        
+        $user_stats = implode(",",$list);
+        
+        $logout_link = pinim_get_menu_url(array('page'=>'account','logout'=>true));
+        
+        printf('<div id="user-info"><span id="user-info-username"><img src="%1$s"/>%2$s</span> <small id="user-info-stats">(%3$s)</small> — <a id="user-logout-link" href="%4$s">%5$s</a></div>',$user_icon,$user_text,$user_stats,$logout_link,__('Logout','pinim'));
+
+    }
+    
     function page_account(){
         ?>
         <div class="wrap">
-            <h2><?php _e('Pinterest Account','pinim');?></h2>  
-            <?php $this->page_header();?>
+            <h2><?php _e('Pinterest Account','pinim');?></h2>
             <?php
             //check sessions are enabled
             if (!session_id()){
@@ -879,8 +927,7 @@ class Pinim_Tool_Page {
     function page_boards(){
         ?>
         <div class="wrap">
-            <h2><?php _e('Pinterest Boards','pinim');?></h2>  
-            <?php $this->page_header();?>
+            <h2><?php _e('Pinterest Boards','pinim');?></h2>
             <?php
             //check sessions are enabled
             //TO FIX TO MOVE ?
@@ -944,8 +991,7 @@ class Pinim_Tool_Page {
     function page_settings(){
         ?>
         <div class="wrap">
-            <h2><?php _e('Pinterest Importer Settings','pinim');?></h2>  
-            <?php $this->page_header();?>
+            <h2><?php _e('Pinterest Importer Settings','pinim');?></h2>
             <form method="post" action="options.php">
                 <?php
 
@@ -1109,51 +1155,7 @@ class Pinim_Tool_Page {
         
         printf('<p><label for="%1$s">%2$s</label>%3$s</p>',$el_id,$el_txt,$input);
     }
-    
-    function user_infos_block(){
-        
-        $user_icon = $user_text = $user_stats = null;
 
-        $user_data = $this->get_user_infos();
-        if ( is_wp_error($user_data) || !$user_data ) return;
-        
-        $user_icon = $this->get_user_infos('image_medium_url');
-        $username = $this->get_user_infos('username');
-        $board_count = (int)$this->get_user_infos('board_count');
-        $secret_board_count = (int)$this->get_user_infos('secret_board_count');
-        $like_count = (int)$this->get_user_infos('like_count');
-        
-        //names
-        $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$username.'</strong>');
-        
-        $list = array();
-        
-        //public boards
-        $list[] = sprintf(
-            '<span>'.__('%1$s public boards','pinim').'</span>',
-            '<strong>'.$board_count.'</strong>'
-        );
-        
-        //public boards
-        $list[] = sprintf(
-            '<span><strike>'.__('%1$s private boards','pinim').'</strike></span>',
-            '<strong>'.$secret_board_count.'</strong>'
-        );
-        
-        //likes
-        $list[] = sprintf(
-            '<span>'.__('%1$s likes','pinim').'</span>',
-            '<strong>'.$like_count.'</strong>'
-        );
-        
-        $user_stats = implode(",",$list);
-        
-        $logout_link = pinim_get_menu_url(array('page'=>'account','logout'=>true));
-        
-        printf('<div id="user-info"><span id="user-info-username"><img src="%1$s"/>%2$s</span> <small id="user-info-stats">(%3$s)</small> — <a id="user-logout-link" href="%4$s">%5$s</a></div>',$user_icon,$user_text,$user_stats,$logout_link,__('Logout','pinim'));
-
-    }
-    
     /**
      * Get datas for a user, from session cache or from Pinterest.
      * @param type $username
