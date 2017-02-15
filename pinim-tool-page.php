@@ -214,15 +214,10 @@ class Pinim_Tool_Page {
             add_settings_error('pinim_form_boards','not_logged',sprintf(__('Please <a href="%s">login</a> to be able to list your board.','pinim'),$login_url),'error inline');
         }else{
             $all_boards = $this->get_boards();
-            
             //warn users secret boards are temporary disabled()
             add_settings_error('pinim_form_boards','secret_boards_ignored',__("The plugin is currently unable to load secret boards. We'll try to fix this in the next release.",'pinim'),'error inline');
-            
         }
 
-
-
-        $all_boards = array();
         $has_new_boards = false;
         $this->table_boards_user = new Pinim_Boards_Table();
 
