@@ -734,7 +734,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             switch (pinim_page_boards()->get_screen_boards_filter()){
                 case 'pending':
                     //Import All Pins
-                    submit_button( pinim_tool_page()->all_action_str['import_all_pins'], 'button', 'all_boards_action', false );
+                    submit_button( pinim_pending_imports()->all_action_str['import_all_pins'], 'button', 'all_boards_action', false );
                 break;
             }
              * 

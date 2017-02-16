@@ -55,8 +55,9 @@ class PinIm {
     var $bridge = null;
     
     var $page_account = null;
-    var $page_settings = null;
     var $page_boards = null;
+    var $page_pending_imports = null;
+    var $page_settings = null;
 
     /**
     * @var The one true Instance
@@ -126,8 +127,9 @@ class PinIm {
             
             require $this->plugin_dir . 'pinim-page-account.php';
             require $this->plugin_dir . 'pinim-page-boards.php';
+            require $this->plugin_dir . 'pinim-pending-imports.php';
             require $this->plugin_dir . 'pinim-page-settings.php';
-            require $this->plugin_dir . 'pinim-tool-page.php';
+            
             
         }
 
@@ -160,7 +162,7 @@ class PinIm {
     }
     
     function pins_list_views($views){
-        $pending_count = pinim_tool_page()->get_pins_count_pending();
+        $pending_count = pinim_pending_imports()->get_pins_count_pending();
         $awaiting_url = pinim_get_menu_url(array('page'=>'pending-importation'));
 
         $views['pending_import'] = sprintf('<a href="%s">%s <span class="count">(%s)</span></a>',$awaiting_url,__('Pending importation','pinim'),$pending_count);

@@ -222,12 +222,12 @@ class Pinim_Page_Boards {
             $this->table_boards_user->prepare_items();
 
             //display feedback with import links
-            if ( $pending_count = pinim_tool_page()->get_pins_count_pending() ){
+            if ( $pending_count = pinim_pending_imports()->get_pins_count_pending() ){
 
                 $feedback =  array( __("We're ready to process !","pinim") );
                 $feedback[] = sprintf( _n( '%s new pin was found in the queued boards.', '%s new pins were found in the queued boards.', $pending_count, 'pinim' ), $pending_count );
                 $feedback[] = sprintf( __('You can <a href="%1$s">import them all</a>, or go to the <a href="%2$s">Pins list</a> for advanced control.',"pinim"),
-                            pinim_get_menu_url(array('page'=>'pending-importation','all_pins_action'=>pinim_tool_page()->all_action_str['import_all_pins'])),
+                            pinim_get_menu_url(array('page'=>'pending-importation','all_pins_action'=>pinim_pending_imports()->all_action_str['import_all_pins'])),
                             pinim_get_menu_url(array('page'=>'pending-importation'))
                 );
 

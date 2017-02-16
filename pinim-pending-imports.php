@@ -1,6 +1,6 @@
 <?php
     
-class Pinim_Tool_Page {
+class Pinim_Pending_Imports {
     var $all_action_str = array(); //text on all pins | boards actions
     
     /**
@@ -10,7 +10,7 @@ class Pinim_Tool_Page {
 
     public static function instance() {
             if ( ! isset( self::$instance ) ) {
-                    self::$instance = new Pinim_Tool_Page;
+                    self::$instance = new Pinim_Pending_Imports;
                     self::$instance->init();
             }
             return self::$instance;
@@ -33,7 +33,7 @@ class Pinim_Tool_Page {
     
     function admin_menu(){
 
-        $this->page_pending_import = add_submenu_page(
+        pinim()->page_pending_imports = add_submenu_page(
             sprintf('edit.php?post_type=%s',pinim()->pin_post_type), 
             __('Pending importation','pinim'), 
             __('Pending importation','pinim'), 
@@ -155,7 +155,7 @@ class Pinim_Tool_Page {
         $pins = array();
         $this->table_pins = new Pinim_Pending_Pins_Table();
         
-        if ( !pinim_tool_page()->get_pins_count_pending() ){
+        if ( !pinim_pending_imports()->get_pins_count_pending() ){
             $boards_url = pinim_get_menu_url(array('page'=>'boards'));
             add_settings_error('feedback_pending_import','not_logged',sprintf(__('To list the pins you can import here, you first need to <a href="%s">cache some Pinterest Boards</a>.','pinim'),$boards_url),'error inline');
         }
@@ -211,8 +211,6 @@ class Pinim_Tool_Page {
         return $action;
     }
 
-    
-    
     function get_requested_pins_ids(){
 
         
@@ -239,7 +237,7 @@ class Pinim_Tool_Page {
             $bulk_pins_ids = explode(',',$_REQUEST['pin_ids']);
         }
 
-        if ( (!$bulk_pins_ids) && ($all_pins = pinim_tool_page()->get_queued_raw_pins()) && !is_wp_error($all_pins) ) {
+        if ( (!$bulk_pins_ids) && ($all_pins = pinim_pending_imports()->get_queued_raw_pins()) && !is_wp_error($all_pins) ) {
 
             foreach((array)$all_pins as $pin){
                 $bulk_pins_ids[] = $pin['id'];
@@ -283,13 +281,10 @@ class Pinim_Tool_Page {
 
         return count($pins_ids);
     }
-    
-    
 
 }
 
-function pinim_tool_page() {
-	return Pinim_Tool_Page::instance();
+function pinim_pending_imports() {
+	return Pinim_Pending_Imports::instance();
 }
-
-pinim_tool_page();
+pinim_pending_imports();

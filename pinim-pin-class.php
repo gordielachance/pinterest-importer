@@ -36,7 +36,7 @@ class Pinim_Pin{
     
     function get_raw_datas(){
 
-        $all_pins = pinim_tool_page()->get_all_raw_pins();
+        $all_pins = pinim_pending_imports()->get_all_raw_pins();
         //remove unecessary items
         $current_pin_id = $this->pin_id;
         $pins = array_filter(
@@ -639,7 +639,7 @@ class Pinim_Pending_Pins_Table extends WP_List_Table {
 
         if ( 'top' == $which && !is_singular() ) {
             //Import All Pins
-            submit_button( pinim_tool_page()->all_action_str['import_all_pins'], 'button', 'all_pins_action', false, array('id'=>'import_all_bt') );
+            submit_button( pinim_pending_imports()->all_action_str['import_all_pins'], 'button', 'all_pins_action', false, array('id'=>'import_all_bt') );
         }
 
         ?>
