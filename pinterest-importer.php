@@ -76,12 +76,8 @@ class PinIm {
     }
 
     /**
-        * A dummy constructor to prevent bbPress from being loaded more than once.
-        *
-        * @since bbPress (r2464)
-        * @see bbPress::instance()
-        * @see bbpress();
-        */
+    * A dummy constructor to prevent bbPress from being loaded more than once.
+    */
     private function __construct() { /* Do nothing here */ }
 
     function setup_globals() {
@@ -116,19 +112,19 @@ class PinIm {
         require $this->plugin_dir . 'pinim-pin-class.php';
         //require $this->plugin_dir . 'pinim-ajax.php';
         require $this->plugin_dir . 'pinim-board-class.php';
-        require $this->plugin_dir . 'pinim-dummy-importer.php';
+        
         
         if ( is_admin() ){
             
             //communication with Pinterest
             require $this->plugin_dir . 'pinim-class-bridge.php';      
             $this->bridge = new Pinim_Bridge;
-            
-            
-            require $this->plugin_dir . 'pinim-page-account.php';
-            require $this->plugin_dir . 'pinim-page-boards.php';
+
+            require $this->plugin_dir . 'pinim-account.php';
+            require $this->plugin_dir . 'pinim-boards.php';
             require $this->plugin_dir . 'pinim-pending-imports.php';
-            require $this->plugin_dir . 'pinim-page-settings.php';
+            require $this->plugin_dir . 'pinim-settings.php';
+            require $this->plugin_dir . 'pinim-dummy-importer.php';
             
             
         }

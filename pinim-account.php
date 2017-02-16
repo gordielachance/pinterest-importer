@@ -1,6 +1,6 @@
 <?php
 
-class Pinim_Page_Account {
+class Pinim_Account {
     function __construct(){
         add_action( 'admin_menu',array( $this,'admin_menu' ),9,2);
         add_action( 'current_screen', array( $this, 'page_account_init') );
@@ -136,4 +136,4 @@ class Pinim_Page_Account {
     
 }
 
-new Pinim_Page_Account;
+new Pinim_Account;

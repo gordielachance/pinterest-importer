@@ -1,6 +1,6 @@
 <?php
 
-class Pinim_Page_Boards {
+class Pinim_Boards {
     
     /**
     * @var The one true Instance
@@ -9,7 +9,7 @@ class Pinim_Page_Boards {
 
     public static function instance() {
             if ( ! isset( self::$instance ) ) {
-                    self::$instance = new Pinim_Page_Boards;
+                    self::$instance = new Pinim_Boards;
                     self::$instance->init();
             }
             return self::$instance;
@@ -612,8 +612,8 @@ class Pinim_Page_Boards {
 
 }
 
-function pinim_page_boards() {
-	return Pinim_Page_Boards::instance();
+function pinim_boards() {
+	return Pinim_Boards::instance();
 }
 
-pinim_page_boards();
+pinim_boards();

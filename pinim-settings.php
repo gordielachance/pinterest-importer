@@ -1,6 +1,6 @@
 <?php
 
-class Pinim_Page_Settings {
+class Pinim_Settings {
     function __construct(){
         add_action( 'admin_init', array( $this, 'settings_init' ) );
         add_action( 'admin_menu',array( $this,'admin_menu' ),20,2);
@@ -275,4 +275,4 @@ function page_settings(){
     
 }
 
-new Pinim_Page_Settings;
+new Pinim_Settings;

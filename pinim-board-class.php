@@ -1,11 +1,5 @@
 <?php
 
-if(!class_exists('WP_List_Table')){
-    require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
-}
-
-
-
 class Pinim_Board{
     
     var $pinterest_url;
@@ -371,6 +365,10 @@ class Pinim_Board{
     
 }
 
+if(!class_exists('WP_List_Table')){
+    require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
+}
+
 class Pinim_Boards_Table extends WP_List_Table {
     
     var $input_data = array();
@@ -678,11 +676,11 @@ class Pinim_Boards_Table extends WP_List_Table {
             $columns['autocache'] = __('Auto-cache','pinim');
         }
         
-        if ( pinim_page_boards()->get_screen_boards_filter() != 'not_cached' ){
+        if ( pinim_boards()->get_screen_boards_filter() != 'not_cached' ){
             $columns['in_queue'] = __('Queue pins','pinim');
         }
 
-        $followed_boards = pinim_page_boards()->filter_boards($this->input_data,'followed');
+        $followed_boards = pinim_boards()->filter_boards($this->input_data,'followed');
         
         if ($followed_boards){
             $columns['username'] = __('Username','pinim');
@@ -731,7 +729,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         if ( 'top' == $which && !is_singular() ) {
 
             /*
-            switch (pinim_page_boards()->get_screen_boards_filter()){
+            switch (pinim_boards()->get_screen_boards_filter()){
                 case 'pending':
                     //Import All Pins
                     submit_button( pinim_pending_imports()->all_action_str['import_all_pins'], 'button', 'all_boards_action', false );
@@ -761,20 +759,20 @@ class Pinim_Boards_Table extends WP_List_Table {
         $link_all = $link_user = $link_cached = $link_not_cached = null;
         $link_all_classes = $link_user_classes = $link_cached_classes = $link_not_cached_classes = $link_in_queue_classes = $link_followed_classes = array();
         
-        $all_boards = pinim_page_boards()->get_boards();
+        $all_boards = pinim_boards()->get_boards();
         
         if ( is_wp_error($all_boards) ){
             $all_boards = array(); //reset it or it will count errors
         }
         
         $all_count = count($all_boards);
-        $user_count = count(pinim_page_boards()->filter_boards($all_boards,'user'));
-        $cached_count = count(pinim_page_boards()->filter_boards($all_boards,'cached'));
-        $not_cached_count = count(pinim_page_boards()->filter_boards($all_boards,'not_cached'));
-        $in_queue_count = count(pinim_page_boards()->filter_boards($all_boards,'in_queue'));
-        $followed_count = count(pinim_page_boards()->filter_boards($all_boards,'followed'));
+        $user_count = count(pinim_boards()->filter_boards($all_boards,'user'));
+        $cached_count = count(pinim_boards()->filter_boards($all_boards,'cached'));
+        $not_cached_count = count(pinim_boards()->filter_boards($all_boards,'not_cached'));
+        $in_queue_count = count(pinim_boards()->filter_boards($all_boards,'in_queue'));
+        $followed_count = count(pinim_boards()->filter_boards($all_boards,'followed'));
 
-        switch (pinim_page_boards()->get_screen_boards_filter()){
+        switch (pinim_boards()->get_screen_boards_filter()){
             case 'all':
                 $link_all_classes[] = 'current';
             break;
@@ -902,7 +900,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         $link_simple_classes = $link_advanced_classes = array();
 
-        switch (pinim_page_boards()->get_screen_boards_view_filter()){
+        switch (pinim_boards()->get_screen_boards_view_filter()){
             case 'simple':
                 $link_simple_classes[] = 'current';
             break;
@@ -911,7 +909,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             break;
         }
         
-        $boards_filter = pinim_page_boards()->get_screen_boards_filter();
+        $boards_filter = pinim_boards()->get_screen_boards_filter();
 
         $link_simple = sprintf(
             __('<a href="%1$s"%2$s>%3$s</a>'),

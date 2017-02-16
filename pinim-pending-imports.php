@@ -256,7 +256,7 @@ class Pinim_Pending_Imports {
 
         $pins = array();
 
-        $boards = pinim_page_boards()->get_boards();
+        $boards = pinim_boards()->get_boards();
         
         if (!is_wp_error($boards)) {
 

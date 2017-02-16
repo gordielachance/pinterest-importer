@@ -55,7 +55,7 @@ class Pinim_Pin{
     function get_board(){
 
         //load boards
-        $boards = pinim_page_boards()->get_boards();
+        $boards = pinim_boards()->get_boards();
         
         $pin_board_id = $this->board_id;
 
