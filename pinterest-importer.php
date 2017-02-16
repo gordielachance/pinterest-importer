@@ -50,8 +50,11 @@ class PinIm {
     var $user_boards_options = null;
     var $pinterest_url = 'https://www.pinterest.com';
     var $root_term_name = 'Pinterest.com';
-    var $session = null;
     
+    var $session = null;
+    var $bridge = null;
+    
+    var $page_account = null;
     var $page_settings = null;
 
     /**
@@ -100,12 +103,16 @@ class PinIm {
                 'can_autocache'         => 'on',
                 'can_autoprivate'          => 'on'
             );
+        
             $this->options = wp_parse_args(get_option( self::$meta_name_options), $this->options_default);
 
     }
 
     function includes(){
+        
         require $this->plugin_dir . 'pinim-class-bridge.php';      //communication with Pinterest
+        $this->bridge = new Pinim_Bridge;
+        
         require $this->plugin_dir . 'pinim-functions.php';
         require $this->plugin_dir . 'pinim-templates.php';
         require $this->plugin_dir . 'pinim-pin-class.php';
@@ -113,6 +120,7 @@ class PinIm {
         require $this->plugin_dir . 'pinim-board-class.php';
         require $this->plugin_dir . 'pinim-dummy-importer.php';
         require $this->plugin_dir . 'pinim-page-settings.php';
+        require $this->plugin_dir . 'pinim-page-account.php';
         require $this->plugin_dir . 'pinim-tool-page.php';
     }
 
@@ -400,6 +408,75 @@ class PinIm {
         return pinim_get_array_value($keys, $session);
 
     }
+    
+    /**
+    Login to pinterest using our custom bridge class
+    **/
+    function do_bridge_login($login = null, $password = null){
+       
+        if ( !$logged = $this->bridge->is_logged_in() ){
+            
+            if (!$login) $login = pinim()->get_session_data('login');
+            $login = trim($login);
+
+            if (!$password) $password = pinim()->get_session_data('password');
+            $password = trim($password);
+
+            if (!$login || !$password){
+                return new WP_Error( 'pinim',__('Missing login and/or password','pinim') );
+            }
+
+           //force use Pinterest username
+            if (strpos($login, '@') !== false) {
+                return new WP_Error( 'pinim',__('Use your Pinterest username here, not an email address.','pinim').' <code>https://www.pinterest.com/USERNAME/</code>' );
+            }
+
+
+            //try to auth
+            $this->bridge->set_login($login)->set_password($password);
+            $logged = $this->bridge->do_login();
+
+            if ( is_wp_error($logged) ){
+                return new WP_Error( 'pinim',$logged->get_error_message() );
+            }
+            
+        }
+
+        return $logged;
+
+   }
+    
+    /**
+     * Get datas for a user, from session cache or from Pinterest.
+     * @param type $username
+     * @return type
+     */
+    
+    function get_user_infos($keys = null,$username = null){
+        
+        //ignore when logging out
+        if ( isset($_REQUEST['logout']) ) return;
+        
+        if (!$username) $username = pinim()->get_session_data('login');
+        
+        $session_data = pinim()->get_session_data('user_datas');
+
+        if ( !isset($session_data[$username]) ){
+            
+            $userdata = $this->bridge->get_user_datas($username);
+            if ( is_wp_error($userdata) ) return $userdata;
+
+            $session_data[$username] = $userdata;
+
+            pinim()->set_session_data('user_datas',$session_data);
+            
+        }
+        
+        $datas = $session_data[$username];
+        return pinim_get_array_value($keys, $datas);
+
+    }
+    
     
     public function debug_log($message,$title = null) {
 

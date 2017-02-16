@@ -35,12 +35,12 @@ class Pinim_Board{
         
         //datas
         if ( $this->slug == 'likes'){
-            $this->datas['id'] = pinim_tool_page()->get_user_infos('id',$this->username);
+            $this->datas['id'] = pinim()->get_user_infos('id',$this->username);
             $this->datas['name'] = sprintf(__("%s's likes",'pinim'),$this->username).' <i class="fa fa-heart" aria-hidden="true"></i>';
-            $this->datas['pin_count'] = pinim_tool_page()->get_user_infos('like_count',$this->username);
+            $this->datas['pin_count'] = pinim()->get_user_infos('like_count',$this->username);
             $this->datas['cover_images'] = array(
                 array(
-                    'url'   => pinim_tool_page()->get_user_infos('image_medium_url',$this->username)
+                    'url'   => pinim()->get_user_infos('image_medium_url',$this->username)
                 )
             );
             $this->datas['url'] = $this->pinterest_url;
@@ -315,14 +315,14 @@ class Pinim_Board{
         if (!$this->is_queue_complete()){
             
             //try to auth
-            $logged = pinim_tool_page()->do_bridge_login();
+            $logged = pinim()->do_bridge_login();
             if ( is_wp_error($logged) ) return $logged;
 
             $bookmark = $this->bookmark; //uncomplete queue
 
             if ( !$this->raw_pins || $bookmark ){
 
-                $pinterest_query = pinim_tool_page()->bridge->get_board_pins($this);
+                $pinterest_query = pinim()->bridge->get_board_pins($this);
 
                 if (is_wp_error($pinterest_query)){
                     $error = $pinterest_query;

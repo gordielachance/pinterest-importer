@@ -4,7 +4,6 @@ class Pinim_Tool_Page {
     var $page_acount;
     var $page_boards;
     var $page_settings;
-    var $bridge = null;
     var $all_action_str = array(); //text on all pins | boards actions
     
     /**
@@ -24,8 +23,6 @@ class Pinim_Tool_Page {
     
     function init(){
 
-        $this->bridge = new Pinim_Bridge;
-
         $this->all_action_str = array(
             'import_all_pins'       =>__( 'Import All Pins','pinim' ),
             'update_all_pins'       =>__( 'Update All Pins','pinim' )
@@ -34,7 +31,7 @@ class Pinim_Tool_Page {
         
         add_action( 'admin_menu',array(&$this,'admin_menu'),10,2);
 
-        add_action( 'current_screen', array( $this, 'page_account_init') );
+        
         add_action( 'current_screen', array( $this, 'page_boards_init') );
         add_action( 'current_screen', array( $this, 'page_pending_import_init') );
 
@@ -42,38 +39,7 @@ class Pinim_Tool_Page {
 
     }
 
-    function page_account_init(){
-        $screen = get_current_screen();
-        if ($screen->id != 'pin_page_account') return;
-        
-        if ( isset($_REQUEST['logout']) ){
-            pinim()->destroy_session();
-            add_settings_error('feedback_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated inline');
-        }elseif ( isset($_POST['pinim_form_login']) ){
-
-            $login = ( isset($_POST['pinim_form_login']['username']) ? $_POST['pinim_form_login']['username'] : null);
-            $password = ( isset($_POST['pinim_form_login']['password']) ? $_POST['pinim_form_login']['password'] : null);
-
-            $logged = $this->form_do_login($login,$password);
-
-            if (is_wp_error($logged)){
-                add_settings_error('feedback_login', 'do_login', $logged->get_error_message(),'inline' );
-                return;
-            }
-
-            //redirect to next step
-            $args = array(
-                'page'=>    'boards'
-            );
-
-            $url = pinim_get_menu_url($args);
-            wp_redirect( $url );
-            die();
-
-            
-        }
-        
-    }
+    
     
     function page_boards_init(){
         
@@ -202,7 +168,7 @@ class Pinim_Tool_Page {
         
         $all_boards = array();
         //check that we are logged
-        $user_data = $this->get_user_infos();
+        $user_data = pinim()->get_user_infos();
         if ( is_wp_error($user_data) || !$user_data ){
             $login_url = pinim_get_menu_url(array('page'=>'account'));
             add_settings_error('feedback_boards','not_logged',sprintf(__('Please <a href="%s">login</a> to be able to list your board.','pinim'),$login_url),'error inline');
@@ -219,6 +185,8 @@ class Pinim_Tool_Page {
             add_settings_error('feedback_boards', 'get_boards', $all_boards->get_error_message(),'inline');
         }else{
             //cache pins for auto-cache & queued boards
+            $autocache_boards = array();
+            $queued_boards = array();
             
             if ( pinim()->get_options('autocache') ) {
                 $autocache_boards = $this->filter_boards($all_boards,'autocache');
@@ -226,7 +194,7 @@ class Pinim_Tool_Page {
             
             $queued_boards = $this->filter_boards($all_boards,'in_queue');
             
-            $load_pins_boards = array_merge((array)$autocache_boards,(array)$queued_boards);
+            $load_pins_boards = array_merge($autocache_boards,$queued_boards);
             $this->cache_boards_pins($load_pins_boards);
 
             $boards_cached = $this->filter_boards($all_boards,'cached');
@@ -438,58 +406,6 @@ class Pinim_Tool_Page {
         return $filter;
     }
     
-    function form_do_login($login=null,$password=null){
-
-        //try to auth
-        $logged = $this->do_bridge_login($login,$password);
-        if ( is_wp_error($logged) ) return $logged;
-        
-        //store login / password
-        pinim()->set_session_data('login',$login);
-        pinim()->set_session_data('password',$password);
-
-        //try to get user datas
-        $user_datas = $this->get_user_infos();
-        if (is_wp_error($user_datas)) return $user_datas;
-
-        return true;
-        
-    }
-
-    function do_bridge_login($login = null, $password = null){
-       
-        if ( !$logged = $this->bridge->is_logged_in() ){
-            
-            if (!$login) $login = pinim()->get_session_data('login');
-            $login = trim($login);
-
-            if (!$password) $password = pinim()->get_session_data('password');
-            $password = trim($password);
-
-            if (!$login || !$password){
-                return new WP_Error( 'pinim',__('Missing login and/or password','pinim') );
-            }
-
-           //force use Pinterest username
-            if (strpos($login, '@') !== false) {
-                return new WP_Error( 'pinim',__('Use your Pinterest username here, not an email address.','pinim').' <code>https://www.pinterest.com/USERNAME/</code>' );
-            }
-
-
-            //try to auth
-            $this->bridge->set_login($login)->set_password($password);
-            $logged = $this->bridge->do_login();
-
-            if ( is_wp_error($logged) ){
-                return new WP_Error( 'pinim',$logged->get_error_message() );
-            }
-            
-        }
-
-        return $logged;
-
-   }
-   
     function cache_boards_pins($boards){
 
        if (!is_array($boards)){
@@ -512,14 +428,6 @@ class Pinim_Tool_Page {
    }
 
     function admin_menu(){
-        $this->page_account = add_submenu_page(
-            sprintf('edit.php?post_type=%s',pinim()->pin_post_type), 
-            __('Pinterest Account','pinim'), 
-            __('Pinterest Account','pinim'), 
-            'manage_options', //TO FIX
-            'account', 
-            array($this, 'page_account')
-        );
 
         $this->page_boards = add_submenu_page(
             sprintf('edit.php?post_type=%s',pinim()->pin_post_type), 
@@ -569,14 +477,14 @@ class Pinim_Tool_Page {
         
         $user_icon = $user_text = $user_stats = null;
 
-        $user_data = $this->get_user_infos();
+        $user_data = pinim()->get_user_infos();
         if ( !is_wp_error($user_data) && $user_data ) { //logged
             
-            $user_icon = $this->get_user_infos('image_medium_url');
-            $username = $this->get_user_infos('username');
-            $board_count = (int)$this->get_user_infos('board_count');
-            $secret_board_count = (int)$this->get_user_infos('secret_board_count');
-            $like_count = (int)$this->get_user_infos('like_count');
+            $user_icon = pinim()->get_user_infos('image_medium_url');
+            $username = pinim()->get_user_infos('username');
+            $board_count = (int)pinim()->get_user_infos('board_count');
+            $secret_board_count = (int)pinim()->get_user_infos('secret_board_count');
+            $like_count = (int)pinim()->get_user_infos('like_count');
 
             //names
             $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$username.'</strong>');
@@ -618,33 +526,7 @@ class Pinim_Tool_Page {
         printf('<div id="pinim-page-header-account">%s</div>',$content);
 
     }
-    
-    function page_account(){
-        ?>
-        <div class="wrap">
-            <h2><?php _e('Pinterest Account','pinim');?></h2>
-            <?php
-            //check sessions are enabled
-            if (!session_id()){
-                add_settings_error('feedback_login', 'no_sessions', __("It seems that your host doesn't support PHP sessions.  This plugin will not work properly.  We'll try to fix this soon.","pinim"),'inline');
-            }
 
-            ?>
-
-            <?php $this->pinim_form_login_desc();?>
-            <form id="pinim-form-login" action="<?php echo pinim_get_menu_url(array('page'=>'account'));?>" method="post">
-                <div id="pinim_login_box">
-                    <p id="pinim_login_icon"><i class="fa fa-pinterest" aria-hidden="true"></i></p>
-                    <?php settings_errors('feedback_login');?>
-                    <?php $this->login_field_callback();?>
-                    <?php $this->password_field_callback();?>
-                    <?php submit_button(__('Login to Pinterest','pinim'));?>
-                </div>
-            </form>
-        </div>
-        <?php
-    }
-    
     function page_boards(){
         ?>
         <div class="wrap">
@@ -722,78 +604,6 @@ class Pinim_Tool_Page {
         <?php
     }
 
-    function pinim_form_login_desc(){
-        $session_cache = session_cache_expire();
-        echo '<p class="description">'.sprintf(__('Your login, password and datas retrieved from Pinterest will be stored for %1$s minutes in a PHP session. It is not stored in the database.','pinim'),$session_cache)."</p>";
-    }
-    
-    
-    
-    function login_field_callback(){
-        $option = pinim()->get_session_data('login');
-        $disabled = disabled( (bool)$option , true, false);;
-        $el_id = 'pinim_form_login_username';
-        $el_txt = __('Username');
-        $input = sprintf(
-            '<input type="text" id="%1$s" name="%2$s[username]" value="%3$s"%4$s/>',
-            $el_id,
-            'pinim_form_login',
-            $option,
-            $disabled
-        );
-        
-        printf('<p><label for="%1$s">%2$s</label>%3$s</p>',$el_id,$el_txt,$input);
-        
-    }
-    
-    function password_field_callback(){
-        $option = pinim()->get_session_data('password');
-        $disabled = disabled( (bool)$option, true, false);
-        $el_id = 'pinim_form_login_username';
-        $el_txt = __('Password');
-        
-        $input = sprintf(
-            '<input type="password" id="%1$s" name="%2$s[password]" value="%3$s"%4$s/>',
-            $el_id,
-            'pinim_form_login',
-            $option,
-            $disabled
-        );
-        
-        printf('<p><label for="%1$s">%2$s</label>%3$s</p>',$el_id,$el_txt,$input);
-    }
-
-    /**
-     * Get datas for a user, from session cache or from Pinterest.
-     * @param type $username
-     * @return type
-     */
-    
-    function get_user_infos($keys = null,$username = null){
-        
-        //ignore when logging out
-        if ( isset($_REQUEST['logout']) ) return;
-        
-        if (!$username) $username = pinim()->get_session_data('login');
-        
-        $session_data = pinim()->get_session_data('user_datas');
-
-        if ( !isset($session_data[$username]) ){
-            
-            $userdata = $this->bridge->get_user_datas($username);
-            if ( is_wp_error($userdata) ) return $userdata;
-
-            $session_data[$username] = $userdata;
-
-            pinim()->set_session_data('user_datas',$session_data);
-            
-        }
-        
-        $datas = $session_data[$username];
-        return pinim_get_array_value($keys, $datas);
-
-    }
-    
     /**
      * Get boards informations for a user, from session cache or from Pinterest.
      * if $username = 'me', get logged in user boards; but use real username or 
@@ -809,10 +619,10 @@ class Pinim_Tool_Page {
         if ( !isset($session_data[$username]) ){
 
             //try to auth
-            $logged = $this->do_bridge_login();
+            $logged = pinim()->do_bridge_login();
             if ( is_wp_error($logged) ) return $logged;
 
-            $userdata = $this->bridge->get_user_boards($username);
+            $userdata = pinim()->bridge->get_user_boards($username);
             
             if ( is_wp_error($userdata) ){
                 return $userdata;
@@ -830,7 +640,7 @@ class Pinim_Tool_Page {
     function get_boards_user(){
         $boards = array();
 
-        $user_data = $this->get_user_infos();
+        $user_data = pinim()->get_user_infos();
         if ( is_wp_error($user_data) ) return $user_data;
         if ( !$user_data ) return $boards;
 
@@ -842,7 +652,7 @@ class Pinim_Tool_Page {
         }
         
         //likes
-        $username = $this->get_user_infos('username');
+        $username = pinim()->get_user_infos('username');
         $likes_url = Pinim_Bridge::get_short_url($username,'likes');
         $boards[] = new Pinim_Board($likes_url);
         
@@ -1068,7 +878,7 @@ class Pinim_Tool_Page {
         $output = array();
         if( is_wp_error($boards) ) return $output;
         
-        $username = $this->get_user_infos('username');
+        $username = pinim()->get_user_infos('username');
         
         switch ($filter){
             case 'autocache':
