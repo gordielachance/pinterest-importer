@@ -330,7 +330,7 @@ class Pinim_Pin{
         $post['tags_input'] = array_merge( $tags_input,$this->get_post_tags() );
 
         //set private post status
-        if ( pinim()->get_options('auto_private') && $board->is_private_board() ){
+        if ( pinim()->get_options('can_autoprivate') && $board->is_private_board() ){
             $post['post_status'] = 'private';
         }
 

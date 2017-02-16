@@ -94,10 +94,10 @@ class PinIm {
                 'boards_view_filter'    => 'simple',
                 'boards_filter'         => 'all',
                 'pins_filter'           => 'pending',
-                'autocache'             => true,
                 'enable_follow_boards'  => true,
                 'default_status'        => 'publish',
-                'auto_private'          => true
+                'can_autocache'         => 'on',
+                'can_autoprivate'          => 'on'
             );
             $this->options = wp_parse_args(get_option( self::$meta_name_options), $this->options_default);
 

@@ -647,9 +647,6 @@ class Pinim_Tool_Page {
                 $new_input['pins_per_page'] = $input['pins_per_page'];
             }
             
-            //autocache
-            $new_input['autocache']  = isset ($input['autocache']) ? true : false;
-            
             //default post status
             if ( isset ($input['default_status']) ){
                 $stati = Pinim_Pin::get_allowed_stati();
@@ -658,9 +655,12 @@ class Pinim_Tool_Page {
                     $new_input['default_status'] = $input['default_status'];
                 }
             }
+            
+            //autocache
+            $new_input['can_autocache']  = isset ($input['can_autocache']) ? 'on' : 'off';
 
             //auto private
-            $new_input['auto_private']  = isset ($input['auto_private']) ? true : false;
+            $new_input['can_autoprivate']  = isset ($input['can_autoprivate']) ? 'on' : 'off';
 
         }
         
@@ -709,9 +709,9 @@ class Pinim_Tool_Page {
         );
         
         add_settings_field(
-            'autocache', 
+            'can_autocache', 
             __('Auto Cache','pinim'), 
-            array( $this, 'autocache_callback' ), 
+            array( $this, 'can_autocache_callback' ), 
             'pinim-settings-page', // Page
             'settings_general'//section
         );
@@ -732,9 +732,9 @@ class Pinim_Tool_Page {
         );
         
         add_settings_field(
-            'auto_private', 
+            'can_autoprivate', 
             __('Auto private status','pinim'), 
-            array( $this, 'auto_private_callback' ), 
+            array( $this, 'can_autoprivate_callback' ), 
             'pinim-settings-page', // Page
             'settings_import'//section
         );
@@ -977,15 +977,15 @@ class Pinim_Tool_Page {
         
     }
     
-    function autocache_callback(){
+    function can_autocache_callback(){
         
-        $option = (int)pinim()->get_options('autocache');
+        $option = pinim()->get_options('can_autocache');
         $warning = '<i class="fa fa-exclamation-triangle" aria-hidden="true"></i> '.__("Auto-caching too many boards, or boards with a large amount of pins will slow the plugin, because we need to query informations for each pin of each board.","pinim");
         
         printf(
-            '<input type="checkbox" name="%1$s[autocache_callback]" value="on" %2$s/> %3$s<br/><p><small>%4$s</small></p>',
+            '<input type="checkbox" name="%1$s[can_autocache]" value="on" %2$s/> %3$s<br/><p><small>%4$s</small></p>',
             PinIm::$meta_name_options,
-            checked( (bool)$option, true, false ),
+            checked( $option, 'on', false ),
             __("Automatically cache displayed active boards.","pinim"),
             $warning
         );
@@ -1018,13 +1018,13 @@ class Pinim_Tool_Page {
         );
     }
     
-    function auto_private_callback(){
-        $option = (int)pinim()->get_options('auto_private');
+    function can_autoprivate_callback(){
+        $option = pinim()->get_options('can_autoprivate');
 
         printf(
-            '<input type="checkbox" name="%1$s[auto_private]" value="on" %2$s/> %3$s<br/>',
+            '<input type="checkbox" name="%1$s[can_autoprivate]" value="on" %2$s/> %3$s<br/>',
             PinIm::$meta_name_options,
-            checked( (bool)$option, true, false ),
+            checked( $option, "on", false ),
             __("Set post status to private if the pin's board is secret.","pinim")
         );
     }

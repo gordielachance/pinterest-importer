@@ -674,7 +674,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             'pin_count_imported'    => __('Status','pinim')
         );
         
-        if ( pinim()->get_options('autocache') ){
+        if ( pinim()->get_options('can_autocache') == 'on' ){
             $columns['autocache'] = __('Auto-cache','pinim');
         }
         
