@@ -89,6 +89,9 @@ class Pinim_Tool_Page {
         $screen = get_current_screen();
         if ($screen->id != 'pin_page_boards') return;
         
+        //warn users secret boards are temporary disabled()
+        add_settings_error('pinim','secret_boards_ignored',__("The plugin is currently unable to load secret boards. We'll try to fix this in the next release.",'pinim'),'error inline');
+        
         /*
         SAVE BOARDS
         */
@@ -214,8 +217,6 @@ class Pinim_Tool_Page {
             add_settings_error('pinim_form_boards','not_logged',sprintf(__('Please <a href="%s">login</a> to be able to list your board.','pinim'),$login_url),'error inline');
         }else{
             $all_boards = $this->get_boards();
-            //warn users secret boards are temporary disabled()
-            add_settings_error('pinim_form_boards','secret_boards_ignored',__("The plugin is currently unable to load secret boards. We'll try to fix this in the next release.",'pinim'),'error inline');
         }
 
         $has_new_boards = false;
@@ -809,8 +810,6 @@ class Pinim_Tool_Page {
             </div>
             <?php
         }
-
-        
 
         //general notices
         settings_errors('pinim'); 
