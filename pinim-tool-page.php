@@ -1422,11 +1422,7 @@ class Pinim_Tool_Page {
 
         return count($pins_ids);
     }
-    
-    function get_pins_count_processed(){
-        return count( pinim_get_processed_pins_ids() );
-    }
-    
+
     function filter_boards($boards,$filter){
 
         $output = array();
