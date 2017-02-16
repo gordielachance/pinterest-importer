@@ -205,6 +205,7 @@ class PinIm {
         $labels = array(
             'name'                  => _x( 'Pins', 'Post Type General Name', 'pinim' ),
             'singular_name'         => _x( 'Pin', 'Post Type Singular Name', 'pinim' ),
+            /*
             'menu_name'             => __( 'Pins', 'pinim' ),
             'name_admin_bar'        => __( 'Pin', 'pinim' ),
             'archives'              => __( 'Item Archives', 'pinim' ),
@@ -230,6 +231,7 @@ class PinIm {
             'items_list'            => __( 'Items list', 'pinim' ),
             'items_list_navigation' => __( 'Items list navigation', 'pinim' ),
             'filter_items_list'     => __( 'Filter items list', 'pinim' ),
+            */
         );
         $args = array(
             'label'                 => __( 'Pin', 'pinim' ),
