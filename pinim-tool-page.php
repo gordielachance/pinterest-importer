@@ -913,12 +913,9 @@ class Pinim_Tool_Page {
 
             ?>  
             <form id="pinim-form-user-boards"<?php pinim_classes_attr($form_classes);?> action="<?php echo pinim_get_menu_url(array('page'=>'boards'));?>" method="post">
-
-                <div class="tab-description">
-                    <p>
-                        <?php _e("This is the list of all the boards we've fetched from your profile, including your likes.","pinim");?>
-                    </p>
-                </div>
+                <p class="description">
+                    <?php _e("This is the list of all the boards we've fetched from your profile, including your likes.","pinim");?>
+                </p>
                 <?php
                 $this->table_boards_user->views_display();
                 $this->table_boards_user->views();
@@ -940,8 +937,8 @@ class Pinim_Tool_Page {
                 <form id="pinim-form-follow-boards-input" class="pinim-form" action="<?php echo pinim_get_menu_url(array('page'=>'boards'));?>" method="post">
                     <h4><?php _e('Add board to follow','pinim');?></h4>
 
-                    <div id="follow-new-board" class="tab-description">
-                        <p>
+                    <div id="follow-new-board">
+                        <p class="description">
                             <?php _e("Enter the URLs of boards from other users.  One line per board url.","pinim");?>
                         </p>
 
@@ -965,11 +962,6 @@ class Pinim_Tool_Page {
             <h2><?php _e('Pins pending importation','pinim');?></h2>
             <form action="<?php echo pinim_get_menu_url(array('page'=>'pending-importation'));?>" method="post">
 
-                <div class="tab-description">
-                    <p>
-                        <?php _e("This is the list of all the boards we've fetched from your profile, including your likes.","pinim");?>
-                    </p>
-                </div>
                 <?php
                 $this->table_pins->views_display();
                 $this->table_pins->views();
@@ -1018,7 +1010,7 @@ class Pinim_Tool_Page {
 
     function pinim_form_login_desc(){
         $session_cache = session_cache_expire();
-        echo '<div class="tab-description"><p>'.sprintf(__('Your login, password and datas retrieved from Pinterest will be stored for %1$s minutes in a PHP session. It is not stored in the database.','pinim'),$session_cache)."</p></div>";
+        echo '<p class="description">'.sprintf(__('Your login, password and datas retrieved from Pinterest will be stored for %1$s minutes in a PHP session. It is not stored in the database.','pinim'),$session_cache)."</p>";
     }
     
     function pinim_settings_import_desc(){
