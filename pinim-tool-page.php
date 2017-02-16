@@ -4,9 +4,7 @@ class Pinim_Tool_Page {
     var $page_acount;
     var $page_boards;
     var $page_settings;
-    var $existing_pin_ids = array();
     var $bridge = null;
-    var $session = null;
     var $all_action_str = array(); //text on all pins | boards actions
     
     /**
@@ -25,8 +23,7 @@ class Pinim_Tool_Page {
     private function __construct() { /* Do nothing here */ }
     
     function init(){
-        
-        $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
+
         $this->bridge = new Pinim_Bridge;
 
         $this->all_action_str = array(
@@ -436,8 +433,6 @@ class Pinim_Tool_Page {
                                 sprintf( _n( '%s pin have been successfully imported.', '%s pins have been successfully imported.', $success_count,'pinim' ), $success_count ),
                                 'updated inline'
                             );
-                            //refresh pins list
-                            $this->existing_pin_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
                         }
 
                         if (!empty($pins_errors)){
@@ -1429,7 +1424,7 @@ class Pinim_Tool_Page {
     }
     
     function get_pins_count_processed(){
-        return count(pinim_tool_page()->existing_pin_ids);
+        return count( pinim_get_processed_pins_ids() );
     }
     
     function filter_boards($boards,$filter){

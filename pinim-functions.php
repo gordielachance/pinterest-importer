@@ -134,3 +134,10 @@ function pinim_get_list_from_array($input,$parent_slugs=array() ){
     }
 
 }
+
+/*
+Returns an array of pin IDs that already have been imported
+*/
+function pinim_get_processed_pins_ids(){
+    return pinim_get_meta_value_by_key('_pinterest-pin_id');
+}

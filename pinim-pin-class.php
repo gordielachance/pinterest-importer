@@ -120,7 +120,7 @@ class Pinim_Pin{
         
         if ( !pinim()->get_options('enable_update_pins') ) return;
         
-        if (!in_array($this->pin_id,pinim_tool_page()->existing_pin_ids)) return;
+        if ( !in_array( $this->pin_id,pinim_get_processed_pins_ids() ) ) return;
 
         $link_args = array(
             'page'      => 'boards',

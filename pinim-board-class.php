@@ -255,7 +255,7 @@ class Pinim_Board{
         $imported = 0;
 
         foreach ((array)$this->raw_pins as $raw_pin){
-            if (in_array($raw_pin['id'],pinim_tool_page()->existing_pin_ids)) $imported++;
+            if ( in_array( $raw_pin['id'],pinim_get_processed_pins_ids() ) ) $imported++;
         }
         return $imported;
     }
