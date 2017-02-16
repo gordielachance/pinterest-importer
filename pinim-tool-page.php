@@ -219,9 +219,14 @@ class Pinim_Tool_Page {
             add_settings_error('feedback_boards', 'get_boards', $all_boards->get_error_message(),'inline');
         }else{
             //cache pins for auto-cache & queued boards
-            $autocache_boards = $this->filter_boards($all_boards,'autocache');
+            
+            if ( pinim()->get_options('autocache') ) {
+                $autocache_boards = $this->filter_boards($all_boards,'autocache');
+            }
+            
             $queued_boards = $this->filter_boards($all_boards,'in_queue');
-            $load_pins_boards = array_merge($autocache_boards,$queued_boards);
+            
+            $load_pins_boards = array_merge((array)$autocache_boards,(array)$queued_boards);
             $this->cache_boards_pins($load_pins_boards);
 
             $boards_cached = $this->filter_boards($all_boards,'cached');
@@ -1432,8 +1437,6 @@ class Pinim_Tool_Page {
         
         switch ($filter){
             case 'autocache':
-                if ( !pinim()->get_options('autocache') ) break;
-                
                 foreach((array)$boards as $board){
                     if ( $board->get_options('autocache') ){
                         $output[] = $board;
