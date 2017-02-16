@@ -51,6 +51,8 @@ class PinIm {
     var $pinterest_url = 'https://www.pinterest.com';
     var $root_term_name = 'Pinterest.com';
     var $session = null;
+    
+    var $page_settings = null;
 
     /**
     * @var The one true Instance
@@ -110,6 +112,7 @@ class PinIm {
         //require $this->plugin_dir . 'pinim-ajax.php';
         require $this->plugin_dir . 'pinim-board-class.php';
         require $this->plugin_dir . 'pinim-dummy-importer.php';
+        require $this->plugin_dir . 'pinim-page-settings.php';
         require $this->plugin_dir . 'pinim-tool-page.php';
     }
 
