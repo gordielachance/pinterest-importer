@@ -55,7 +55,7 @@ class Pinim_Tool_Page {
         
         if ( isset($_REQUEST['logout']) ){
             $this->destroy_session();
-            add_settings_error('pinim_form_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated inline');
+            add_settings_error('feedback_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated inline');
         }elseif ( isset($_POST['pinim_form_login']) ){
 
             $login = ( isset($_POST['pinim_form_login']['username']) ? $_POST['pinim_form_login']['username'] : null);
@@ -64,7 +64,7 @@ class Pinim_Tool_Page {
             $logged = $this->form_do_login($login,$password);
 
             if (is_wp_error($logged)){
-                add_settings_error('pinim_form_login', 'do_login', $logged->get_error_message(),'inline' );
+                add_settings_error('feedback_login', 'do_login', $logged->get_error_message(),'inline' );
                 return;
             }
 
@@ -88,7 +88,7 @@ class Pinim_Tool_Page {
         if ($screen->id != 'pin_page_boards') return;
         
         //warn users secret boards are temporary disabled()
-        add_settings_error('pinim','secret_boards_ignored',__("The plugin is currently unable to load secret boards. We'll try to fix this in the next release.",'pinim'),'error inline');
+        add_settings_error('feedback_pinim','secret_boards_ignored',__("The plugin is currently unable to load secret boards. We'll try to fix this in the next release.",'pinim'),'error inline');
         
         /*
         SAVE BOARDS
@@ -187,7 +187,7 @@ class Pinim_Tool_Page {
                         $board_saved = $board->save_options();
 
                         if (is_wp_error($board_saved)){
-                            add_settings_error('pinim_form_boards', 'set_options_'.$board->board_id, $board_saved->get_error_message(),'inline');
+                            add_settings_error('feedback_boards', 'set_options_'.$board->board_id, $board_saved->get_error_message(),'inline');
                         }
 
                     }
@@ -212,7 +212,7 @@ class Pinim_Tool_Page {
         $user_data = $this->get_user_infos();
         if ( is_wp_error($user_data) || !$user_data ){
             $login_url = pinim_get_menu_url(array('page'=>'account'));
-            add_settings_error('pinim_form_boards','not_logged',sprintf(__('Please <a href="%s">login</a> to be able to list your board.','pinim'),$login_url),'error inline');
+            add_settings_error('feedback_boards','not_logged',sprintf(__('Please <a href="%s">login</a> to be able to list your board.','pinim'),$login_url),'error inline');
         }else{
             $all_boards = $this->get_boards();
         }
@@ -223,7 +223,7 @@ class Pinim_Tool_Page {
         //load boards
         
         if ( is_wp_error($all_boards) ){
-            add_settings_error('pinim_form_boards', 'get_boards', $all_boards->get_error_message(),'inline');
+            add_settings_error('feedback_boards', 'get_boards', $all_boards->get_error_message(),'inline');
         }else{
             //cache pins for auto-cache & queued boards
             $autocache_boards = $this->filter_boards($all_boards,'autocache');
@@ -237,7 +237,7 @@ class Pinim_Tool_Page {
             if ( $all_boards && !$boards_cached ){
                 $feedback = array(__("Start by caching a bunch of boards so we can get informations about their pins !",'pinim') );
                 $feedback[] =   __("You could also check the <em>auto-cache</em> option for some of your boards, so they will always be preloaded.",'pinim');
-                add_settings_error('pinim_form_boards','no_boards_cached',implode('<br/>',$feedback),'updated inline');
+                add_settings_error('feedback_boards','no_boards_cached',implode('<br/>',$feedback),'updated inline');
             }
 
 
@@ -273,7 +273,7 @@ class Pinim_Tool_Page {
                             pinim_get_menu_url(array('page'=>'pending-importation'))
                 );
 
-                add_settings_error('pinim_form_boards','ready_to_import',implode('  ',$feedback),'updated inline');
+                add_settings_error('feedback_boards','ready_to_import',implode('  ',$feedback),'updated inline');
 
             }
 
@@ -355,7 +355,7 @@ class Pinim_Tool_Page {
 
                         if (!$all_pins_action){
 
-                            add_settings_error('pinim_form_pins', 'pins_never_imported', 
+                            add_settings_error('feedback_pending_import', 'pins_never_imported', 
                                 sprintf(
                                     __( 'Some pins cannot be updated because they never have been imported.  Choose "%1$s" if you want import pins. (Pins: %2$s)', 'pinim' ),
                                     __('Import Pins','pinim'),
@@ -375,12 +375,12 @@ class Pinim_Tool_Page {
                         $success_count = $bulk_count-$errors_count;
 
                         if ($success_count){
-                            add_settings_error('pinim_form_pins', 'update_pins', sprintf( _n( '%s pin was successfully updated.', '%s pins were successfully updated.', $success_count,'pinim' ), $success_count ), 'updated inline');
+                            add_settings_error('feedback_pending_import', 'update_pins', sprintf( _n( '%s pin was successfully updated.', '%s pins were successfully updated.', $success_count,'pinim' ), $success_count ), 'updated inline');
                         }
 
                         if (!empty($pins_errors)){
                             foreach ((array)$pins_errors as $pin_id=>$pin_error){
-                                add_settings_error('pinim_form_pins', 'update_pin_'.$pin_id, $pin_error->get_error_message(),'inline');
+                                add_settings_error('feedback_pending_import', 'update_pin_'.$pin_id, $pin_error->get_error_message(),'inline');
                             }
                         }
                     }
@@ -417,7 +417,7 @@ class Pinim_Tool_Page {
 
                         if (!$all_pins_action){
 
-                            add_settings_error('pinim_form_pins', 'pins_already_imported', 
+                            add_settings_error('feedback_pending_import', 'pins_already_imported', 
                                 sprintf(
                                     __( 'Some pins have been skipped because they already have been imported.  Choose "%1$s" if you want update the existing pins. (Pins: %2$s)', 'pinim' ),
                                     __('Update pins','pinim'),
@@ -436,7 +436,7 @@ class Pinim_Tool_Page {
                         $success_count = $bulk_count-$errors_count;
 
                         if ($success_count){
-                            add_settings_error('pinim_form_pins', 'import_pins', 
+                            add_settings_error('feedback_pending_import', 'import_pins', 
                                 sprintf( _n( '%s pin have been successfully imported.', '%s pins have been successfully imported.', $success_count,'pinim' ), $success_count ),
                                 'updated inline'
                             );
@@ -446,7 +446,7 @@ class Pinim_Tool_Page {
 
                         if (!empty($pins_errors)){
                             foreach ((array)$pins_errors as $pin_id=>$pin_error){
-                                add_settings_error('pinim_form_pins', 'import_pin_'.$pin_id, $pin_error->get_error_message(),'inline');
+                                add_settings_error('feedback_pending_import', 'import_pin_'.$pin_id, $pin_error->get_error_message(),'inline');
                             }
                         }
                     }
@@ -469,7 +469,7 @@ class Pinim_Tool_Page {
         */
         if ( !pinim_tool_page()->get_pins_count_pending() ){
             $boards_url = pinim_get_menu_url(array('page'=>'boards'));
-            add_settings_error('pinim_form_pending_import','not_logged',sprintf(__('To list the pins you can import here, you first need to <a href="%s">cache some Pinterest Boards</a>.','pinim'),$boards_url),'error inline');
+            add_settings_error('feedback_pending_import','not_logged',sprintf(__('To list the pins you can import here, you first need to <a href="%s">cache some Pinterest Boards</a>.','pinim'),$boards_url),'error inline');
         }
 
         
@@ -587,7 +587,7 @@ class Pinim_Tool_Page {
             $board_pins = $board->get_pins();
 
             if (is_wp_error($board_pins)){    
-                add_settings_error('pinim_form_boards', 'cache_single_board_pins', $board_pins->get_error_message(),'inline');
+                add_settings_error('feedback_boards', 'cache_single_board_pins', $board_pins->get_error_message(),'inline');
             }
 
         }
@@ -804,7 +804,7 @@ class Pinim_Tool_Page {
         }
 
         //general notices
-        settings_errors('pinim'); 
+        settings_errors('feedback_pinim'); 
     }
     
     function user_infos_block(){
@@ -868,7 +868,7 @@ class Pinim_Tool_Page {
             <?php
             //check sessions are enabled
             if (!session_id()){
-                add_settings_error('pinim_form_login', 'no_sessions', __("It seems that your host doesn't support PHP sessions.  This plugin will not work properly.  We'll try to fix this soon.","pinim"),'inline');
+                add_settings_error('feedback_login', 'no_sessions', __("It seems that your host doesn't support PHP sessions.  This plugin will not work properly.  We'll try to fix this soon.","pinim"),'inline');
             }
 
             ?>
@@ -877,7 +877,7 @@ class Pinim_Tool_Page {
             <form id="pinim-form-login" action="<?php echo pinim_get_menu_url(array('page'=>'account'));?>" method="post">
                 <div id="pinim_login_box">
                     <p id="pinim_login_icon"><i class="fa fa-pinterest" aria-hidden="true"></i></p>
-                    <?php settings_errors('pinim_form_login');?>
+                    <?php settings_errors('feedback_login');?>
                     <?php $this->login_field_callback();?>
                     <?php $this->password_field_callback();?>
                     <?php submit_button(__('Login to Pinterest','pinim'));?>
@@ -895,13 +895,13 @@ class Pinim_Tool_Page {
             //check sessions are enabled
             //TO FIX TO MOVE ?
             if (!session_id()){
-                add_settings_error('pinim_form_login', 'no_sessions', __("It seems that your host doesn't support PHP sessions.  This plugin will not work properly.  We'll try to fix this soon.","pinim"),'inline');
+                add_settings_error('feedback_login', 'no_sessions', __("It seems that your host doesn't support PHP sessions.  This plugin will not work properly.  We'll try to fix this soon.","pinim"),'inline');
             }
         
             $form_classes[] = 'view-filter-'.pinim_tool_page()->get_screen_boards_view_filter();
             $form_classes[] = 'pinim-form-boards';
 
-            settings_errors('pinim_form_boards');
+            settings_errors('feedback_boards');
 
             ?>  
             <form id="pinim-form-user-boards"<?php pinim_classes_attr($form_classes);?> action="<?php echo pinim_get_menu_url(array('page'=>'boards'));?>" method="post">
@@ -952,7 +952,7 @@ class Pinim_Tool_Page {
 ?>
         <div class="wrap">
             <h2><?php _e('Pins pending importation','pinim');?></h2>
-            <?php settings_errors('pinim_form_pending_import');?>
+            <?php settings_errors('feedback_pending_import');?>
             <form action="<?php echo pinim_get_menu_url(array('page'=>'pending-importation'));?>" method="post">
                 <?php
                 $this->table_pins->views_display();
