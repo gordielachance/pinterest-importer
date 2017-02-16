@@ -265,17 +265,17 @@
   display: none;
 }
 /* line 235, ../scss/pinim.scss */
-.post-type-pin.pin_page_boards#pinim-form-follow-boards-input {
+.post-type-pin.pin_page_boards #pinim-form-follow-boards-input {
   width: 65%;
   margin: auto;
 }
 /* line 239, ../scss/pinim.scss */
-.post-type-pin.pin_page_boards#pinim-form-follow-boards-input #follow-new-board textarea {
+.post-type-pin.pin_page_boards #pinim-form-follow-boards-input #follow-new-board textarea {
   width: 100%;
   min-height: 8em;
 }
 
-/* line 257, ../scss/pinim.scss */
+/* line 251, ../scss/pinim.scss */
 img.img-cover, .img-cover > img {
   vertical-align: top;
   object-fit: cover;

@@ -10,6 +10,8 @@ if(!class_exists('WP_Posts_List_Table')){
     require_once ( ABSPATH . 'wp-admin/includes/class-wp-posts-list-table.php' );
 }
 
+
+
 class Pinim_Pin{
     
     var $pin_id;
@@ -98,8 +100,7 @@ class Pinim_Pin{
     function get_link_action_import(){
         //Refresh cache
         $link_args = array(
-            'page'      => 'boards',
-            'step'      => 'pins-list',
+            'page'      => 'pending-importation',
             'action'    => 'pins_import_pins',
             'pin_ids'  => $this->pin_id,
             //'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
@@ -290,7 +291,7 @@ class Pinim_Pin{
             $post = array(
                 'post_status'       => 'auto-draft',
                 'post_author'       => get_current_user_id(),
-                'post_type'         => 'post',
+                'post_type'         => pinim()->pin_post_type,
                 'post_category'     => array(pinim_get_root_category_id()),
                 'tags_input'        => array()
             );
@@ -496,13 +497,13 @@ class Pinim_Pin{
     
 }
 
-abstract class Pinim_Pins_Table extends WP_List_Table {
+class Pinim_Pending_Pins_Table extends WP_List_Table {
     
     var $input_data = array();
     var $pin_idx = -1;
 
-    var $orderby = 'title';
-    var $order = 'asc';
+    var $orderby = 'date';
+    var $order = 'desc';
 
     /** ************************************************************************
      * REQUIRED. Set up a constructor that references the parent constructor. We 
@@ -551,45 +552,16 @@ abstract class Pinim_Pins_Table extends WP_List_Table {
         }
     }
 
-
-    /** ************************************************************************
-     * Recommended. This is a custom column method and is responsible for what
-     * is rendered in any column with a name/slug of 'title'. Every time the class
-     * needs to render a column, it first looks for a method named 
-     * column_{$column_title} - if it exists, that method is run. If it doesn't
-     * exist, column_default() is called instead.
-     * 
-     * This example also illustrates how to implement rollover actions. Actions
-     * should be an associative array formatted as 'slug'=>'link html' - and you
-     * will need to generate the URLs yourself. You could even ensure the links
-     * 
-     * 
-     * @see WP_List_Table::::single_row_columns()
-     * @param array $item A singular item (one full row's worth of data)
-     * @return string Text to be placed inside the column <td> (movie title only)
-     **************************************************************************/
-    
-    function get_pin_id($pin){
-        /*override me*/
-    }
-    
-    function get_pin_title($pin){
-        /*override me*/
-    }
-    
     function get_actions($pin){
         
         $pin_id = $this->get_pin_id($pin);
         
         return array(
             'view'      => sprintf('<a href="%1$s" target="_blank">%2$s</a>',pinim_get_pinterest_pin_url($pin_id),__('View on Pinterest','pinim'),'view'),
+            'import'    => $pin->get_link_action_import()
         );
     }
-    
-    function get_icons($pin){
-        /*override me*/
-    }
-    
+
     function column_title($pin){
 
         //Return the title contents
@@ -629,24 +601,6 @@ abstract class Pinim_Pins_Table extends WP_List_Table {
         );
         return $hidden.$bulk;
     }
-    
-    function get_thumbnail_url($item){
-        /*override me*/
-        return null;
-    }
-    
-    function column_thumbnail($item){
-
-        return sprintf(
-            '<img src="%1$s" class="img-cover"/>',
-            $this->get_thumbnail_url($item)
-        );
-
-    }
-    
-    function column_source($pin){
-        /*override me*/
-    }
 
     /** ************************************************************************
      * REQUIRED! This method dictates the table's columns and titles. This should
@@ -663,11 +617,12 @@ abstract class Pinim_Pins_Table extends WP_List_Table {
      **************************************************************************/
     function get_columns(){
         $columns = array(
-            'cb'        => '<input type="checkbox" />', //Render a checkbox instead of text
-            'thumbnail'    => '',
-            'title'     => __('Pin Title','pinim'),
-            'source'     => __('Source','pinim'),
-            'date'     => __('Date','pinim'),
+            'cb'            => '<input type="checkbox" />', //Render a checkbox instead of text
+            'pin_thumbnail' => '',
+            'title'         => __('Pin Title','pinim'),
+            'pin_source'    => __('Source','pinim'),
+            'date'          => __('Date','pinim'),
+            'pin_board'     => __('Board')
         );
 
         return $columns;
@@ -689,7 +644,13 @@ abstract class Pinim_Pins_Table extends WP_List_Table {
      * @return array An associative array containing all the columns that should be sortable: 'slugs'=>array('data_values',bool)
      **************************************************************************/
     function get_sortable_columns() {
-        /*override me*/
+        $sortable_columns = array(
+            'title'             => array('title',false),
+            'source'             => array('source',false),
+            'date'              => array('date',true),     //true means it's already sorted
+            'board'      => array('board',false),
+        );
+        return $sortable_columns;
     }
     
     /**
@@ -701,262 +662,13 @@ abstract class Pinim_Pins_Table extends WP_List_Table {
         <?php
 
         if ( 'top' == $which && !is_singular() ) {
-            
-                switch (pinim_tool_page()->get_screen_pins_filter()){
-                    case 'pending':
-                        //Import All Pins
-                        submit_button( pinim_tool_page()->all_action_str['import_all_pins'], 'button', 'all_pins_action', false, array('id'=>'import_all_bt') );
-                    break;
-                    case 'processed':
-                        //Update All Pins
-                        if ( pinim()->get_options('enable_update_pins') ){
-                            submit_button( pinim_tool_page()->all_action_str['update_all_pins'], 'button', 'all_pins_action', false, array('id'=>'update_all_bt') );
-                        }
-                    break;
-                }
+            //Import All Pins
+            submit_button( pinim_tool_page()->all_action_str['import_all_pins'], 'button', 'all_pins_action', false, array('id'=>'import_all_bt') );
         }
 
         ?>
         </div>
         <?php
-    }
-    
-
-    
-	/**
-	 * Get an associative array ( id => link ) with the list
-	 * of views available on this table.
-	 *
-	 * @since 3.1.0
-	 * @access protected
-	 *
-	 * @return array
-	 */
-	protected function get_views() {
-            
-            $link_args = array(
-                'page'  => 'boards',
-                'step'  => 'pins-list'
-            );
-            $link_args = array_filter($link_args);
-            
-            $link_processed_args = $link_args;
-            $link_processed_args['pins_filter'] = 'processed';
-            
-            $link_pending_args = $link_args;
-            $link_pending_args['pins_filter'] = 'pending';
-            
-            
-            
-            $link_processed_classes = array();
-            $link_pending_classes = array();
-            
-            $processed_count = pinim_tool_page()->get_pins_count_processed();
-            $pending_count = pinim_tool_page()->get_pins_count_pending();
-
-            switch (pinim_tool_page()->get_screen_pins_filter()){
-                case 'pending':
-                    $link_pending_classes[] = 'current';
-                break;
-                case 'processed':
-                    $link_processed_classes[] = 'current';
-                break;
-            }
-
-
-            $link_processed = sprintf(
-                __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-                pinim_get_menu_url($link_processed_args),
-                pinim_get_classes_attr($link_processed_classes),
-                __('Processed','pinim'),
-                $processed_count
-            );
-            
-            $link_pending = sprintf(
-                __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-                pinim_get_menu_url($link_pending_args),
-                pinim_get_classes_attr($link_pending_classes),
-                __('Pending','pinim'),
-                $pending_count
-            );
-
-
-		return array(
-                    'pending'       => $link_pending,
-                    'processed'   => $link_processed
-                    
-                    
-                );
-	}
-
-	/**
-	 * Display the list of views available on this table.
-	 *
-	 * @since 3.1.0
-	 * @access public
-	 */
-	public function views() {
-		$views = $this->get_views();
-
-		if ( empty( $views ) )
-			return;
-
-		echo "<ul class='subsubsub'>\n";
-		foreach ( $views as $class => $view ) {
-			$views[ $class ] = "\t<li class='$class'>$view";
-		}
-		echo implode( " |</li>\n", $views ) . "</li>\n";
-		echo "</ul>";
-	}
-
-
-    /** ************************************************************************
-     * Optional. If you need to include bulk actions in your list table, this is
-     * the place to define them. Bulk actions are an associative array in the format
-     * 'slug'=>'Visible Title'
-     * 
-     * If this method returns an empty value, no bulk action will be rendered. If
-     * you specify any bulk actions, the bulk actions box will be rendered with
-     * the table automatically on display().
-     * 
-     * Also note that list tables are not automatically wrapped in <form> elements,
-     * so you will need to create those manually in order for bulk actions to function.
-     * 
-     * @return array An associative array containing all the bulk actions: 'slugs'=>'Visible Titles'
-     **************************************************************************/
-    function get_bulk_actions() {
-        $actions = array();
-        
-        if (pinim_tool_page()->get_screen_pins_filter() =='pending'){
-            $actions['pins_import_pins'] = __('Import pins','pinim');
-        }elseif (pinim_tool_page()->get_screen_pins_filter() =='processed'){
-            if ( pinim()->get_options('enable_update_pins') ){
-                $actions['pins_update_pins'] = __('Update pins','pinim');
-            }
-            $actions['pins_delete_pins'] = __('Move to Trash');
-        }
-        
-        return $actions;
-    }
-
-
-    /** ************************************************************************
-     * Optional. You can handle your bulk actions anywhere or anyhow you prefer.
-     * For this example package, we will handle it in the class to keep things
-     * clean and organized.
-     * 
-     * @see $this->prepare_items()
-     **************************************************************************/
-    function process_bulk_action() {
-        
-
-        
-    }
-
-
-    /** ************************************************************************
-     * REQUIRED! This is where you prepare your data for display. This method will
-     * usually be used to query the database, sort and filter the data, and generally
-     * get it ready to be displayed. At a minimum, we should set $this->items and
-     * $this->set_pagination_args(), although the following properties and methods
-     * are frequently interacted with here...
-     * 
-     * @global WPDB $wpdb
-     * @uses $this->_column_headers
-     * @uses $this->items
-     * @uses $this->get_columns()
-     * @uses $this->get_sortable_columns()
-     * @uses $this->get_pagenum()
-     * @uses $this->set_pagination_args()
-     **************************************************************************/
-
-
-}
-
-class Pinim_Pending_Pins_Table extends Pinim_Pins_Table {
-    
-    var $orderby = 'date';
-    var $order = 'desc';
-    
-    function __construct(){
-        parent::__construct();
-    }
-    
-    function get_columns(){
-        $columns = parent::get_columns();
-        $columns['board'] = __('Board');
-        
-        return $columns;
-    }
-    
-    function get_sortable_columns() {
-        $sortable_columns = array(
-            'title'             => array('title',false),
-            'source'             => array('source',false),
-            'date'              => array('date',true),     //true means it's already sorted
-            'board'      => array('board',false),
-        );
-        return $sortable_columns;
-    }
-    
-    /**
-    * This checks for sorting input and sorts the data in our array accordingly.
-    * 
-    * In a real-world situation involving a database, you would probably want 
-    * to handle sorting by passing the 'orderby' and 'order' values directly 
-    * to a custom query. The returned data will be pre-sorted, and this array
-    * sorting technique would be unnecessary.
-    */
-    function usort_reorder($a,$b){
-
-       switch ($this->orderby){
-           case 'title':
-
-               $title_a = ($a->get_datas('title')) ? $a->get_datas('title') : $a->pin_id;
-               $title_b = ($b->get_datas('title')) ? $b->get_datas('title') : $b->pin_id;
-               $result = strcmp($title_a, $title_b);
-           break;
-
-           case 'date_updated':
-               $post_a = $a->get_post();
-               $post_b = $b->get_post();
-               $timestamp_a = get_post_modified_time( 'U', false, $post_a );
-               $timestamp_b = get_post_modified_time( 'U', false, $post_b );
-               $result = strcmp($timestamp_a, $timestamp_b);
-           break;
-
-           case 'board':
-
-               $board_a = $a->get_board();
-               $board_b = $b->get_board();
-               $board_a_name = $board_a->get_datas('name');
-               $board_b_name = $board_b->get_datas('name');
-               $result = strcmp($board_a_name, $board_b_name);
-
-           break;
-
-           case 'date':
-               
-               $pinterest_date_a = $a->get_datas('created_at');
-               $pinterest_date_b = $b->get_datas('created_at');
-               
-               $timestamp_a = strtotime($pinterest_date_a);
-               $timestamp_b = strtotime($pinterest_date_b);
-               
-               $result = strcmp($timestamp_a, $timestamp_b);
-           break;
-
-           case 'source':
-
-               $source_a = $a->get_datas('domain');
-               $source_b = $b->get_datas('domain');
-
-               $result = strcmp($source_a, $source_b);
-           break;
-
-       }
-
-       return ($this->order==='asc') ? $result : -$result; //Send final sort direction to usort
     }
     
     function prepare_items() {
@@ -1062,16 +774,136 @@ class Pinim_Pending_Pins_Table extends Pinim_Pins_Table {
         ) );
     }
     
+	/**
+	 * Get an associative array ( id => link ) with the list
+	 * of views available on this table.
+	 *
+	 * @since 3.1.0
+	 * @access protected
+	 *
+	 * @return array
+	 */
+	protected function get_views() {
+		return array();
+	}
 
-    
-    function get_actions($pin){
+	/**
+	 * Display the list of views available on this table.
+	 *
+	 * @since 3.1.0
+	 * @access public
+	 */
+	public function views() {
+		$views = $this->get_views();
+
+		if ( empty( $views ) )
+			return;
+
+		echo "<ul class='subsubsub'>\n";
+		foreach ( $views as $class => $view ) {
+			$views[ $class ] = "\t<li class='$class'>$view";
+		}
+		echo implode( " |</li>\n", $views ) . "</li>\n";
+		echo "</ul>";
+	}
+
+
+    /** ************************************************************************
+     * Optional. If you need to include bulk actions in your list table, this is
+     * the place to define them. Bulk actions are an associative array in the format
+     * 'slug'=>'Visible Title'
+     * 
+     * If this method returns an empty value, no bulk action will be rendered. If
+     * you specify any bulk actions, the bulk actions box will be rendered with
+     * the table automatically on display().
+     * 
+     * Also note that list tables are not automatically wrapped in <form> elements,
+     * so you will need to create those manually in order for bulk actions to function.
+     * 
+     * @return array An associative array containing all the bulk actions: 'slugs'=>'Visible Titles'
+     **************************************************************************/
+    function get_bulk_actions() {
+        $actions = array();
         
-        $actions = parent::get_actions($pin);
-        $actions['import'] = $pin->get_link_action_import();
+        $actions['pins_import_pins'] = __('Import pins','pinim');
         
         return $actions;
     }
 
+
+    /** ************************************************************************
+     * Optional. You can handle your bulk actions anywhere or anyhow you prefer.
+     * For this example package, we will handle it in the class to keep things
+     * clean and organized.
+     * 
+     * @see $this->prepare_items()
+     **************************************************************************/
+    function process_bulk_action() {
+        
+
+        
+    }
+
+
+    /**
+    * This checks for sorting input and sorts the data in our array accordingly.
+    * 
+    * In a real-world situation involving a database, you would probably want 
+    * to handle sorting by passing the 'orderby' and 'order' values directly 
+    * to a custom query. The returned data will be pre-sorted, and this array
+    * sorting technique would be unnecessary.
+    */
+    function usort_reorder($a,$b){
+
+       switch ($this->orderby){
+           case 'title':
+
+               $title_a = ($a->get_datas('title')) ? $a->get_datas('title') : $a->pin_id;
+               $title_b = ($b->get_datas('title')) ? $b->get_datas('title') : $b->pin_id;
+               $result = strcmp($title_a, $title_b);
+           break;
+
+           case 'date_updated':
+               $post_a = $a->get_post();
+               $post_b = $b->get_post();
+               $timestamp_a = get_post_modified_time( 'U', false, $post_a );
+               $timestamp_b = get_post_modified_time( 'U', false, $post_b );
+               $result = strcmp($timestamp_a, $timestamp_b);
+           break;
+
+           case 'pin_board':
+
+               $board_a = $a->get_board();
+               $board_b = $b->get_board();
+               $board_a_name = $board_a->get_datas('name');
+               $board_b_name = $board_b->get_datas('name');
+               $result = strcmp($board_a_name, $board_b_name);
+
+           break;
+
+           case 'date':
+               
+               $pinterest_date_a = $a->get_datas('created_at');
+               $pinterest_date_b = $b->get_datas('created_at');
+               
+               $timestamp_a = strtotime($pinterest_date_a);
+               $timestamp_b = strtotime($pinterest_date_b);
+               
+               $result = strcmp($timestamp_a, $timestamp_b);
+           break;
+
+           case 'pin_source':
+
+               $source_a = $a->get_datas('domain');
+               $source_b = $b->get_datas('domain');
+
+               $result = strcmp($source_a, $source_b);
+           break;
+
+       }
+
+       return ($this->order==='asc') ? $result : -$result; //Send final sort direction to usort
+    }
     
     function get_pin_id($pin){
         return $pin->pin_id;
@@ -1107,7 +939,16 @@ class Pinim_Pending_Pins_Table extends Pinim_Pins_Table {
         return sprintf('<span%1$s></span>',pinim_get_classes_attr($icon_classes));
     }
     
-    function column_source($pin){
+    function column_pin_thumbnail($item){
+
+        return sprintf(
+            '<img src="%1$s" class="img-cover"/>',
+            $this->get_thumbnail_url($item)
+        );
+
+    }
+    
+    function column_pin_source($pin){
         
         $text = $url = null;
 
@@ -1124,7 +965,7 @@ class Pinim_Pending_Pins_Table extends Pinim_Pins_Table {
         );
     }
     
-    function column_board($pin){
+    function column_pin_board($pin){
 
         $board = $pin->get_board();
 
@@ -1142,216 +983,6 @@ class Pinim_Pending_Pins_Table extends Pinim_Pins_Table {
         $time = date_i18n( get_option( 'time_format'), $timestamp );
         return sprintf( __('%1$s at %2$s','pinim'), $date, $time );
     }
-    
-}
-
-class Pinim_Processed_Pins_Table extends Pinim_Pins_Table {
-    
-    var $query_args = array();
-    var $query = null;
-    var $per_page = 10;
-    var $orderby = 'modified';
-    var $order = 'desc';
-    
-    function __construct($args = array()){
-        
-        parent::__construct();
-        
-        $this->per_page = pinim()->get_options('pins_per_page');
-        
-        $default = array(
-            'post_type'         => pinim()->pin_post_type,
-            'post_status'       => array('publish','pending','draft','future','private'),
-            'posts_per_page' => $this->per_page,
-            'orderby'   => $this->orderby,
-            'order'     => $this->order,
-            'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
-        );
-
-        $this->query_args = wp_parse_args($args,$default);
-    }
-    
-    function get_columns(){
-        $columns = parent::get_columns();
-
-        $columns['date_updated'] = __('Last Updated','pinim');
-        $columns['categories'] = __('Categories');
-        
-        return $columns;
-    }
-    
-    function get_sortable_columns() {
-        $sortable_columns = array(
-            'title'             => array('title',false),     
-            'date'              => array('date',false),
-            'date_updated'      => array('modified',true), //true means it's already sorted
-            //'categories'      => array('date_updated',false), //TO FIX TO WORK ON
-        );
-        return $sortable_columns;
-    }
-    
-    function prepare_items() {
-        global $wpdb; //This is used only if making any database queries
-
-        /**
-         * REQUIRED. Now we need to define our column headers. This includes a complete
-         * array of columns to be displayed (slugs & titles), a list of columns
-         * to keep hidden, and a list of columns that are sortable. Each of these
-         * can be defined in another method (as we've done here) before being
-         * used to build the value for our _column_headers property.
-         */
-        $columns = $this->get_columns();
-        $hidden = array();
-        $sortable = $this->get_sortable_columns();
 
 
-        /**
-         * REQUIRED. Finally, we build an array to be used by the class for column 
-         * headers. The $this->_column_headers property takes an array which contains
-         * 3 other arrays. One for all columns, one for hidden columns, and one
-         * for sortable columns.
-         */
-        $this->_column_headers = array($columns, $hidden, $sortable);
-
-
-        /**
-         * Optional. You can handle your bulk actions however you see fit. In this
-         * case, we'll handle them within our package just to keep things clean.
-         */
-        $this->process_bulk_action();
-
-        //query
-        $this->query = new WP_Query($this->query_args);
-
-        /**
-         * REQUIRED for pagination. Let's figure out what page the user is currently 
-         * looking at. We'll need this later, so you should always include it in 
-         * your own package classes.
-         */
-        $current_page = $this->get_pagenum();
-
-        /**
-         * REQUIRED for pagination. Let's check how many items are in our data array. 
-         * In real-world use, this would be the total number of items in your database, 
-         * without filtering. We'll need this later, so you should always include it 
-         * in your own package classes.
-         */
-        $total_items = $this->query->found_posts;
-
-        /**
-         * REQUIRED. Now we can add our *sorted* data to the items property, where 
-         * it can be used by the rest of the class.
-         */
-        $this->items = $this->query->posts;
-
-        /**
-         * REQUIRED. We also have to register our pagination options & calculations.
-         */
-        $this->set_pagination_args( array(
-            'total_items' => $total_items,                  //WE have to calculate the total number of items
-            'per_page'    => $this->per_page,               //WE have to determine how many items to show on a page
-            'total_pages' => ceil($total_items/$this->per_page)   //WE have to calculate the total number of pages
-        ) );
-    }
-    
-
-    
-    function get_pin_id($post){
-        return pinim_get_pin_meta('pin_id',$post->ID,true);
-    }
-    
-    function get_pin_title($post){
-        return get_the_title($post->ID);
-    }
-    
-    function get_thumbnail_url($item){
-        return get_the_post_thumbnail_url($item->ID);
-    }
-    
-    function get_icons($post){
-        //post icon
-        $icon_classes = array('post-state-format','post-format-icon');
-        
-        $format = get_post_format( $post->ID );
-        
-        switch ($format){
-            case 'image':
-                $icon_classes[] = 'post-format-image';
-            break;
-            case 'video':
-                $icon_classes[] = 'post-format-video';
-            break;
-        }
-
-        return sprintf('<span%1$s></span>',pinim_get_classes_attr($icon_classes));
-    }
-    
-    function get_actions($post){
-        
-        $actions = parent::get_actions($post);
-        
-        $actions['view'] = sprintf(
-            '<a href="%1$s">%2$s</a>',
-            get_permalink( $post->ID ),
-            __('View')
-
-        );
-        
-        $actions['edit'] = sprintf(
-            '<a href="%1$s">%2$s</a>',
-            get_edit_post_link( $post->ID ),
-            __('Edit post','pinim')
-
-        );
-        $actions['delete'] = sprintf(
-            '<a href="%1$s">%2$s</a>',
-            get_delete_post_link( $post->ID ),
-            __('Move to Trash')
-
-        );
-        
-        if ( pinim()->get_options('enable_update_pins') ) {
-            $actions['update'] = $post->get_link_action_update();
-        }
-        
-        return $actions;
-        
-    }
-    
-    function column_date($post){
-        $timestamp = get_post_time( 'U', false, $post );
-        $date = date_i18n( get_option( 'date_format'), $timestamp );
-        $time = date_i18n( get_option( 'time_format'), $timestamp );
-        return sprintf( __('%1$s at %2$s','pinim'), $date, $time );
-    }
-    
-    function column_date_updated($post){
-        $timestamp = get_post_modified_time( 'U', false, $post );
-        $date = date_i18n( get_option( 'date_format'), $timestamp );
-        $time = date_i18n( get_option( 'time_format'), $timestamp );
-        return sprintf( __('%1$s at %2$s','pinim'), $date, $time );
-    }    
-    
-    function column_source($post){
-        
-        $text = $url = null;
-        $log = pinim_get_pin_log($post->ID);
-
-        $text = $log['domain'];
-        $url = $log['link'];
-
-        //if (!$text || !$url) return;
-
-        return sprintf(
-            '<a target="_blank" href="%1$s">%2$s</a>',
-            esc_url($url),
-            $text
-        );
-    }
-    
-    
-    function column_categories($post){
-        return get_the_category_list( '', '', $post->ID );
-    }
-    
 }

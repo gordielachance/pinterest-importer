@@ -122,13 +122,23 @@ class PinIm {
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts_styles' ) );
         add_action( 'add_meta_boxes', array($this, 'pinim_metabox'));
         
-        //handle pins columns
+        //pins list
         add_filter( 'manage_'.$this->pin_post_type.'_posts_columns', array($this, 'pins_table_columns') );
         add_action( 'manage_'.$this->pin_post_type.'_posts_custom_column', array($this, 'pins_table_columns_content'), 10, 2 );
+        add_filter( "views_edit-pin", array($this, 'pins_list_views') );
     }
     
     function load_textdomain() {
         load_plugin_textdomain( 'pinim', false, $this->plugin_dir . '/languages' );
+    }
+    
+    function pins_list_views($views){
+        $pending_count = pinim_tool_page()->get_pins_count_pending();
+        $awaiting_url = pinim_get_menu_url(array('page'=>'pending-importation'));
+
+        $views['pending_import'] = sprintf('<a href="%s">%s <span class="count">(%s)</span></a>',$awaiting_url,__('Pending importation','pinim'),$pending_count);
+
+        return $views;
     }
     
     function upgrade(){

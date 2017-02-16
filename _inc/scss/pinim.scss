@@ -60,20 +60,20 @@
         }
 
         tr{
-        &:hover td.column-thumbnail img {
-            opacity: 1;
-        }
+            &:hover td.column-thumbnail img {
+                opacity: 1;
+            }
 
-        .item-id{
-            color:silver;
-        }
+            .item-id{
+                color:silver;
+            }
 
-
-
-        }
 
 
         }
+
+
+    }
     
     &.pin_page_account{
         #pinim_login_box{
@@ -232,7 +232,7 @@
 
         }
 
-        &#pinim-form-follow-boards-input{
+        #pinim-form-follow-boards-input{
             width: 65%;
             margin: auto;
             #follow-new-board{
@@ -244,13 +244,10 @@
 
         }
 
-        &#pinim-form-pins{
-            .wp-list-table {
-                tbody tr{
-                }
-            }
-        }
 
+    }
+    &.pin_page_pending-importation{
+        
     }
 }
 

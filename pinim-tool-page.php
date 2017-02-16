@@ -1,5 +1,5 @@
 <?php
-
+    
 class Pinim_Tool_Page {
     var $page_acount;
     var $page_boards;
@@ -34,20 +34,20 @@ class Pinim_Tool_Page {
             'update_all_pins'       =>__( 'Update All Pins','pinim' )
         );
         
-        //add_action( 'admin_init', array( $this, 'reduce_settings_errors' ) );
         add_action( 'admin_init', array( $this, 'settings_init' ) );
         add_action( 'admin_menu',array(&$this,'admin_menu'),10,2);
 
         add_action( 'current_screen', array( $this, 'register_session' ), 1);
-        
-        add_action( 'current_screen', array( $this, 'page_account_init') );
-        add_action( 'current_screen', array( $this, 'page_boards_init') );
-        add_action( 'current_screen', array( $this, 'page_pins_init') );
-        
         add_action('wp_logout', array( $this, 'destroy_session' ) );
         add_action('wp_login', array( $this, 'destroy_session' ) );
-        
+
+        add_action( 'current_screen', array( $this, 'page_account_init') );
+        add_action( 'current_screen', array( $this, 'page_boards_init') );
+        add_action( 'current_screen', array( $this, 'page_pending_import_init') );
+
         add_action( 'all_admin_notices', array($this, 'plugin_header_feedback_notice') );
+        
+        add_filter( "post_type_labels_" . pinim()->pin_post_type,array( $this, 'page_pending_import_labels' ) );
         
     }
 
@@ -270,19 +270,8 @@ class Pinim_Tool_Page {
                 $feedback =  array( __("We're ready to process !","pinim") );
                 $feedback[] = sprintf( _n( '%s new pin was found in the queued boards.', '%s new pins were found in the queued boards.', $pending_count, 'pinim' ), $pending_count );
                 $feedback[] = sprintf( __('You can <a href="%1$s">import them all</a>, or go to the <a href="%2$s">Pins list</a> for advanced control.',"pinim"),
-                            pinim_get_menu_url(
-                                array(
-                                    'page'              => 'boards',
-                                    'step'              => 'pins-list',
-                                    'all_pins_action'   => $this->all_action_str['import_all_pins']
-                                )
-                            ),
-                            pinim_get_menu_url(
-                                array(
-                                    'page'  => 'boards',
-                                    'step'  => 'pins-list'
-                                )
-                            )
+                            pinim_get_menu_url(array('page'=>'pending-importation','all_pins_action'=>$this->all_action_str['import_all_pins'])),
+                            pinim_get_menu_url(array('page'=>'pending-importation'))
                 );
 
                 add_settings_error('pinim_form_boards','ready_to_import',implode('  ',$feedback),'updated inline');
@@ -292,11 +281,13 @@ class Pinim_Tool_Page {
         }
     }
     
-    function page_pins_init(){
+    function page_pending_import_init(){
         $screen = get_current_screen();
-        if ($screen->id != 'edit-pin') return;
+        if ($screen->id != 'pin_page_pending-importation') return;
         
-        /* SAVE PINS */
+        /*
+        IMPORT PINS
+        */
 
         $action = ( isset($_REQUEST['action']) && ($_REQUEST['action']!=-1)  ? $_REQUEST['action'] : null);
         if (!$action){
@@ -461,65 +452,49 @@ class Pinim_Tool_Page {
                         }
                     }
 
-                    //update screen filter
-                    $_REQUEST['pins_filter'] = 'processed';
+                    //redirect to processed pins
+                    $url = pinim_get_menu_url();
+                    wp_redirect( $url );
 
                 break;
             }
             
         }
         
-        /* INIT PINS */
+        //clear pins selection //TO FIX REQUIRED ?
+        //unset($_REQUEST['pin_ids']);
+        //unset($_POST['pinim_form_pins']);
+        
+        /*
+        INIT PENDING  PINS
+        */
+        
+        $this->table_pins = new Pinim_Pending_Pins_Table();
+        if ($pins_ids = $this->get_requested_pins_ids()){
+            $pins_ids = array_diff($pins_ids, $this->existing_pin_ids);
 
-        $pins = array();
+            //populate pins
+            foreach ((array)$pins_ids as $pin_id){
+                $pins[] = new Pinim_Pin($pin_id);
+            }
 
-        switch ( $this->get_screen_pins_filter() ){
-            case 'pending':
-
-                $this->table_pins = new Pinim_Pending_Pins_Table();
-                if ($pins_ids = $this->get_requested_pins_ids()){
-                    $pins_ids = array_diff($pins_ids, $this->existing_pin_ids);
-
-                    //populate pins
-                    foreach ((array)$pins_ids as $pin_id){
-                        $pins[] = new Pinim_Pin($pin_id);
-                    }
-
-                    $this->table_pins->input_data = $pins;
-                    $this->table_pins->prepare_items();
-                }
-
-            break;
-            case 'processed':
-                $this->table_posts = new Pinim_Processed_Pins_Table();
-                $this->table_posts->prepare_items();
-            break;
+            $this->table_pins->input_data = $pins;
+            $this->table_pins->prepare_items();
         }
-
-        //clear pins selection
-        unset($_REQUEST['pin_ids']);
-        unset($_POST['pinim_form_pins']);
+        
+        
     }
     
-    /**
-     * Removes duplicate settings errors (based on their messages)
-     * @global type $wp_settings_errors
-     */
-    
-    function reduce_settings_errors(){
-        //remove duplicates errors based on their message
-        global $wp_settings_errors;
-
-        if (empty($wp_settings_errors)) return;
+    function page_pending_import_labels($labels){
+        $post_type = (isset($_REQUEST['post_type'])) ? $_REQUEST['post_type'] : null;
+        $page = (isset($_REQUEST['page'])) ? $_REQUEST['page'] : null;
         
-        foreach($wp_settings_errors as $key => $value) {
-          foreach($wp_settings_errors as $key2 => $value2) {
-            if($key != $key2 && $value['message'] === $value['message']) {
-              unset($wp_settings_errors[$key]);
-            }
-          }
+        if ( ($post_type==pinim()->pin_post_type) && ($page=='pending-importation') ){
+            $boards_url = pinim_get_menu_url(array('page'=>'boards'));
+            $labels->not_found = sprintf(__('No pending pins found. You need to <a href="%s">cache some Pinterest Boards</a> first!','pinim'),$boards_url);
         }
-        
+
+        return $labels;
     }
     
     function get_screen_boards_view_filter(){
@@ -552,25 +527,6 @@ class Pinim_Tool_Page {
         return $filter;
     }
     
-    function get_screen_pins_filter(){
-
-        $default = pinim()->get_options('pins_filter');
-        $stored = $this->get_session_data('pins_filter');
-        
-        if ( !pinim_tool_page()->get_pins_count_pending() ){
-            $default = 'processed';
-        }
-
-        $filter = $stored ? $stored : $default;
-
-        if ( isset($_REQUEST['pins_filter']) ) {
-            $filter = $_REQUEST['pins_filter'];
-            pinim_tool_page()->set_session_data('pins_filter',$filter);
-        }
-        
-        return $filter;
-    }
-    
     function form_do_login($login=null,$password=null){
 
         //try to auth
@@ -589,8 +545,7 @@ class Pinim_Tool_Page {
         
     }
 
-    
-   function do_bridge_login($login = null, $password = null){
+    function do_bridge_login($login = null, $password = null){
        
         if ( !$logged = $this->bridge->is_logged_in() ){
             
@@ -624,7 +579,7 @@ class Pinim_Tool_Page {
 
    }
    
-   function cache_boards_pins($boards){
+    function cache_boards_pins($boards){
 
        if (!is_array($boards)){
             $boards = array($boards); //support single items
@@ -662,6 +617,15 @@ class Pinim_Tool_Page {
             'manage_options', //TO FIX
             'boards', 
             array($this, 'page_boards')
+        );
+        
+        $this->page_pending_import = add_submenu_page(
+            sprintf('edit.php?post_type=%s',pinim()->pin_post_type), 
+            __('Pending importation','pinim'), 
+            __('Pending importation','pinim'), 
+            'manage_options', //TO FIX
+            'pending-importation', 
+            array($this, 'page_pending_import')
         );
             
         
@@ -992,6 +956,27 @@ class Pinim_Tool_Page {
                 <?php
             }
             ?>
+        </div>
+        <?php
+    }
+    
+    function page_pending_import(){
+?>
+        <div class="wrap">
+            <h2><?php _e('Pins pending importation','pinim');?></h2>
+            <form action="<?php echo pinim_get_menu_url(array('page'=>'pending-importation'));?>" method="post">
+
+                <div class="tab-description">
+                    <p>
+                        <?php _e("This is the list of all the boards we've fetched from your profile, including your likes.","pinim");?>
+                    </p>
+                </div>
+                <?php
+                $this->table_pins->views_display();
+                $this->table_pins->views();
+                $this->table_pins->display();                            
+                ?>
+            </form>
         </div>
         <?php
     }
@@ -1330,8 +1315,6 @@ class Pinim_Tool_Page {
 
         return $action;
     }
-
-
 
     function get_all_boards_action(){
         $action = null;
