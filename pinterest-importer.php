@@ -56,6 +56,7 @@ class PinIm {
     
     var $page_account = null;
     var $page_settings = null;
+    var $page_boards = null;
 
     /**
     * @var The one true Instance
@@ -122,8 +123,10 @@ class PinIm {
             require $this->plugin_dir . 'pinim-class-bridge.php';      
             $this->bridge = new Pinim_Bridge;
             
-            require $this->plugin_dir . 'pinim-page-settings.php';
+            
             require $this->plugin_dir . 'pinim-page-account.php';
+            require $this->plugin_dir . 'pinim-page-boards.php';
+            require $this->plugin_dir . 'pinim-page-settings.php';
             require $this->plugin_dir . 'pinim-tool-page.php';
             
         }
