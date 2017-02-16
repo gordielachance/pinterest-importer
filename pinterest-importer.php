@@ -109,24 +109,22 @@ class PinIm {
     function includes(){
         require $this->plugin_dir . 'pinim-functions.php';
         require $this->plugin_dir . 'pinim-templates.php';
-        require $this->plugin_dir . 'pinim-pin-class.php';
-        //require $this->plugin_dir . 'pinim-ajax.php';
-        require $this->plugin_dir . 'pinim-board-class.php';
-        
-        
+
         if ( is_admin() ){
             
             //communication with Pinterest
             require $this->plugin_dir . 'pinim-class-bridge.php';      
             $this->bridge = new Pinim_Bridge;
+            
+            require $this->plugin_dir . 'pinim-classes.php';
+            //require $this->plugin_dir . 'pinim-ajax.php';
 
+            require $this->plugin_dir . 'pinim-dummy-importer.php';
             require $this->plugin_dir . 'pinim-account.php';
             require $this->plugin_dir . 'pinim-boards.php';
             require $this->plugin_dir . 'pinim-pending-imports.php';
             require $this->plugin_dir . 'pinim-settings.php';
-            require $this->plugin_dir . 'pinim-dummy-importer.php';
-            
-            
+
         }
 
     }

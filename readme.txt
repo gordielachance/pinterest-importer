@@ -97,6 +97,11 @@ function pin_custom_content($post,$pin,$is_update){
 * Now uses a 'pin' post type instead of the 'post' default post types.  This makes it easier to handle pins, use specific theme templates or capabilities, etc. + Upgrade routine for previous versions.
 * New 'Pins' menu in the backend with a 'Pinterest Account', 'Pinterest Boards' and 'Settings' pages; which replaces the page tabs from the previous versions.
 
+TO FIX
+* Date of imported pin does not match
+* Auto-cached boards do not auto-cache
+* Save preference for simple/advanced boards view with default to simple
+
 = 0.4.7 =
 * Less API calls
 * !!! Secret boards are currently unsupported.  TO FIX.
@@ -111,12 +116,12 @@ function pin_custom_content($post,$pin,$is_update){
 * Improved errors & responses from pinim-class-bridge; plugin was crashing
 * Removed the ‘me’ stuff, so force user to login with username (so we got it) instead of username or email.
 = 0.4.3 =
-* new function Pinim_Pin::get_post_content()
-* renamed Pinim_Pin::build_post_content() to Pinim_Pin::append_medias()
+* new function Pinim_Pin_Item::get_post_content()
+* renamed Pinim_Pin_Item::build_post_content() to Pinim_Pin_Item::append_medias()
 * ignore pin source if does not exists (pin uploaded by user on Pinterest)
 = 0.4.2 =
 * two new options about post stati when importing pins.
-* removed functions get_blank_post() and get_post_status(), which have been merged with Pinim_Pin::save()
+* removed functions get_blank_post() and get_post_status(), which have been merged with Pinim_Pin_Item::save()
 * renamed the filter 'pinim_before_pin_insert' to 'pinim_before_save_pin'.
 = 0.4.1 =
 * New filter 'pinim_attachment_before_insert'
@@ -181,12 +186,10 @@ function pin_custom_content($post,$pin,$is_update){
 * First release
 
 == TO DO ==
-* Unchecked checkboxes won't save in the plugin's options (erased by default options as their values are false ?)
 * use wp_update_term_count() ? seems posts count for categories is not updated.
 * add source in post content should be optional
 * a trashed pin should not be considered existing ?
 * use some ajax functions (Pinterest queries, etc.)
-* allow to fetch pins from any Pinterest board
 * bug when creating 'pinim_boards_settings' : last board settings are not saved, so it is detected as new board when the page refreshes.
 
 == Upgrade Notice ==

@@ -344,13 +344,13 @@ class Pinim_Boards {
         if ( is_wp_error($boards_datas) ) return $boards_datas;
 
         foreach((array)$boards_datas as $single_board_datas){
-            $boards[] = new Pinim_Board($single_board_datas['url'],$single_board_datas);
+            $boards[] = new Pinim_Board_Item($single_board_datas['url'],$single_board_datas);
         }
         
         //likes
         $username = pinim()->get_user_infos('username');
         $likes_url = Pinim_Bridge::get_short_url($username,'likes');
-        $boards[] = new Pinim_Board($likes_url);
+        $boards[] = new Pinim_Board_Item($likes_url);
         
         return $boards;
         
@@ -376,7 +376,7 @@ class Pinim_Boards {
             if ( !$user_boards_data || is_wp_error($user_boards_data) ) continue;
             
             if ($slug == 'likes'){
-                $boards[] = new Pinim_Board($url);
+                $boards[] = new Pinim_Board_Item($url);
             }else{
                 //get our board
                 $user_boards_data = array_filter(
@@ -388,7 +388,7 @@ class Pinim_Boards {
 
                 if (empty($user_boards_data)) continue;
                 $board_data = array_shift($user_boards_data);
-                $boards[] = new Pinim_Board($board_url,$board_data);
+                $boards[] = new Pinim_Board_Item($board_url,$board_data);
                 
             }
         

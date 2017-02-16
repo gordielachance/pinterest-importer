@@ -82,7 +82,7 @@ class Pinim_Pending_Imports {
                         }
 
                         //save pin
-                        $pin = new Pinim_Pin($pin_id);
+                        $pin = new Pinim_Pin_Item($pin_id);
                         $pin_saved = $pin->save();
                         if (is_wp_error($pin_saved)){
                             $pins_errors[$pin->pin_id] = $pin_saved;
@@ -165,7 +165,7 @@ class Pinim_Pending_Imports {
 
             //populate pins
             foreach ((array)$pins_ids as $pin_id){
-                $pins[] = new Pinim_Pin($pin_id);
+                $pins[] = new Pinim_Pin_Item($pin_id);
             }
 
             $this->table_pins->input_data = $pins;
