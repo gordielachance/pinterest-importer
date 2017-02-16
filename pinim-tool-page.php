@@ -46,9 +46,7 @@ class Pinim_Tool_Page {
         add_action( 'current_screen', array( $this, 'page_pending_import_init') );
 
         add_action( 'all_admin_notices', array($this, 'plugin_header_feedback_notice') );
-        
-        add_filter( "post_type_labels_" . pinim()->pin_post_type,array( $this, 'page_pending_import_labels' ) );
-        
+
     }
 
     function page_account_init(){
@@ -469,6 +467,11 @@ class Pinim_Tool_Page {
         /*
         INIT PENDING  PINS
         */
+        if ( !pinim_tool_page()->get_pins_count_pending() ){
+            $boards_url = pinim_get_menu_url(array('page'=>'boards'));
+            add_settings_error('pinim_form_pending_import','not_logged',sprintf(__('To list the pins you can import here, you first need to <a href="%s">cache some Pinterest Boards</a>.','pinim'),$boards_url),'error inline');
+        }
+
         
         $this->table_pins = new Pinim_Pending_Pins_Table();
         if ($pins_ids = $this->get_requested_pins_ids()){
@@ -485,18 +488,7 @@ class Pinim_Tool_Page {
         
         
     }
-    
-    function page_pending_import_labels($labels){
-        $post_type = (isset($_REQUEST['post_type'])) ? $_REQUEST['post_type'] : null;
-        $page = (isset($_REQUEST['page'])) ? $_REQUEST['page'] : null;
-        
-        if ( ($post_type==pinim()->pin_post_type) && ($page=='pending-importation') ){
-            $boards_url = pinim_get_menu_url(array('page'=>'boards'));
-            $labels->not_found = sprintf(__('No pending pins found. You need to <a href="%s">cache some Pinterest Boards</a> first!','pinim'),$boards_url);
-        }
 
-        return $labels;
-    }
     
     function get_screen_boards_view_filter(){
         
@@ -960,8 +952,8 @@ class Pinim_Tool_Page {
 ?>
         <div class="wrap">
             <h2><?php _e('Pins pending importation','pinim');?></h2>
+            <?php settings_errors('pinim_form_pending_import');?>
             <form action="<?php echo pinim_get_menu_url(array('page'=>'pending-importation'));?>" method="post">
-
                 <?php
                 $this->table_pins->views_display();
                 $this->table_pins->views();
