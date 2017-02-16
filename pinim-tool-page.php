@@ -319,70 +319,6 @@ class Pinim_Tool_Page {
 
                 break;
 
-                case 'pins_update_pins':
-
-                    if ( !pinim()->get_options('enable_update_pins') ) break;
-
-                    foreach((array)$bulk_pins_ids as $key=>$pin_id){
-
-                        //skip
-
-                        if ( !in_array( $pin_id,pinim_get_processed_pins_ids() ) ){
-                            $skip_pin_import[] = $pin_id;
-                            continue;
-                        }
-
-                        //save pin
-                        $pin = new Pinim_Pin($pin_id);
-                        $pin_saved = $pin->save(true);
-                        if (is_wp_error($pin_saved)){
-                            $pins_errors[$pin->pin_id] = $pin_saved;
-                        }
-
-                    }
-
-                    //errors
-
-                    if (!empty($bulk_pins_ids) && !empty($skip_pin_import)){
-
-                        //remove skipped pins from bulk
-                        foreach((array)$bulk_pins_ids as $key=>$pin_id){
-                            if (!in_array($pin_id,$skip_pin_import)) continue;
-                            unset($bulk_pins_ids[$key]);
-                        }
-
-                        if (!$all_pins_action){
-
-                            add_settings_error('feedback_pending_import', 'pins_never_imported', 
-                                sprintf(
-                                    __( 'Some pins cannot be updated because they never have been imported.  Choose "%1$s" if you want import pins. (Pins: %2$s)', 'pinim' ),
-                                    __('Import Pins','pinim'),
-                                    implode(',',$skip_pin_import)
-                                ),
-                                'inline'
-                            );
-                        }
-
-                    }
-
-
-                    if (!empty($bulk_pins_ids)){
-
-                        $bulk_count = count($bulk_pins_ids);
-                        $errors_count = (!empty($pins_errors)) ? count($pins_errors) : 0;
-                        $success_count = $bulk_count-$errors_count;
-
-                        if ($success_count){
-                            add_settings_error('feedback_pending_import', 'update_pins', sprintf( _n( '%s pin was successfully updated.', '%s pins were successfully updated.', $success_count,'pinim' ), $success_count ), 'updated inline');
-                        }
-
-                        if (!empty($pins_errors)){
-                            foreach ((array)$pins_errors as $pin_id=>$pin_error){
-                                add_settings_error('feedback_pending_import', 'update_pin_'.$pin_id, $pin_error->get_error_message(),'inline');
-                            }
-                        }
-                    }
-                break;
                 case 'pins_import_pins':
 
                     foreach((array)$bulk_pins_ids as $key=>$pin_id){
@@ -744,14 +680,6 @@ class Pinim_Tool_Page {
             'settings_import'//section
         );
         
-        add_settings_field(
-            'enable_update_pins', 
-            __('Enable pin updating','pinim'), 
-            array( $this, 'update_pins_field_callback' ), 
-            'pinim-settings-page', // Page
-            'settings_import' //section
-        );
-        
         add_settings_section(
             'settings_system', // ID
             __('System','pinim'), // Title
@@ -1031,23 +959,6 @@ class Pinim_Tool_Page {
             PinIm::$meta_name_options,
             checked( $option, "on", false ),
             __("Set post status to private if the pin's board is secret.","pinim")
-        );
-    }
-    
-    function update_pins_field_callback(){
-        $option = pinim()->get_options('enable_update_pins');
-
-        $disabled = true;
-        
-        $desc = __('Enable pin updating, which will add links to reload the content of a pin that already has been imported.','pinim');
-        $desc .= '  <small>'.__('(Not yet implemented)','pinim').'</small>';
-        
-        printf(
-            '<input type="checkbox" name="%1$s[playlist_link]" value="on" %2$s %3$s/> %4$s',
-            PinIm::$meta_name_options,
-            checked( (bool)$option, true, false ),
-            disabled( $disabled , true, false),
-            $desc
         );
     }
     

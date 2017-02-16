@@ -90,7 +90,6 @@ class PinIm {
                 'pins_per_page'         => 25,
                 'category_root_id'      => null,
                 'category_likes_id'     => null,
-                'enable_update_pins'    => false,
                 'boards_view_filter'    => 'simple',
                 'boards_filter'         => 'all',
                 'pins_filter'           => 'pending',

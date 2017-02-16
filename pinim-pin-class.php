@@ -115,30 +115,6 @@ class Pinim_Pin{
 
         return $link;
     }
-    
-    function get_link_action_update(){
-        
-        if ( !pinim()->get_options('enable_update_pins') ) return;
-        
-        if ( !in_array( $this->pin_id,pinim_get_processed_pins_ids() ) ) return;
-
-        $link_args = array(
-            'page'      => 'boards',
-            'step'      => 'pins-list',
-            'action'    => 'pins_update_pins',
-            'pin_ids'   => $this->pin_id,
-            //'paged'   => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
-        );
-
-        $link = sprintf(
-            '<a href="%1$s">%2$s</a>',
-            pinim_get_menu_url($link_args),
-            __('Update pin','pinim')
-
-        );
-
-        return $link;
-    }
 
     function get_post_tags(){
         $tags = array();
