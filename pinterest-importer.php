@@ -109,19 +109,25 @@ class PinIm {
     }
 
     function includes(){
-        
-        require $this->plugin_dir . 'pinim-class-bridge.php';      //communication with Pinterest
-        $this->bridge = new Pinim_Bridge;
-        
         require $this->plugin_dir . 'pinim-functions.php';
         require $this->plugin_dir . 'pinim-templates.php';
         require $this->plugin_dir . 'pinim-pin-class.php';
         //require $this->plugin_dir . 'pinim-ajax.php';
         require $this->plugin_dir . 'pinim-board-class.php';
         require $this->plugin_dir . 'pinim-dummy-importer.php';
-        require $this->plugin_dir . 'pinim-page-settings.php';
-        require $this->plugin_dir . 'pinim-page-account.php';
-        require $this->plugin_dir . 'pinim-tool-page.php';
+        
+        if ( is_admin() ){
+            
+            //communication with Pinterest
+            require $this->plugin_dir . 'pinim-class-bridge.php';      
+            $this->bridge = new Pinim_Bridge;
+            
+            require $this->plugin_dir . 'pinim-page-settings.php';
+            require $this->plugin_dir . 'pinim-page-account.php';
+            require $this->plugin_dir . 'pinim-tool-page.php';
+            
+        }
+
     }
 
     function setup_actions(){  

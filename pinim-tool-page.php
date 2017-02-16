@@ -974,6 +974,4 @@ function pinim_tool_page() {
 	return Pinim_Tool_Page::instance();
 }
 
-if (is_admin()){
-    pinim_tool_page();
-}
+pinim_tool_page();
