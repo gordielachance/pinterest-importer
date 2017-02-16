@@ -158,7 +158,7 @@ class Pinim_Board{
     function populate_session(){
 
         //get it
-        $boards_sessions = pinim_tool_page()->get_session_data('user_boards');
+        $boards_sessions = pinim()->get_session_data('user_boards');
         
         //keep only our board
         $board_id = $this->board_id;
@@ -183,7 +183,7 @@ class Pinim_Board{
     function save_session(){
         
         //all boards session
-        $boards_sessions = pinim_tool_page()->get_session_data('user_boards');
+        $boards_sessions = pinim()->get_session_data('user_boards');
 
         $session = array(
             'board_id'      => $this->board_id,
@@ -207,7 +207,7 @@ class Pinim_Board{
 
         $boards_sessions[] = $session;
 
-        if ( $success = pinim_tool_page()->set_session_data('user_boards',$boards_sessions) ){
+        if ( $success = pinim()->set_session_data('user_boards',$boards_sessions) ){
             $this->populate_session();
             return $success;
         }

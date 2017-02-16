@@ -50,7 +50,7 @@ class PinIm {
     var $user_boards_options = null;
     var $pinterest_url = 'https://www.pinterest.com';
     var $root_term_name = 'Pinterest.com';
-
+    var $session = null;
 
     /**
     * @var The one true Instance
@@ -126,6 +126,11 @@ class PinIm {
         add_filter( 'manage_'.$this->pin_post_type.'_posts_columns', array($this, 'pins_table_columns') );
         add_action( 'manage_'.$this->pin_post_type.'_posts_custom_column', array($this, 'pins_table_columns_content'), 10, 2 );
         add_filter( "views_edit-pin", array($this, 'pins_list_views') );
+        
+        //sessions
+        add_action( 'current_screen', array( $this, 'register_session' ), 1);
+        add_action('wp_logout', array( $this, 'destroy_session' ) );
+        add_action('wp_login', array( $this, 'destroy_session' ) );
     }
     
     function load_textdomain() {
@@ -161,7 +166,7 @@ class PinIm {
         }else{
             
             //force destroy session
-            pinim_tool_page()->destroy_session();
+            $this->destroy_session();
             
             if($current_version < '208'){ //switch post type to 'pin'
                 
@@ -355,6 +360,43 @@ class PinIm {
         $db_version = pinim_get_pin_meta('db_version')[0];
         echo '<small id="pinim-db-version">' . sprintf(__( 'Pinterest Importer DB version: %s', 'pinim' ),'<strong>' . $db_version . '</strong>') . '</small>';
         
+    }
+    
+    /**
+     * Register a session so we can store the temporary data.
+     */
+    function register_session(){
+        $screen = get_current_screen();
+        if ( $screen->post_type != $this->pin_post_type ) return;
+        if( !session_id() ) session_start();
+    }
+    
+    function destroy_session(){
+        $this->delete_session_data();
+    }
+
+    function set_session_data($key,$data){
+
+        $_SESSION['pinim'][$key] = $data;
+        return true;
+    }
+    
+    function delete_session_data($key = null){
+        if ($key){
+            if (!isset($_SESSION['pinim'][$key])) return false;
+            unset($_SESSION['pinim'][$key]);
+            return;
+        }
+        unset($_SESSION['pinim']);
+    }
+    
+    function get_session_data($keys = null){
+        
+        if (!isset($_SESSION['pinim'])) return null;
+        $session = $_SESSION['pinim'];
+        
+        return pinim_get_array_value($keys, $session);
+
     }
     
     public function debug_log($message,$title = null) {

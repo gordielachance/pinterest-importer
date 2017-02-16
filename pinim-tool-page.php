@@ -37,10 +37,6 @@ class Pinim_Tool_Page {
         add_action( 'admin_init', array( $this, 'settings_init' ) );
         add_action( 'admin_menu',array(&$this,'admin_menu'),10,2);
 
-        add_action( 'current_screen', array( $this, 'register_session' ), 1);
-        add_action('wp_logout', array( $this, 'destroy_session' ) );
-        add_action('wp_login', array( $this, 'destroy_session' ) );
-
         add_action( 'current_screen', array( $this, 'page_account_init') );
         add_action( 'current_screen', array( $this, 'page_boards_init') );
         add_action( 'current_screen', array( $this, 'page_pending_import_init') );
@@ -54,7 +50,7 @@ class Pinim_Tool_Page {
         if ($screen->id != 'pin_page_account') return;
         
         if ( isset($_REQUEST['logout']) ){
-            $this->destroy_session();
+            pinim()->destroy_session();
             add_settings_error('feedback_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated inline');
         }elseif ( isset($_POST['pinim_form_login']) ){
 
@@ -493,13 +489,13 @@ class Pinim_Tool_Page {
     function get_screen_boards_view_filter(){
         
         $default = pinim()->get_options('boards_view_filter');
-        $stored = $this->get_session_data('boards_view_filter');
+        $stored = pinim()->get_session_data('boards_view_filter');
                 
         $filter = $stored ? $stored : $default;
 
         if ( isset($_REQUEST['boards_view_filter']) ) {
             $filter = $_REQUEST['boards_view_filter'];
-            pinim_tool_page()->set_session_data('boards_view_filter',$filter);
+            pinim()->set_session_data('boards_view_filter',$filter);
         }
         
         return $filter;
@@ -508,13 +504,13 @@ class Pinim_Tool_Page {
     
     function get_screen_boards_filter(){
         $default = pinim()->get_options('boards_filter');
-        $stored = $this->get_session_data('boards_filter');
+        $stored = pinim()->get_session_data('boards_filter');
                 
         $filter = $stored ? $stored : $default;
 
         if ( isset($_REQUEST['boards_filter']) ) {
             $filter = $_REQUEST['boards_filter'];
-            pinim_tool_page()->set_session_data('boards_filter',$filter);
+            pinim()->set_session_data('boards_filter',$filter);
         }
         
         return $filter;
@@ -527,8 +523,8 @@ class Pinim_Tool_Page {
         if ( is_wp_error($logged) ) return $logged;
         
         //store login / password
-        $this->set_session_data('login',$login);
-        $this->set_session_data('password',$password);
+        pinim()->set_session_data('login',$login);
+        pinim()->set_session_data('password',$password);
 
         //try to get user datas
         $user_datas = $this->get_user_infos();
@@ -542,10 +538,10 @@ class Pinim_Tool_Page {
        
         if ( !$logged = $this->bridge->is_logged_in() ){
             
-            if (!$login) $login = $this->get_session_data('login');
+            if (!$login) $login = pinim()->get_session_data('login');
             $login = trim($login);
 
-            if (!$password) $password = $this->get_session_data('password');
+            if (!$password) $password = pinim()->get_session_data('password');
             $password = trim($password);
 
             if (!$login || !$password){
@@ -1099,7 +1095,7 @@ class Pinim_Tool_Page {
     }
     
     function login_field_callback(){
-        $option = $this->get_session_data('login');
+        $option = pinim()->get_session_data('login');
         $disabled = disabled( (bool)$option , true, false);;
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Username');
@@ -1116,7 +1112,7 @@ class Pinim_Tool_Page {
     }
     
     function password_field_callback(){
-        $option = $this->get_session_data('password');
+        $option = pinim()->get_session_data('password');
         $disabled = disabled( (bool)$option, true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Password');
@@ -1143,9 +1139,9 @@ class Pinim_Tool_Page {
         //ignore when logging out
         if ( isset($_REQUEST['logout']) ) return;
         
-        if (!$username) $username = $this->get_session_data('login');
+        if (!$username) $username = pinim()->get_session_data('login');
         
-        $session_data = $this->get_session_data('user_datas');
+        $session_data = pinim()->get_session_data('user_datas');
 
         if ( !isset($session_data[$username]) ){
             
@@ -1154,7 +1150,7 @@ class Pinim_Tool_Page {
 
             $session_data[$username] = $userdata;
 
-            $this->set_session_data('user_datas',$session_data);
+            pinim()->set_session_data('user_datas',$session_data);
             
         }
         
@@ -1172,8 +1168,8 @@ class Pinim_Tool_Page {
      */
     
     function get_user_boards_data($username = null){
-        if (!$username) $username = $this->get_session_data('login');
-        $session_data = $this->get_session_data('user_datas_boards');
+        if (!$username) $username = pinim()->get_session_data('login');
+        $session_data = pinim()->get_session_data('user_datas_boards');
 
         if ( !isset($session_data[$username]) ){
 
@@ -1188,7 +1184,7 @@ class Pinim_Tool_Page {
             }
             
             $session_data[$username] = $userdata;
-            $this->set_session_data('user_datas_boards',$session_data);
+            pinim()->set_session_data('user_datas_boards',$session_data);
 
         }
 
@@ -1531,43 +1527,6 @@ class Pinim_Tool_Page {
         }
         
         return $output;
-    }
-
-    /**
-     * Register a session so we can store the temporary data.
-     */
-    function register_session(){
-        $screen = get_current_screen();
-        if ( $screen->post_type != pinim()->pin_post_type ) return;
-        if( !session_id() ) session_start();
-    }
-    
-    function destroy_session(){
-        $this->delete_session_data();
-    }
-
-    function set_session_data($key,$data){
-
-        $_SESSION['pinim'][$key] = $data;
-        return true;
-    }
-    
-    function delete_session_data($key = null){
-        if ($key){
-            if (!isset($_SESSION['pinim'][$key])) return false;
-            unset($_SESSION['pinim'][$key]);
-            return;
-        }
-        unset($_SESSION['pinim']);
-    }
-    
-    function get_session_data($keys = null){
-        
-        if (!isset($_SESSION['pinim'])) return null;
-        $session = $_SESSION['pinim'];
-        
-        return pinim_get_array_value($keys, $session);
-
     }
 
 }
