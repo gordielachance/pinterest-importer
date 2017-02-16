@@ -322,7 +322,7 @@ class Pinim_Tool_Page {
 
                         //skip
 
-                        if (!in_array($pin_id,$this->existing_pin_ids)){
+                        if ( !in_array( $pin_id,pinim_get_processed_pins_ids() ) ){
                             $skip_pin_import[] = $pin_id;
                             continue;
                         }
@@ -383,7 +383,7 @@ class Pinim_Tool_Page {
                     foreach((array)$bulk_pins_ids as $key=>$pin_id){
 
                         //skip
-                        if (in_array($pin_id,$this->existing_pin_ids)){
+                        if ( in_array( $pin_id,pinim_get_processed_pins_ids() ) ){
                             $skip_pin_import[] = $pin_id;
                             continue;
                         }
@@ -466,7 +466,7 @@ class Pinim_Tool_Page {
         
         $this->table_pins = new Pinim_Pending_Pins_Table();
         if ($pins_ids = $this->get_requested_pins_ids()){
-            $pins_ids = array_diff($pins_ids, $this->existing_pin_ids);
+            $pins_ids = array_diff( $pins_ids, pinim_get_processed_pins_ids() );
 
             //populate pins
             foreach ((array)$pins_ids as $pin_id){
@@ -779,7 +779,7 @@ class Pinim_Tool_Page {
         if ( $screen->post_type != pinim()->pin_post_type ) return;
         
 
-        $pins_count = count($this->existing_pin_ids);
+        $pins_count = count( pinim_get_processed_pins_ids() );
         if ($pins_count > 1){
             $rate_link_wp = 'https://wordpress.org/support/view/plugin-reviews/pinterest-importer?rate#postform';
             $rate_link = '<a href="'.$rate_link_wp.'" target="_blank" href=""><i class="fa fa-star"></i> '.__('Reviewing the plugin','pinim').'</a>';
@@ -1418,7 +1418,7 @@ class Pinim_Tool_Page {
     
     function get_pins_count_pending(){
         $pins_ids = $this->get_requested_pins_ids();
-        $pins_ids = array_diff($pins_ids, $this->existing_pin_ids);
+        $pins_ids = array_diff( $pins_ids, pinim_get_processed_pins_ids() );
 
         return count($pins_ids);
     }
