@@ -180,7 +180,7 @@ class Pinim_Boards {
             $autocache_boards = array();
             $queued_boards = array();
             
-            if ( pinim()->get_options('autocache') ) {
+            if ( pinim()->get_options('can_autocache') == 'on' ) {
                 $autocache_boards = $this->filter_boards($all_boards,'autocache');
             }
             
