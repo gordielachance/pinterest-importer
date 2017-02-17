@@ -160,13 +160,13 @@ function pinim_get_followed_boards_urls(){
     return pinim()->boards_followed_urls;
 }
 
-function pinim_get_boards_options(){
+function pinim_get_boards_options($keys = null){
     
     if (!pinim()->user_boards_options) {
         pinim()->user_boards_options = get_user_meta( get_current_user_id(), 'pinim_boards_settings', true);
     }
     
-    return pinim()->user_boards_options;
+    return pinim_get_array_value($keys, pinim()->user_boards_options);
 
 }
 

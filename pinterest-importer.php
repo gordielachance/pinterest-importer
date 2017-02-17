@@ -340,11 +340,8 @@ class PinIm {
         
     }
     
-    function get_options($key = null){
-        $options = $this->options;
-        if (!$key) return $options;
-        if (!isset($options[$key])) return false;
-        return $options[$key];
+    function get_options($keys = null){
+        return pinim_get_array_value($keys, $this->options);
     }
     
     public function get_default_option($name){
