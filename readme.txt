@@ -84,7 +84,7 @@ function pin_custom_content($post,$pin,$is_update){
 
 == Changelog ==
 
-= 0.4.X =
+= 0.4.8 =
 * Now uses a 'pin' post type instead of the 'post' default post types.  This makes it easier to handle pins, use specific theme templates or capabilities, etc. + Upgrade routine for previous versions.
 * New 'Pins' menu in the backend with a 'Pinterest Account', 'Pinterest Boards', 'Pending Importation' and 'Settings' pages; which replaces the page tabs from the previous versions.
 * Code improved (a lot !)
