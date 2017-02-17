@@ -142,6 +142,7 @@ class PinIm {
         add_filter( 'manage_'.$this->pin_post_type.'_posts_columns', array($this, 'pins_table_columns') );
         add_action( 'manage_'.$this->pin_post_type.'_posts_custom_column', array($this, 'pins_table_columns_content'), 10, 2 );
         add_filter( "views_edit-pin", array($this, 'pins_list_views') );
+        add_filter('post_row_actions', array($this, 'pins_row_actions'), 10, 2);
         
         //sessions
         add_action( 'current_screen', array( $this, 'register_session' ), 1);
@@ -163,6 +164,15 @@ class PinIm {
         $views['pending_import'] = sprintf('<a href="%s">%s <span class="count">(%s)</span></a>',$awaiting_url,__('Pending importation','pinim'),$pending_count);
 
         return $views;
+    }
+    
+    function pins_row_actions($actions, $post){
+        if ( $post->post_type == $this->pin_post_type ) {
+            $pin_id = pinim_get_pin_id_for_post($post->ID);
+            $url = pinim_get_pinterest_pin_url($pin_id);
+            $actions['pinterest']  = sprintf('<a href="%1$s" target="_blank">%2$s</a>',$url,__('View on Pinterest','pinim'),'view');
+        }
+        return $actions;
     }
     
     function upgrade(){
@@ -296,10 +306,9 @@ class PinIm {
             break;
             case 'pin_source':
                 $text = $url = null;
-                $log = pinim_get_pin_log($post_id);
 
-                $text = $log['domain'];
-                $url = $log['link'];
+                $text = pinim_get_pin_log($post_id,'domain');
+                $url = pinim_get_pin_log($post_id,'link');
 
                 //if (!$text || !$url) return;
 
