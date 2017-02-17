@@ -193,4 +193,10 @@ function pinim_get_pinterest_pin_url($pin_id){
     return $url;
 }
 
+function pinim_get_pin_id_for_post($post_id = null){
+    global $post;
+    if (!$post) $post_id = $post->ID;
+    return get_post_meta($post_id,'_pinterest-pin_id',true);
+}
+
 ?>

@@ -141,9 +141,3 @@ Returns an array of pin IDs that already have been imported
 function pinim_get_processed_pins_ids(){
     return pinim_get_meta_value_by_key('_pinterest-pin_id');
 }
-
-function pinim_get_pin_id_for_post($post_id = null){
-    global $post;
-    if (!$post) $post_id = $post->ID;
-    return get_post_meta($post_id,'_pinterest-pin_id',true);
-}
