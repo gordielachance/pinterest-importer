@@ -1,80 +1,65 @@
 @import "compass/css3";
+@import "pure-tree";
 
-.tools_page_pinim {
+.post-type-pin{
     
-    #header-links {
-      margin-bottom: 2em;
-      font-size:1.1em;
-      text-align:center;
-      a {
-        text-decoration: none;
-      }
+    #pinim-page-header{
+        padding:1em;
+        text-align:center;
+        #pinim-page-header-feedback{
+            font-size:1.1em;
+            a {
+                text-decoration: none;
+            }
+        }
+        #pinim-page-header-account{
+                padding: 1em;
+                position:relative;
+                text-align:right;
+                font-size:.9em;
+            
+                #user-info-thumb{
+                    background-color:#DDD;
+                    margin-right:0.5em;
+                    height: 2.5em;
+                    width: 2.5em;
+                    vertical-align: middle;
+                }
+
+
+
+                span{
+                    display:inline-block;
+                }
+            }
+
     }
     
-    #user-info{
-        height:3em;
-        line-height:3em;
-        position:relative;
-        text-align:right;
-
-        img{
-            //TO FIX weird behaviour, should be max-height;100% but is not working !
-            //max-height:100%;
-            max-height:2em;
-            width:auto;
-            padding-right:0.5em;
-            vertical-align:middle;
-        }
-
-        span{
-            display:inline-block;
+    .postbox#pinterest_log{
+        #pinim-db-version{
+            display:block;
+            text-align:right;
         }
     }
 
     .wrap .nav-tab-wrapper{
         margin-bottom:1em;
     }
+    
+    .wp-list-table {
 
-    .pinim_tab_content{
-        
-        .tab-description{
-            margin:2em;
-            p{
-                font-size:1.1em;
+        .column-pin_thumbnail,.column-board_thumbnail {
+            width: 100px;
+            position: relative;
+            overflow: hidden;
+            text-align:left;
+            
+            img{
+                height:100px;
             }
         }
-        
-        .view_filter{
-            float:right;
-        }
 
-        .wp-list-table {
-
-            .column-thumbnail {
-              width: 150px;
-              position: relative;
-              overflow: hidden;
-              text-align:left;
-              img {
-                object-fit: cover;
-                max-width: 100%;
-              }
-            }
-
-          td.column-thumbnail {
-            padding: 0;
-            img {
-              position: absolute;
-              width: 100%;
-              height: 100%;
-              object-fit: cover;
-              background-size: 100%;
-              background-repeat: no-repeat;
-              opacity: 0.6;
-            }
-          }
-
-          tr{
+        tr{
             &:hover td.column-thumbnail img {
                 opacity: 1;
             }
@@ -85,9 +70,48 @@
 
 
 
-          }
+        }
 
 
+    }
+    
+    &.pin_page_account{
+        #pinim_login_box{
+            max-width:250px;
+            margin:auto;
+            padding: 1em;
+            margin: 2em auto;
+            text-align:center;
+
+            #pinim_login_icon{
+                margin-bottom:2em;
+                i{
+                    font-size:5em;
+                }
+            }
+
+            input[type=text],input[type=password] {
+                font-size: 24px;
+                width: 100%;
+                padding: 3px;
+                margin: 2px 6px 16px 0;
+                background: #fbfbfb;
+            }
+
+        }
+
+        p.submit{
+            text-align:center;
+        }
+    }
+    
+    &.pin_page_settings{
+
+    }
+    &.pin_page_boards {
+
+        .view_filter{
+            float:right;
         }
 
         .pinim-pc-bar{
@@ -127,16 +151,16 @@
                 }
 
             }
-            
+
             &.color-light .pinim-pc-bar-text{
                 color:white;
             }
-            
+
             &.offline,&.empty{
                 .pinim-pc-bar-fill{
                     width:100%!important;
                 }
-                
+
                 .pinim-pc-bar-fill-color{
                     display:none;
                 }
@@ -157,124 +181,80 @@
 
         }
 
-        .pinim-form {
-            &.pinim-form-loading{
-                opacity:0.5;
-                pointer-events: none;
+        .pinim-form-boards{
 
-                #submit{
-
-                }
+            p.submit{
+                text-align:center;
             }
-            
-            &#pinim-form-login{
 
-                #pinim_login_box{
+            .wp-list-table {
 
-                    max-width:250px;
-                    margin:auto;
-                    padding: 1em;
-                    margin: 2em auto;
-                    text-align:center;
-
-                    #pinim_login_icon{
-                        margin-bottom:2em;
-                        i{
-                            font-size:5em;
-                        }
-                    }
-
-                    input[type=text],input[type=password] {
-                        font-size: 24px;
-                        width: 100%;
-                        padding: 3px;
-                        margin: 2px 6px 16px 0;
-                        background: #fbfbfb;
-                    }
-
-                }
-
-                    p.submit{
-                        text-align:center;
-                    }
-
-
-
-            }
-            
-            &.pinim-form-boards{
-
-                p.submit{
+                [data-colname]{
                     text-align:center;
                 }
 
-                .wp-list-table {
-
-                    [data-colname]{
-                        text-align:center;
-                    }
-
-                    .column-pin_count_imported{
-                        text-align:center;
-                    }
-
-                    .column-private {
-                      width: 4em;
-                    }
-
-                    .column-pin_count_remote {
-                      width: 8em;
-                    }
-
-                    tbody tr{
-                        &.is-checked{
-                            background-color:#FAFFE9;
-                        }
-                    }
-
+                .column-pin_count_imported{
+                    text-align:center;
                 }
 
-
-
-                &.view-filter-simple{
-
-                    width:65%;
-                    margin:auto;
-                    
-                    .item-id{
-                        display:none;
-                    }
-
-                    .column-category,.column-private,.column-board_id{
-                        display:none;
-                    }
+                .column-private {
+                  width: 4em;
                 }
 
+                .column-pin_count_remote {
+                  width: 8em;
+                }
 
-            }
-            
-            &#pinim-form-follow-boards-input{
-                width: 65%;
-                margin: auto;
-                #follow-new-board{
-                    textarea{
-                        width:100%;
-                        min-height:8em;
+                tbody tr{
+                    &.is-checked{
+                        background-color:#FAFFE9;
                     }
                 }
 
             }
-            
-            &#pinim-form-pins{
-                .wp-list-table {
-                    tbody tr{
-                    }
+
+
+
+            &.view-filter-simple{
+
+                width:65%;
+                margin:auto;
+
+                .item-id{
+                    display:none;
+                }
+
+                .column-category,.column-private,.column-board_id{
+                    display:none;
+                }
+            }
+
+
+        }
+
+        #pinim-form-follow-boards-input{
+            width: 65%;
+            margin: auto;
+            #follow-new-board{
+                textarea{
+                    width:100%;
+                    min-height:8em;
                 }
             }
 
         }
 
-    }
 
+    }
+    &.pin_page_pending-importation{
+        
+    }
+}
+
+img.img-cover,.img-cover > img {
+  vertical-align: top;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
 }
 

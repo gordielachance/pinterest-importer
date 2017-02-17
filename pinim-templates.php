@@ -1,32 +1,7 @@
 <?php
-
-
-
-function pinim_is_tool_page(){
-    global $pagenow;
-
-    switch($pagenow){
-        case 'tools.php':
-            if ( isset($_REQUEST['page']) && ($_REQUEST['page'] == 'pinim') ) return true;
-        break;
-        case 'options.php':
-            if ( isset($_REQUEST['option_page']) && ($_REQUEST['option_page'] == 'pinim') ) return true;
-        break;
-    }
-
-    return false;
-}
-
-function pinim_get_tool_page_step(){
-    if (!pinim_is_tool_page()) return false;
-    if (!isset($_REQUEST['step'])) return false;
-    return $_REQUEST['step'];
-}
-
-function pinim_get_tool_page_url($args = array()){
-    
+function pinim_get_menu_url($args = array()){
     $defaults = array(
-        'page'=>'pinim'
+        'post_type' => pinim()->pin_post_type
     );
 
     $args = wp_parse_args($args, $defaults);
@@ -37,8 +12,7 @@ function pinim_get_tool_page_url($args = array()){
             array_map( 'rawurlencode', array_values( $args ) )
     );
 
-    return add_query_arg($args,admin_url('tools.php'));
-
+    return add_query_arg($args,admin_url('edit.php'));
 }
 
 /**
@@ -49,7 +23,8 @@ function pinim_get_tool_page_url($args = array()){
 
 function pinim_get_post_by_pin_id($pin_id){
     $query_args = array(
-        'post_status'   => array('publish','pending','draft','future','private'),
+        'post_type'         => pinim()->pin_post_type,
+        'post_status'       => array('publish','pending','draft','future','private'),
         'meta_query'        => array(
             array(
                 'key'     => '_pinterest-pin_id',
@@ -57,7 +32,7 @@ function pinim_get_post_by_pin_id($pin_id){
                 'compare' => '='
             )
         ),
-        'posts_per_page' => 1
+        'posts_per_page'    => 1
     );
     $query = new WP_Query($query_args);
     if (!$query->have_posts()) return false;
@@ -88,8 +63,6 @@ function pinim_image_exists($img_url){
     if (!$query->have_posts()) return false;
     return $query->posts[0]->ID;
 }
-
-
 
 /**
  * Get a Pinterest pin url from its ID
@@ -159,12 +132,10 @@ function pinim_get_pin_meta($key = false, $post_id = false, $single = false){
 
 }
 
-function pinim_get_pin_log($post_id){
-
-    return unserialize(pinim_get_pin_meta('log',$post_id,true));
+function pinim_get_pin_log($post_id,$keys = null){
+    $log = unserialize(pinim_get_pin_meta('log',$post_id,true));
+    return pinim_get_array_value($keys, $log);
 }
-
-
 
 function pinim_get_followed_boards_urls(){
     
@@ -189,21 +160,21 @@ function pinim_get_followed_boards_urls(){
     return pinim()->boards_followed_urls;
 }
 
-function pinim_get_boards_options(){
+function pinim_get_boards_options($keys = null){
     
     if (!pinim()->user_boards_options) {
-        pinim()->user_boards_options = get_user_meta( get_current_user_id(), 'pinim_boards_settings', true);
+        pinim()->user_boards_options = get_user_meta( get_current_user_id(), pinim()->meta_name_user_boards_options, true);
     }
     
-    return pinim()->user_boards_options;
+    return pinim_get_array_value($keys, pinim()->user_boards_options);
 
 }
 
-function pinim_classes($classes){
-    echo pinim_get_classes($classes);
+function pinim_classes_attr($classes){
+    echo pinim_get_classes_attr($classes);
 }
 
-function pinim_get_classes($classes){
+function pinim_get_classes_attr($classes){
     if (empty($classes)) return;
     return' class="'.implode(' ',$classes).'"';
 }
@@ -222,8 +193,10 @@ function pinim_get_pinterest_pin_url($pin_id){
     return $url;
 }
 
-
-
-
+function pinim_get_pin_id_for_post($post_id = null){
+    global $post;
+    if (!$post) $post_id = $post->ID;
+    return get_post_meta($post_id,'_pinterest-pin_id',true);
+}
 
 ?>

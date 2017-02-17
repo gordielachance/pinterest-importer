@@ -130,10 +130,10 @@ class Pinim_Bridge{
             return new WP_Error('pinim',__('Missing required CSRF token','pinim'));
         }
         
-        $current_token = pinim_tool_page()->get_session_data('csrftoken',$token);
+        $current_token = pinim()->get_session_data('csrftoken',$token);
         
         if ($current_token != $token){
-            pinim_tool_page()->set_session_data('csrftoken',$token);
+            pinim()->set_session_data('csrftoken',$token);
             pinim()->debug_log('set_csrftoken() : ' . $token);
         }
 
@@ -142,7 +142,7 @@ class Pinim_Bridge{
     
     private function get_csrftoken($reset = false){
         
-        if ( ( !$token = pinim_tool_page()->get_session_data('csrftoken') ) || ($reset) ){
+        if ( ( !$token = pinim()->get_session_data('csrftoken') ) || ($reset) ){
 
             $headers = $this->get_app_headers();
             if ( is_wp_error($headers) ) return $headers;
@@ -197,7 +197,7 @@ class Pinim_Bridge{
     }
     
     public function is_logged_in(){
-        return pinim_tool_page()->get_session_data('is_logged_in');
+        return pinim()->get_session_data('is_logged_in');
     }
     
     /**
@@ -249,7 +249,7 @@ class Pinim_Bridge{
 
             pinim()->debug_log('has logged in');
             $is_logged_in = true;
-            pinim_tool_page()->set_session_data('is_logged_in',$is_logged_in);
+            pinim()->set_session_data('is_logged_in',$is_logged_in);
             
             
         }
@@ -285,7 +285,7 @@ class Pinim_Bridge{
         
         if ($this->_app_version) return $this->_app_version;
 
-        if ( !$app_version = pinim_tool_page()->get_session_data('app_version') ){
+        if ( !$app_version = pinim()->get_session_data('app_version') ){
             
             pinim()->debug_log('_getAppVersion():');
         
@@ -307,7 +307,7 @@ class Pinim_Bridge{
 
             if (isset($json['context']['app_version'])){
                 $app_version = $json['context']['app_version'];
-                pinim_tool_page()->set_session_data('app_version',$app_version);
+                pinim()->set_session_data('app_version',$app_version);
             }
             
             pinim()->debug_log($app_version);
@@ -391,7 +391,7 @@ class Pinim_Bridge{
      */
     public function get_user_datas($username){
         
-            if ( !$userdata = pinim_tool_page()->get_session_data('userdata') ){
+            if ( !$userdata = pinim()->get_session_data('userdata') ){
                 
                 pinim()->debug_log('get_user_datas() for user:' . $username);
 
@@ -414,7 +414,7 @@ class Pinim_Bridge{
 
                 $userdata = $api_response['data'];
 
-                pinim_tool_page()->set_session_data('userdata',$userdata);
+                pinim()->set_session_data('userdata',$userdata);
                 
             }
 

@@ -37,7 +37,7 @@ class Pinim_Dummy_Importer {
         );
     }
     function dispatch(){
-        $url = pinim_get_tool_page_url();
+        $url = pinim_get_menu_url(array('page'=>'boards'));
         printf(__('You should be redirected to <a href="%1$s">the Pinterest Importer page</a>.',"pinim"),$url);
         die();
     }
@@ -50,7 +50,7 @@ class Pinim_Dummy_Importer {
     
     function auto_redirect(){
         if (!$this->is_importer_page()) return false;
-        $url = pinim_get_tool_page_url();
+        $url = pinim_get_menu_url(array('page'=>'account'));
         wp_redirect( $url );
         die();
         
