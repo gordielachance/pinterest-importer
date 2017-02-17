@@ -76,7 +76,7 @@ class Pinim_Settings {
 
         register_setting(
             'pinim_option_group', // Option group
-            PinIm::$meta_name_options, // Option name
+            pinim()->meta_name_options, // Option name
             array( $this, 'settings_sanitize' ) // Sanitize
          );
         
@@ -190,7 +190,7 @@ function page_settings(){
         
         printf(
             '<input type="checkbox" name="%1$s[can_autocache]" value="on" %2$s/> %3$s<br/><p><small>%4$s</small></p>',
-            PinIm::$meta_name_options,
+            pinim()->meta_name_options,
             checked( $option, 'on', false ),
             __("Automatically cache displayed active boards.","pinim"),
             $warning
@@ -214,7 +214,7 @@ function page_settings(){
 
         printf(
             '<select name="%1$s[default_status]">%2$s</select>',
-            PinIm::$meta_name_options,
+            pinim()->meta_name_options,
             implode('',$select_options)
         );
     }
@@ -224,7 +224,7 @@ function page_settings(){
 
         printf(
             '<input type="checkbox" name="%1$s[can_autoprivate]" value="on" %2$s/> %3$s<br/>',
-            PinIm::$meta_name_options,
+            pinim()->meta_name_options,
             checked( $option, "on", false ),
             __("Set post status to private if the pin's board is secret.","pinim")
         );
@@ -237,7 +237,7 @@ function page_settings(){
     function reset_options_callback(){
         printf(
             '<input type="checkbox" name="%1$s[reset_options]" value="on"/> %2$s',
-            PinIm::$meta_name_options,
+            pinim()->meta_name_options,
             __("Reset options to their default values.","pinim")
         );
     }
@@ -245,7 +245,7 @@ function page_settings(){
     function delete_boards_settings_callback(){
         printf(
             '<input type="checkbox" name="%1$s[delete_boards_settings]" value="on"/> %2$s',
-            PinIm::$meta_name_options,
+            pinim()->meta_name_options,
             __("Delete the boards preferences for the current user","pinim")
         );
     }
@@ -255,7 +255,7 @@ function page_settings(){
         
         printf(
             '<input type="number" name="%1$s[boards_per_page]" size="3" value="%2$s" /> %3$s',
-            PinIm::$meta_name_options,
+            pinim()->meta_name_options,
             $option,
             '<small>'.__("0 = display all boards.","pinim").'</small>'
         );
@@ -267,7 +267,7 @@ function page_settings(){
 
         printf(
             '<input type="number" name="%1$s[pins_per_page]" size="3" min="10" value="%2$s" /><br/>',
-            PinIm::$meta_name_options,
+            pinim()->meta_name_options,
             $option
         );
         

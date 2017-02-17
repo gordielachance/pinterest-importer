@@ -44,7 +44,7 @@ class PinIm {
     public $options = array();
 
     public $pin_post_type = 'pin';
-    static $meta_name_options = 'pinim_options';
+    public $meta_name_options = 'pinim_options';
 
     var $boards_followed_urls = array();
     var $user_boards_options = null;
@@ -102,7 +102,7 @@ class PinIm {
                 'can_autoprivate'       => 'on'
             );
         
-            $this->options = wp_parse_args(get_option( self::$meta_name_options), $this->options_default);
+            $this->options = wp_parse_args(get_option( $this->meta_name_options), $this->options_default);
 
     }
 
