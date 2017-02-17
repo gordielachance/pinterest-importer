@@ -563,12 +563,15 @@ class Pinim_Boards {
         
         $default = pinim()->get_options('boards_layout');
         $stored = pinim()->get_session_data('boards_layout');
-                
         $filter = $stored ? $stored : $default;
 
-        if ( isset($_REQUEST['boards_layout']) ) {
-            $filter = $_REQUEST['boards_layout'];
+        $requested = ( isset($_REQUEST['boards_layout']) ) ? $_REQUEST['boards_layout'] : null;
+        $allowed = array('simple','advanced');
+
+        if ( $requested && in_array($requested,$allowed) ) {
+            $filter = $requested;
             pinim()->set_session_data('boards_layout',$filter);
+            
         }
         
         return $filter;
