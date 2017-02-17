@@ -132,9 +132,9 @@ function pinim_get_pin_meta($key = false, $post_id = false, $single = false){
 
 }
 
-function pinim_get_pin_log($post_id){
-
-    return unserialize(pinim_get_pin_meta('log',$post_id,true));
+function pinim_get_pin_log($post_id,$keys = null){
+    $log = unserialize(pinim_get_pin_meta('log',$post_id,true));
+    return pinim_get_array_value($keys, $log);
 }
 
 function pinim_get_followed_boards_urls(){
