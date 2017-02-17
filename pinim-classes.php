@@ -140,7 +140,7 @@ class Pinim_Board_Item{
         $boards_options[] = $this->options;
         $boards_options = array_values((array)$boards_options);//reset keys
 
-        if ($success = update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_options)){
+        if ($success = update_user_meta( get_current_user_id(), pinim()->meta_name_user_boards_options, $boards_options)){
             pinim()->user_boards_options = $boards_options; //force reload
             return $this->options;
         }else{

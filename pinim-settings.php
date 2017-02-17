@@ -29,7 +29,7 @@ class Pinim_Settings {
             
             //delete boards settings
             if ( isset($input['delete_boards_settings']) ){
-                delete_user_meta( get_current_user_id(), 'pinim_boards_settings');
+                delete_user_meta( get_current_user_id(), pinim()->meta_name_user_boards_options );
             }
 
             //boards per page

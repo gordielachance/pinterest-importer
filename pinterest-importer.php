@@ -45,6 +45,7 @@ class PinIm {
 
     public $pin_post_type = 'pin';
     public $meta_name_options = 'pinim_options';
+    public $meta_name_user_boards_options = 'pinim_boards_settings';
 
     var $boards_followed_urls = array();
     var $user_boards_options = null;
@@ -202,7 +203,7 @@ class PinIm {
                         unset($boards_settings[$key]['id']);
                     }
                 }
-                update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_settings);
+                update_user_meta( get_current_user_id(), $this->meta_name_user_boards_options, $boards_settings);
             }
             
             if($current_version < '206'){
@@ -211,7 +212,7 @@ class PinIm {
                     if (!isset($board['username']) || !isset($board['slug']) ) continue;
                     $boards_settings[$key]['url'] = Pinim_Bridge::get_short_url($board['username'],$board['slug']);
                 }
-                update_user_meta( get_current_user_id(), 'pinim_boards_settings', $boards_settings);
+                update_user_meta( get_current_user_id(), $this->meta_name_user_boards_options, $boards_settings);
             }
         }
 
