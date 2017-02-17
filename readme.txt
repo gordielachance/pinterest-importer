@@ -3,29 +3,30 @@ Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
 Tags: importer,Pinterest,pins,backup
 Requires at least: 3.5
-Tested up to: 4.6.1
+Tested up to: 4.7.2
 Stable tag: trunk
 License: GPLv2 or later
 
-Backup your Pinterest.com account by importing pins as Wordpress posts.  Supports boards, secret boards and likes.
+Backup your Pinterest.com account by importing pins in Wordpress.  Supports boards, secret boards and likes.
 
 == Description ==
 
-Pinterest Importer allows you to connect to your Pinterest.com account; to grab all your pins (including from secret boards); and to import them as Wordpress posts.
+Pinterest Importer allows you to connect to your Pinterest.com account; to grab all your pins (including from secret boards); and to import them in Wordpress.
 
 The difference with other plugins is that it is not based on the (very limited) official Pinterest API; which also requires SSL.
 This means that you can make a full backup (instead of getting only the last x pins); but it also means the plugin may broke one day or another.
 Better use it quick !
 
 * Nice GUI
-* Get pins from your boards, secret boards, and likes
-* Get pins from public boards by other users
-* Supports both image & video pins; and set corresponding post format
-* Import original HD images from pins
+* Uses a custom post type, which makes it easy to use specific theme templates or capabilities, etc.
+* Get pins from your boards, secret boards, and likes; but also from public boards by other users
+* Assign a Wordpress category to each of your board (or let us handle it automatically)
+* Supports both image & video pins; and sets automatically the corresponding post format
+* Downloads original HD images from pins
 * Can be used on an ongoing basis : pins will not be imported several times
+* Displays the original pin data in a metabox (Pinterest Log)
 * Set pin creation date as post date
 * Handles hashtags, which are converted to post tags
-* Keep the original pin informations (pin ID, source, etc) attached to the post (stored as post metas)
 
 = Donate! =
 It truly took me a LOT of time to code this plugin.
@@ -34,12 +35,9 @@ This would be very appreciated — Thanks !
 
 = Instruction =
 
-This plugin requires at least php 5.3.6 with the [exif extension enabled](http://stackoverflow.com/questions/23978360/php-fatal-error-call-to-undefined-function-exif-imagetype/23978385#23978385).
-
-1. Go to Tools -> Pinterest Importer.
-2. Select "My Account" tab; and login to Pinterest
-3. Select the "Boards Settings" tab and choose the boards you want to backup.
-4. Enjoy !
+1. Go to Pins -> Pinterest Account
+2. Follow the steps
+3. Enjoy !
 
 = Contributors =
 [Contributors are listed here](https://github.com/gordielachance/pinterest-importer/contributors)
@@ -52,8 +50,9 @@ If you are a plugin developer, [we would like to hear from you](https://github.c
 
 == Installation ==
 
+This plugin requires at least php 5.3.6 with the [exif extension enabled](http://stackoverflow.com/questions/23978360/php-fatal-error-call-to-undefined-function-exif-imagetype/23978385#23978385).
+
 1. Upload the plugin to your blog and Activate it.
-2. Go to Tools -> Pinterest Importer.
 
 == Frequently Asked Questions ==
 
@@ -65,16 +64,8 @@ For example :
 
 `<?php
 
-//switch the default post type to a custom one
-add_filter('pinim_before_save_pin','pin_custom_post_type');
-
-//change post content
+//change post content (have a look at the [codex](https://codex.wordpress.org/Class_Reference/WP_Post) for the list of available variables)
 add_filter('pinim_before_save_pin','pin_custom_content',10,3);
-
-function pin_custom_post_type($post){   
-    $post['post_type'] = 'MY_POST_TYPE';
-    return $post;
-}
 
 function pin_custom_content($post,$pin,$is_update){   
     $post['post_content'] = 'MY CONTENT';
@@ -95,7 +86,8 @@ function pin_custom_content($post,$pin,$is_update){
 
 = 0.4.X =
 * Now uses a 'pin' post type instead of the 'post' default post types.  This makes it easier to handle pins, use specific theme templates or capabilities, etc. + Upgrade routine for previous versions.
-* New 'Pins' menu in the backend with a 'Pinterest Account', 'Pinterest Boards' and 'Settings' pages; which replaces the page tabs from the previous versions.
+* New 'Pins' menu in the backend with a 'Pinterest Account', 'Pinterest Boards', 'Pending Importation' and 'Settings' pages; which replaces the page tabs from the previous versions.
+* Code improved (a lot !)
 
 TO FIX
 * Date of imported pin does not match
