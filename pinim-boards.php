@@ -249,7 +249,7 @@ class Pinim_Boards {
                 add_settings_error('feedback_login', 'no_sessions', __("It seems that your host doesn't support PHP sessions.  This plugin will not work properly.  We'll try to fix this soon.","pinim"),'inline');
             }
         
-            $form_classes[] = 'view-filter-'.$this->get_screen_boards_view_filter();
+            $form_classes[] = 'view-filter-'.$this->get_boards_layout();
             $form_classes[] = 'pinim-form-boards';
 
             settings_errors('feedback_boards');
@@ -559,16 +559,16 @@ class Pinim_Boards {
         return $output;
     }
     
-    function get_screen_boards_view_filter(){
+    function get_boards_layout(){
         
-        $default = pinim()->get_options('boards_view_filter');
-        $stored = pinim()->get_session_data('boards_view_filter');
+        $default = pinim()->get_options('boards_layout');
+        $stored = pinim()->get_session_data('boards_layout');
                 
         $filter = $stored ? $stored : $default;
 
-        if ( isset($_REQUEST['boards_view_filter']) ) {
-            $filter = $_REQUEST['boards_view_filter'];
-            pinim()->set_session_data('boards_view_filter',$filter);
+        if ( isset($_REQUEST['boards_layout']) ) {
+            $filter = $_REQUEST['boards_layout'];
+            pinim()->set_session_data('boards_layout',$filter);
         }
         
         return $filter;

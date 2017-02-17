@@ -1362,7 +1362,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         $link_simple_classes = $link_advanced_classes = array();
 
-        switch (pinim_boards()->get_screen_boards_view_filter()){
+        switch (pinim_boards()->get_boards_layout()){
             case 'simple':
                 $link_simple_classes[] = 'current';
             break;
@@ -1378,7 +1378,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             pinim_get_menu_url(
                 array(
                     'page'                  => 'boards',
-                    'boards_view_filter'    => 'simple'
+                    'boards_layout'    => 'simple'
                 )
             ),
             pinim_get_classes_attr($link_simple_classes),
@@ -1390,7 +1390,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             pinim_get_menu_url(
                 array(
                     'page'                  => 'boards',
-                    'boards_view_filter'    =>'advanced'
+                    'boards_layout'    =>'advanced'
                 )
             ),
             pinim_get_classes_attr($link_advanced_classes),
@@ -1416,7 +1416,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             if ( empty( $views ) )
                     return;
 
-            echo '<ul id="boards_view_filter" class="view_filter subsubsub">'."\n";
+            echo '<ul id="boards_layout" class="view_filter subsubsub">'."\n";
             foreach ( $views as $class => $view ) {
                     $views[ $class ] = "\t<li class='$class'>$view";
             }
