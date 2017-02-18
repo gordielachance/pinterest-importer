@@ -59,6 +59,8 @@ class PinIm {
     var $page_boards = null;
     var $page_pending_imports = null;
     var $page_settings = null;
+    
+    var $processed_pins_ids = null;
 
     /**
     * @var The one true Instance
@@ -110,6 +112,8 @@ class PinIm {
     function includes(){
         require $this->plugin_dir . 'pinim-functions.php';
         require $this->plugin_dir . 'pinim-templates.php';
+        
+        $this->processed_pins_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
 
         if ( is_admin() ){
             
@@ -428,7 +432,7 @@ class PinIm {
         $screen = get_current_screen();
         if ( $screen->post_type != pinim()->pin_post_type ) return;
 
-        $pins_count = count( pinim_get_processed_pins_ids() );
+        $pins_count = count( pinim()->processed_pins_ids );
         if ($pins_count > 1){
             $rate_link_wp = 'https://wordpress.org/support/view/plugin-reviews/pinterest-importer?rate#postform';
             $rate_link = '<a href="'.$rate_link_wp.'" target="_blank" href=""><i class="fa fa-star"></i> '.__('Reviewing the plugin','pinim').'</a>';
@@ -534,5 +538,6 @@ function pinim() {
 if (is_admin()){
     pinim();
 }
+
 
 ?>

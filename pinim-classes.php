@@ -245,12 +245,24 @@ class Pinim_Board_Item{
         return $percent;
     }
     
+    /*
+    This is heavy computing, so cache this.
+    */
+    
     function get_count_imported_pins(){
-        $imported = 0;
 
-        foreach ((array)$this->raw_pins as $raw_pin){
-            if ( in_array( $raw_pin['id'],pinim_get_processed_pins_ids() ) ) $imported++;
+        $cache_key = sprintf('board-%s-imported-pins',$this->board_id);
+        $imported = wp_cache_get( $cache_key, 'pinim' );
+        
+        if ( false === $imported ) {
+            $imported = 0;
+
+            foreach ((array)$this->raw_pins as $raw_pin){
+                if ( in_array( $raw_pin['id'],pinim()->processed_pins_ids ) ) $imported++;
+            }
+            wp_cache_set( $cache_key, $imported, 'pinim' );
         }
+        
         return $imported;
     }
     
@@ -286,10 +298,15 @@ class Pinim_Board_Item{
     //TO FIX TO CHECK
     //should compare with pin ids ?
     function is_fully_imported(){
-        if ( $this->get_count_imported_pins() < count( $this->raw_pins ) ) return false;
         
-        return true;
-        
+        $imported = false;
+
+        if ( $this->raw_pins && ( $this->get_count_imported_pins() >= count( $this->raw_pins ) ) ){
+            $imported = true;
+        }
+
+        return $imported;
+
     }
     
     

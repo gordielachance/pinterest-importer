@@ -76,7 +76,7 @@ class Pinim_Pending_Imports {
                     foreach((array)$bulk_pins_ids as $key=>$pin_id){
 
                         //skip
-                        if ( in_array( $pin_id,pinim_get_processed_pins_ids() ) ){
+                        if ( in_array( $pin_id,pinim()->processed_pins_ids ) ){
                             $skip_pin_import[] = $pin_id;
                             continue;
                         }
@@ -161,7 +161,7 @@ class Pinim_Pending_Imports {
         }
 
         if ($pins_ids = $this->get_requested_pins_ids()){
-            $pins_ids = array_diff( $pins_ids, pinim_get_processed_pins_ids() );
+            $pins_ids = array_diff( $pins_ids, pinim()->processed_pins_ids );
 
             //populate pins
             foreach ((array)$pins_ids as $pin_id){
@@ -277,7 +277,7 @@ class Pinim_Pending_Imports {
     
     function get_pins_count_pending(){
         $pins_ids = $this->get_requested_pins_ids();
-        $pins_ids = array_diff( $pins_ids, pinim_get_processed_pins_ids() );
+        $pins_ids = array_diff( $pins_ids, pinim()->processed_pins_ids );
 
         return count($pins_ids);
     }
