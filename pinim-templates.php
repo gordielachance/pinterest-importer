@@ -119,6 +119,8 @@ function pinim_get_pin_meta($key = false, $post_id = false, $single = false){
 
     }
     
+    if ( empty($pin_metas) ) return;
+    
     if ($key){
         $pin_metas = $pin_metas[$key];
     }

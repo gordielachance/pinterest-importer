@@ -172,9 +172,10 @@ class PinIm {
     
     function pins_row_actions($actions, $post){
         if ( $post->post_type == $this->pin_post_type ) {
-            $pin_id = pinim_get_pin_id_for_post($post->ID);
-            $url = pinim_get_pinterest_pin_url($pin_id);
-            $actions['pinterest']  = sprintf('<a href="%1$s" target="_blank">%2$s</a>',$url,__('View on Pinterest','pinim'),'view');
+            if ( $pin_id = pinim_get_pin_id_for_post($post->ID) ){
+                $url = pinim_get_pinterest_pin_url($pin_id);
+                $actions['pinterest']  = sprintf('<a href="%1$s" target="_blank">%2$s</a>',$url,__('View on Pinterest','pinim'),'view');
+            }
         }
         return $actions;
     }
@@ -369,25 +370,27 @@ class PinIm {
      */
     
     function pinim_metabox(){
-        add_meta_box(
-                'pinterest_log',
-                __( 'Pinterest Log', 'pinim' ),
-                array(&$this,'pinim_metabox_log_content'),
-                $this->pin_post_type
-        );
+        global $post;
+        if ( $log = pinim_get_pin_log($post->ID) ){
+            add_meta_box(
+                    'pinterest_log',
+                    __( 'Pinterest Log', 'pinim' ),
+                    array(&$this,'pinim_metabox_log_content'),
+                    $this->pin_post_type
+            );
+        }
     }
     
     function pinim_metabox_log_content( $post ) {
-        
-        $log = pinim_get_pin_log($post->ID);
 
         if ( $log = pinim_get_pin_log($post->ID) ){
             $list = pinim_get_list_from_array($log);
             printf('<div>%s</div>',$list);
         }
         
-        $db_version = pinim_get_pin_meta('db_version')[0];
-        echo '<small id="pinim-db-version">' . sprintf(__( 'Pinterest Importer DB version: %s', 'pinim' ),'<strong>' . $db_version . '</strong>') . '</small>';
+        if ( $db_version = pinim_get_pin_meta('db_version')[0] ){
+            echo '<small id="pinim-db-version">' . sprintf(__( 'Pinterest Importer DB version: %s', 'pinim' ),'<strong>' . $db_version . '</strong>') . '</small>';
+        }
         
     }
     
