@@ -160,7 +160,7 @@ class Pinim_Boards {
         
         $all_boards = array();
         //check that we are logged
-        $user_data = pinim()->get_user_infos();
+        $user_data = pinim_account()->get_user_infos();
         if ( is_wp_error($user_data) || !$user_data ){
             $login_url = pinim_get_menu_url(array('page'=>'account'));
             add_settings_error('feedback_boards','not_logged',sprintf(__('Please <a href="%s">login</a> to be able to list your board.','pinim'),$login_url),'error inline');
@@ -315,7 +315,7 @@ class Pinim_Boards {
         if ( !isset($session_data[$username]) ){
 
             //try to auth
-            $logged = pinim()->do_bridge_login();
+            $logged = pinim_account()->do_bridge_login();
             if ( is_wp_error($logged) ) return $logged;
 
             $userdata = pinim()->bridge->get_user_boards($username);
@@ -336,7 +336,7 @@ class Pinim_Boards {
     function get_boards_user(){
         $boards = array();
 
-        $user_data = pinim()->get_user_infos();
+        $user_data = pinim_account()->get_user_infos();
         if ( is_wp_error($user_data) ) return $user_data;
         if ( !$user_data ) return $boards;
 
@@ -348,7 +348,7 @@ class Pinim_Boards {
         }
         
         //likes
-        $username = pinim()->get_user_infos('username');
+        $username = pinim_account()->get_user_infos('username');
         $likes_url = Pinim_Bridge::get_short_url($username,'likes');
         $boards[] = new Pinim_Board_Item($likes_url);
         
@@ -469,7 +469,7 @@ class Pinim_Boards {
         $output = array();
         if( is_wp_error($boards) ) return $output;
         
-        $username = pinim()->get_user_infos('username');
+        $username = pinim_account()->get_user_infos('username');
         
         switch ($filter){
             case 'autocache':

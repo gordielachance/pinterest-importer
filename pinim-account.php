@@ -1,7 +1,21 @@
 <?php
 
 class Pinim_Account {
-    function __construct(){
+    
+    /**
+    * @var The one true Instance
+    */
+    private static $instance;
+
+    public static function instance() {
+            if ( ! isset( self::$instance ) ) {
+                    self::$instance = new Pinim_Account;
+                    self::$instance->init();
+            }
+            return self::$instance;
+    }
+    
+    function init(){
         add_action( 'admin_menu',array( $this,'admin_menu' ),9,2);
         add_action( 'current_screen', array( $this, 'page_account_init') );
     }
@@ -15,24 +29,6 @@ class Pinim_Account {
             'account', 
             array($this, 'page_account')
         );
-    }
-    
-    function form_do_login($login=null,$password=null){
-
-        //try to auth
-        $logged = pinim()->do_bridge_login($login,$password);
-        if ( is_wp_error($logged) ) return $logged;
-        
-        //store login / password
-        pinim()->set_session_data('login',$login);
-        pinim()->set_session_data('password',$password);
-
-        //try to get user datas
-        $user_datas = pinim()->get_user_infos();
-        if (is_wp_error($user_datas)) return $user_datas;
-
-        return true;
-        
     }
     
     function page_account_init(){
@@ -133,7 +129,96 @@ class Pinim_Account {
         printf('<p><label for="%1$s">%2$s</label>%3$s</p>',$el_id,$el_txt,$input);
     }
     
+    function form_do_login($login=null,$password=null){
+
+        //try to auth
+        $logged = $this->do_bridge_login($login,$password);
+        if ( is_wp_error($logged) ) return $logged;
+        
+        //store login / password
+        pinim()->set_session_data('login',$login);
+        pinim()->set_session_data('password',$password);
+
+        //try to get user datas
+        $user_datas = $this->get_user_infos();
+        if (is_wp_error($user_datas)) return $user_datas;
+
+        return true;
+        
+    }
     
+    /**
+    Login to pinterest using our custom bridge class
+    **/
+    function do_bridge_login($login = null, $password = null){
+       
+        if ( !$logged = pinim()->bridge->is_logged_in() ){
+            
+            if (!$login) $login = pinim()->get_session_data('login');
+            $login = trim($login);
+
+            if (!$password) $password = pinim()->get_session_data('password');
+            $password = trim($password);
+
+            if (!$login || !$password){
+                return new WP_Error( 'pinim',__('Missing login and/or password','pinim') );
+            }
+
+           //force use Pinterest username
+            if (strpos($login, '@') !== false) {
+                return new WP_Error( 'pinim',__('Use your Pinterest username here, not an email address.','pinim').' <code>https://www.pinterest.com/USERNAME/</code>' );
+            }
+
+
+            //try to auth
+            pinim()->bridge->set_login($login)->set_password($password);
+            $logged = pinim()->bridge->do_login();
+
+            if ( is_wp_error($logged) ){
+                return new WP_Error( 'pinim',$logged->get_error_message() );
+            }
+            
+        }
+
+        return $logged;
+
+   }
+    
+    /**
+     * Get datas for a user, from session cache or from Pinterest.
+     * @param type $username
+     * @return type
+     */
+    
+    function get_user_infos($keys = null,$username = null){
+        
+        //ignore when logging out
+        if ( isset($_REQUEST['logout']) ) return;
+        
+        if (!$username) $username = pinim()->get_session_data('login');
+        
+        $session_data = pinim()->get_session_data('user_datas');
+
+        if ( !isset($session_data[$username]) ){
+            
+            $userdata = pinim()->bridge->get_user_datas($username);
+            if ( is_wp_error($userdata) ) return $userdata;
+
+            $session_data[$username] = $userdata;
+
+            pinim()->set_session_data('user_datas',$session_data);
+            
+        }
+        
+        $datas = $session_data[$username];
+        return pinim_get_array_value($keys, $datas);
+
+    }
+
 }
 
-new Pinim_Account;
+function pinim_account() {
+	return Pinim_Account::instance();
+}
+
+pinim_account();

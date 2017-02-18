@@ -29,12 +29,12 @@ class Pinim_Board_Item{
         
         //datas
         if ( $this->slug == 'likes'){
-            $this->datas['id'] = pinim()->get_user_infos('id',$this->username);
+            $this->datas['id'] = pinim_account()->get_user_infos('id',$this->username);
             $this->datas['name'] = sprintf(__("%s's likes",'pinim'),$this->username).' <i class="fa fa-heart" aria-hidden="true"></i>';
-            $this->datas['pin_count'] = pinim()->get_user_infos('like_count',$this->username);
+            $this->datas['pin_count'] = pinim_account()->get_user_infos('like_count',$this->username);
             $this->datas['cover_images'] = array(
                 array(
-                    'url'   => pinim()->get_user_infos('image_medium_url',$this->username)
+                    'url'   => pinim_account()->get_user_infos('image_medium_url',$this->username)
                 )
             );
             $this->datas['url'] = $this->pinterest_url;
@@ -309,7 +309,7 @@ class Pinim_Board_Item{
         if (!$this->is_queue_complete()){
             
             //try to auth
-            $logged = pinim()->do_bridge_login();
+            $logged = pinim_account()->do_bridge_login();
             if ( is_wp_error($logged) ) return $logged;
 
             $bookmark = $this->bookmark; //uncomplete queue

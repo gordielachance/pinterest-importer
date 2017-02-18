@@ -424,74 +424,6 @@ class PinIm {
 
     }
     
-    /**
-    Login to pinterest using our custom bridge class
-    **/
-    function do_bridge_login($login = null, $password = null){
-       
-        if ( !$logged = $this->bridge->is_logged_in() ){
-            
-            if (!$login) $login = pinim()->get_session_data('login');
-            $login = trim($login);
-
-            if (!$password) $password = pinim()->get_session_data('password');
-            $password = trim($password);
-
-            if (!$login || !$password){
-                return new WP_Error( 'pinim',__('Missing login and/or password','pinim') );
-            }
-
-           //force use Pinterest username
-            if (strpos($login, '@') !== false) {
-                return new WP_Error( 'pinim',__('Use your Pinterest username here, not an email address.','pinim').' <code>https://www.pinterest.com/USERNAME/</code>' );
-            }
-
-
-            //try to auth
-            $this->bridge->set_login($login)->set_password($password);
-            $logged = $this->bridge->do_login();
-
-            if ( is_wp_error($logged) ){
-                return new WP_Error( 'pinim',$logged->get_error_message() );
-            }
-            
-        }
-
-        return $logged;
-
-   }
-    
-    /**
-     * Get datas for a user, from session cache or from Pinterest.
-     * @param type $username
-     * @return type
-     */
-    
-    function get_user_infos($keys = null,$username = null){
-        
-        //ignore when logging out
-        if ( isset($_REQUEST['logout']) ) return;
-        
-        if (!$username) $username = pinim()->get_session_data('login');
-        
-        $session_data = pinim()->get_session_data('user_datas');
-
-        if ( !isset($session_data[$username]) ){
-            
-            $userdata = $this->bridge->get_user_datas($username);
-            if ( is_wp_error($userdata) ) return $userdata;
-
-            $session_data[$username] = $userdata;
-
-            pinim()->set_session_data('user_datas',$session_data);
-            
-        }
-        
-        $datas = $session_data[$username];
-        return pinim_get_array_value($keys, $datas);
-
-    }
-    
     function plugin_page_header(){
         $screen = get_current_screen();
         if ( $screen->post_type != pinim()->pin_post_type ) return;
@@ -519,14 +451,14 @@ class PinIm {
         
         $user_icon = $user_text = $user_stats = null;
 
-        $user_data = pinim()->get_user_infos();
+        $user_data = pinim_account()->get_user_infos();
         if ( !is_wp_error($user_data) && $user_data ) { //logged
             
-            $user_icon = pinim()->get_user_infos('image_medium_url');
-            $username = pinim()->get_user_infos('username');
-            $board_count = (int)pinim()->get_user_infos('board_count');
-            $secret_board_count = (int)pinim()->get_user_infos('secret_board_count');
-            $like_count = (int)pinim()->get_user_infos('like_count');
+            $user_icon = pinim_account()->get_user_infos('image_medium_url');
+            $username = pinim_account()->get_user_infos('username');
+            $board_count = (int)pinim_account()->get_user_infos('board_count');
+            $secret_board_count = (int)pinim_account()->get_user_infos('secret_board_count');
+            $like_count = (int)pinim_account()->get_user_infos('like_count');
 
             //names
             $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$username.'</strong>');
