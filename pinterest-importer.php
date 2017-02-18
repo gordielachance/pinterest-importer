@@ -535,9 +535,6 @@ function pinim() {
 	return PinIm::instance();
 }
 
-if (is_admin()){
-    pinim();
-}
-
+pinim();
 
 ?>
