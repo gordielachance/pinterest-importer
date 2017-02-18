@@ -58,7 +58,7 @@ class Pinim_Boards {
 
             if ( is_wp_error($bulk_boards) ) return;
 
-            if (!$action) break;
+            if (!$action) return;
 
             switch ($action) {
 
