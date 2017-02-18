@@ -75,11 +75,11 @@ function pin_custom_content($post,$pin,$is_update){
 
 == Screenshots ==
 
-1. Login screen
-2. Boards Settings
-3. Pending Pins
-4. Processed Pins
-5. Plugin options
+1. Pinterest Account page
+2. Pinterest Boards page
+3. Pending Importation page
+4. (Processed) Pins list
+5. Plugin settings
 
 
 == Changelog ==
