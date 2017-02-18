@@ -1131,11 +1131,12 @@ class Pinim_Boards_Table extends WP_List_Table {
             'category'              => __('Category','pinim'),
             'private'               => __('Private','pinim'),
             'pin_count_remote'      => __('Board Pins','pinim'),
-            'pin_count_imported'    => __('Status','pinim')
+            'pin_count_imported'    => __('Status','pinim'),
+            'autocache'             => __('Auto-cache','pinim')
         );
         
-        if ( pinim()->get_options('can_autocache') == 'on' ){
-            $columns['autocache'] = __('Auto-cache','pinim');
+        if ( pinim()->get_options('can_autocache') != 'on' ){
+            $columns['autocache'] = sprintf('<strike>%s</strike>',$columns['autocache']);
         }
         
         if ( pinim_boards()->get_screen_boards_filter() != 'not_cached' ){
