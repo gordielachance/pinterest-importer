@@ -92,7 +92,7 @@ class Pinim_Account {
     
     function pinim_form_login_desc(){
         $session_cache = session_cache_expire();
-        echo '<p class="description">'.sprintf(__('Your login, password and datas retrieved from Pinterest will be stored for %1$s minutes in a PHP session. It is not stored in the database.','pinim'),$session_cache)."</p>";
+        echo '<p class="description">'.sprintf(__('Your login and password will be stored for %1$s minutes in a PHP session. It is not stored in the database.','pinim'),$session_cache)."</p>";
     }
 
     function login_field_callback(){
