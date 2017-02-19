@@ -97,7 +97,7 @@ class Pinim_Account {
 
     function login_field_callback(){
         $option = pinim()->get_session_data('login');
-        $disabled = disabled( (bool)$option , true, false);;
+        $disabled = disabled( pinim()->bridge->is_logged_in() , true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Username');
         $input = sprintf(
@@ -114,7 +114,7 @@ class Pinim_Account {
     
     function password_field_callback(){
         $option = pinim()->get_session_data('password');
-        $disabled = disabled( (bool)$option, true, false);
+        $disabled = disabled( pinim()->bridge->is_logged_in() , true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Password');
         
@@ -134,7 +134,7 @@ class Pinim_Account {
         //try to auth
         $logged = $this->do_bridge_login($login,$password);
         if ( is_wp_error($logged) ) return $logged;
-        
+
         //store login / password
         pinim()->set_session_data('login',$login);
         pinim()->set_session_data('password',$password);
@@ -168,7 +168,6 @@ class Pinim_Account {
             if (strpos($login, '@') !== false) {
                 return new WP_Error( 'pinim',__('Use your Pinterest username here, not an email address.','pinim').' <code>https://www.pinterest.com/USERNAME/</code>' );
             }
-
 
             //try to auth
             pinim()->bridge->set_login($login)->set_password($password);

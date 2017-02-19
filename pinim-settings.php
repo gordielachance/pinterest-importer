@@ -192,7 +192,7 @@ function page_settings(){
             '<input type="checkbox" name="%1$s[can_autocache]" value="on" %2$s/> %3$s<br/><p><small>%4$s</small></p>',
             pinim()->meta_name_options,
             checked( $option, 'on', false ),
-            __("Automatically cache displayed active boards.","pinim"),
+            __("Enable board auto-caching.","pinim"),
             $warning
         );
     }
