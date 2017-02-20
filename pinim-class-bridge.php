@@ -440,6 +440,7 @@ class Pinim_Bridge{
 
         //TO FIX to check : do we need bookmark here ?
         $data_options = array(
+            'filter'            => 'all', // all | public | secret ?
             'field_set_key'     => 'grid_item',
             'username'          => $username,
             'sort'              => 'profile',
@@ -464,7 +465,7 @@ class Pinim_Bridge{
             'body'          => $data,
         );
 
-        $api_response = $this->api_response('resource/BoardsResource/get/',$args);
+        $api_response = $this->api_response('resource/BoardsResource/get/',$args,'GET');
         
         if ( is_wp_error($api_response) ){
             return new WP_Error( 'pinim',sprintf(__('Error getting boards from user %s : %s.  Try refreshing the page !','pinim'),'</em>'.$username.'</em>',$api_response->get_error_message()) );
