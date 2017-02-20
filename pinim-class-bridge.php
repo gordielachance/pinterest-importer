@@ -343,7 +343,7 @@ class Pinim_Bridge{
             $response = wp_remote_post( $url, $args );
         }
         
-        pinim()->debug_log('api_response for: '.$url);
+        pinim()->debug_log('api_response() request for: '.$url);
         pinim()->debug_log( json_encode($args) );
 
         $bodyraw = wp_remote_retrieve_body($response);
@@ -352,11 +352,12 @@ class Pinim_Bridge{
         $token = $this->set_csrftoken($response); //udpate token & cookies for further requests
         if ( is_wp_error($token) ) return $token;
 
-        
         $data = null;
 
-        
         $body = $this->maybe_decode_response($bodyraw);
+        
+        pinim()->debug_log('api_response() response for: '.$url);
+        pinim()->debug_log( json_encode($body) );
 
         //check for errors
         if ( isset($body['resource_response']['error']) && $body['resource_response']['error'] ) {
@@ -409,7 +410,7 @@ class Pinim_Bridge{
                 $api_response = $this->api_response( $username,$args,'GET',array('module','tree','data') );
 
                 if ( is_wp_error($api_response) ){
-                    return new WP_Error( 'pinim',sprintf(__('Error while getting user data: %s','pinim'),$api_response->get_error_message()) );
+                    return new WP_Error( 'pinim',sprintf(__("Error while getting user data '%s': %s",'pinim'),$username,$api_response->get_error_message()) );
                 }
 
                 $userdata = $api_response['data'];
