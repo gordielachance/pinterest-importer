@@ -414,6 +414,8 @@ class PinIm {
     }
     
     function delete_session_data($key = null){
+        if (!isset($_SESSION['pinim'])) return false;
+        
         if ($key){
             if (!isset($_SESSION['pinim'][$key])) return false;
             unset($_SESSION['pinim'][$key]);
