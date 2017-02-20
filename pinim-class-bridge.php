@@ -71,8 +71,7 @@ class Pinim_Bridge{
                 'X-APP-VERSION'         => $app_version,
                 'X-NEW-APP'             => 1,
                 'X-Pinterest-AppState'  => 'active',
-                'X-Requested-With'      => 'XMLHttpRequest',
-                'X-Requested-With'      => 'XMLHttpRequest',
+                'X-Requested-With'      => 'XMLHttpRequest'
         );
 
         $login_headers = wp_parse_args(
