@@ -38,9 +38,6 @@ class Pinim_Boards {
         $screen = get_current_screen();
         if ($screen->id != 'pin_page_boards') return;
         
-        //warn users secret boards are temporary disabled()
-        add_settings_error('feedback_pinim','secret_boards_ignored',__("The plugin is currently unable to load secret boards. We'll try to fix this in the next release.",'pinim'),'error inline');
-        
         /*
         SAVE BOARDS
         */

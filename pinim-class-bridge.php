@@ -10,23 +10,30 @@ class Pinim_Bridge{
      * Pinterest.com base URL
      */
     static $pinterest_url               = 'https://www.pinterest.com';
-    static $pinterest_login_url         = 'https://www.pinterest.com/login';
-    
-    /**
-     * @var Pinterest App version loaded from pinterest.com
-     */
-    private $_app_version = null;
+    static $pinterest_api_url           = 'https://api.pinterest.com';
+
     private $_csrftoken = null;
     
     private $login = null;
     private $password = null;
     
-    private $cookies = array();
-    protected $headers = array();
+    protected $client = null; //web client
+    protected $remote_response = array('headers'=>null,'body'=>null);
 
     public function __construct(){
-        // Default HTTP headers for requests
+        // use Requests_Session here because it does maintain a cookie session
+        
+        $config = array(
+            'url'       => null,
+            'headers'   => $this->_get_default_headers(),
+            'data'      => array(),
+            'options'    => array(
+                'cookies'    => new \Requests_Cookie_Jar(),
+                'verify'    => false //SSL verify
+            )
+        );
 
+        $this->client = new Requests_Session($config['url'],$config['headers'],$config['data'],$config['options']);
     }
     
     /**
@@ -48,151 +55,82 @@ class Pinim_Bridge{
         return $this;
     }
     
-    function get_default_headers(){
+    private function _get_default_headers(){
         return array(
-            'Host'              => str_replace('https://', '', self::$pinterest_url),
-            'Origin'            => self::$pinterest_url,
-            'Referer'           => self::$pinterest_url,
-            'Connection'        => 'keep-alive',
-            'Pragma'            => 'no-cache',
-            'Cache-Control'     => 'no-cache',
-            'Accept-Language'   => 'en-US,en;q=0.5',
-            'User-Agent'        => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML => like Gecko) Iron/31.0.1700.0 Chrome/31.0.1700.0' 
+            'Connection' => 'keep-alive',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'no-cache',
+            'Accept-Language' => 'en-US,en;q=0.5',
+            'User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML => like Gecko) Iron/31.0.1700.0 Chrome/31.0.1700.0',
         );
-    }
-    
-    function get_app_headers(){
-
-        $app_version = $this->_getAppVersion();
-        if ( is_wp_error($app_version) ) return $app_version;
-
-        $login_headers = array(
-                'Accept'                => 'application/json, text/javascript, */*; q=0.01',
-                'X-APP-VERSION'         => $app_version,
-                'X-NEW-APP'             => 1,
-                'X-Pinterest-AppState'  => 'active',
-                'X-Requested-With'      => 'XMLHttpRequest'
-        );
-
-        $login_headers = wp_parse_args(
-                $this->get_default_headers(),
-                $login_headers
-        );
-        
-        return $login_headers;
-    }
-    
-    function get_logged_headers($reset_token = false,$extra_headers = array()){
-
-        $app_headers = $this->get_app_headers();
-        if ( is_wp_error($app_headers) ) return $app_headers;
-
-        $token = $this->get_csrftoken($reset_token);
-        if ( is_wp_error($token) ) return $token;
-
-        $logged_headers = wp_parse_args($extra_headers,$app_headers);
-        $logged_headers['X-CSRFToken'] = $token;
-        
-        pinim()->debug_log( json_encode($logged_headers) );
-
-        return $logged_headers;
-        
-    }
-    
-    public function maybe_decode_response($response){
-        if (substr($response, 0, 1) === '{') {
-            $response = json_decode($response, true);
-        }
-        return $response;
-    }
-    
-    public function set_csrftoken($response){
-        
-        /*
-        Sets the csrftoken
-        */
-        
-        $token = null;
-        
-        if ( is_wp_error($response) ) return false;
-        
-        $this->cookies = $response['cookies'];
-
-        foreach ((array)$this->cookies as $cookie){
-            if ($cookie->name !='csrftoken') continue;
-            $token = $cookie->value;
-            break;
-        }
-        if (!$token){
-            pinim()->debug_log('Missing required CSRF token');
-            pinim()->debug_log($this->cookies);
-            return new WP_Error('pinim',__('Missing required CSRF token','pinim'));
-        }
-        
-        $current_token = pinim()->get_session_data('csrftoken',$token);
-        
-        if ($current_token != $token){
-            pinim()->set_session_data('csrftoken',$token);
-            pinim()->debug_log('set_csrftoken() : ' . $token);
-        }
-
-        return $token;
-    }
-    
-    private function get_csrftoken($reset = false){
-        
-        if ( ( !$token = pinim()->get_session_data('csrftoken') ) || ($reset) ){
-
-            $headers = $this->get_app_headers();
-            if ( is_wp_error($headers) ) return $headers;
-
-            $args = array(
-                'headers'       => $headers,
-                'cookies'       => $this->cookies
-            );
-
-            $response = wp_remote_get( self::$pinterest_url, $args );
-
-            $token = $this->set_csrftoken($response); //udpate token & cookies for further requests
-
-        }
-        
-        return $token;
-        
-
     }
     
     /**
-    Check if the email exists in the Pinterest database
-    */
-    public function email_exists($email){
+     * Get Pinterest App Version.
+     * @return \WP_Error
+     */
+    private function _getAppVersion(){
+
+        if ( !$app_version = pinim()->get_session_data('app_version') ){
+            
+            pinim()->debug_log('_getAppVersion():');
+            
+            $loaded = $this->loadContent('/login/');
+            
+            if ( !is_wp_error($loaded) ){
+                
+                $json = $this->extract_header_json($this->remote_response['body']);
+
+                if (is_wp_error($json)) return $json;
+
+                if ( $data = pinim_get_array_value(array('context','app_version'), $json) ) {
+                    $app_version = $json['context']['app_version'];
+                    pinim()->set_session_data('app_version',$app_version);
+                }
+                
+            }
+
+            pinim()->debug_log($app_version);
+        }
         
-        pinim()->debug_log('email_exists()');
+        if (!$app_version){
+            return new WP_Error('pinim',__('Error getting App Version.  You may have been temporary blocked by Pinterest because of too much login attemps.','pinim'));
+        }else{
+            return $app_version;
+        }
         
-        $data_options = array(
-            'email' => $email
-        );
+        
+    }
 
-        $data = array(
-            'source_url' => '/',
-            'data' => json_encode(array(
-                'options' => $data_options,
-                'context' => new \stdClass,
-            )),
-            '_' => time()*1000 //js timestamp
-        );
+    private function get_csrftoken($url = '/login/', $force_reset = false){
+        
+        if ($force_reset){
+            pinim()->set_session_data('csrftoken',null);
+        }elseif ( $token = pinim()->get_session_data('csrftoken') ) {
+            return $token;
+        }
 
-        $headers = $this->get_logged_headers();
-        if (is_wp_error($headers)) return $headers;
+        if (!$this->remote_response['headers']) {
+            $loaded = $this->loadContent($url);
+            if ( is_wp_error($loaded) ) return $loaded;
+        }
 
-        $args = array(
-            'headers'       => $headers,
-            'cookies'       => $this->cookies,
-            'body'          => $data,
-        );
+        $cookies = pinim_get_array_value(array('set-cookie'), $this->remote_response['headers']);
 
-        $api_response = $this->api_response('resource/EmailExistsResource/get',$args,'GET');
-        return $api_response['data'];
+        if ( is_array($cookies) ) {
+            $cookies = implode(' ', $cookies);
+        } else {
+            $cookies = (string)$cookies;
+        }
+        preg_match('/csrftoken=(.*)[\b;\s]/isU', $cookies, $match);
+        if (isset($match[1]) and $match[1]) {
+                $token = $match[1];
+                pinim()->set_session_data('csrftoken',$token);
+                pinim()->debug_log('set_csrftoken() : ' . $token);
+        }
+
+        return $token;
+
     }
     
     public function is_logged_in(){
@@ -213,42 +151,42 @@ class Pinim_Bridge{
                 return new WP_Error('pinim',__('Missing login and/or password','pinim'));
             }
 
-
-            $data = array(
+            $postData = array(
                 'data' => json_encode(array(
                     'options' => array(
                         'username_or_email' => $this->login,
                         'password' => $this->password,
                     ),
-                    'context' => new \stdClass,
+                    'context' => new stdClass,
                 )),
                 'source_url' => '/login/',
-                'module_path' => 'App()>LoginPage()>Login()>Button(class_name=primary, text=Log In, type=submit, size=large)',
+                'module_path' => 'App()>LoginPage()>Login()>Button(class_name=primary, '
+                    . 'text=Log In, type=submit, size=large)',
             );
-
-            $extra_headers = array(
-                'Referer'           => self::$pinterest_login_url,
-                //'Content-Type'      => 'application/x-www-form-urlencoded; charset=UTF-8'
-            );
-
-            $headers = $this->get_logged_headers(true,$extra_headers);
-            if ( is_wp_error($headers) ) return $headers;
-
-            $args = array(
-                'headers'       => $headers,
-                'body'          => http_build_query($data),
-                'cookies'       => $this->cookies
-            );
-
-            $api_response = $this->api_response('resource/UserSessionResource/create/',$args);
-
-            if ( is_wp_error($api_response) ){
-                return new WP_Error( 'pinim',sprintf(__('Error while trying to login: %s','pinim'),$api_response->get_error_message()) );
+            
+            $loaded = $this->loadContentAjax('/resource/UserSessionResource/create/', $postData, '/login/');
+            if ( is_wp_error($loaded) ) return $loaded;
+            
+            // Force reload CSRF token, it's different for logged in user
+            $this->get_csrftoken('/', true);
+            
+            $error = null;
+            
+            
+            
+            if ( !$data = pinim_get_array_value(array('resource_response','data'), $this->remote_response['body']) ){
+                if( $resource_response_error = pinim_get_array_value(array('resource_response','error'), $this->remote_response['body']) ){
+                    $error_message = $resource_response_error;
+                }else{
+                    $error_message = __("Unknown error.","pinim");
+                }
+                    return new WP_Error( 'pinim',sprintf(__('Error while trying to login: %s','pinim'),$error_message ) );
             }
 
-            pinim()->debug_log('has logged in');
+            $this->isLoggedIn = true;
             $is_logged_in = true;
             pinim()->set_session_data('is_logged_in',$is_logged_in);
+            pinim()->debug_log('has logged in');
             
             
         }
@@ -275,114 +213,134 @@ class Pinim_Bridge{
         
         return new WP_Error('pinim',__('Unable to parse the json informations.','pinim'));
     }
-
-    /**
-     * Get Pinterest App Version.
-     * @return \WP_Error
-     */
-    private function _getAppVersion(){
-        
-        if ($this->_app_version) return $this->_app_version;
-
-        if ( !$app_version = pinim()->get_session_data('app_version') ){
-            
-            pinim()->debug_log('_getAppVersion():');
-        
-            $url = self::$pinterest_login_url;
-
-            $args = array(
-                'headers'       => $this->get_default_headers()
-            );
-
-            $response = wp_remote_get( $url, $args );
-            $body = wp_remote_retrieve_body($response);
-
-            if ( is_wp_error($body) ){
-                return $body;
-            }
-
-            $json = $this->extract_header_json($body);
-            if (is_wp_error($json)) return $json;
-
-            if (isset($json['context']['app_version'])){
-                $app_version = $json['context']['app_version'];
-                pinim()->set_session_data('app_version',$app_version);
-            }
-            
-            pinim()->debug_log($app_version);
+    
+    protected function _httpRequest($type = 'GET', $urlPath, $data = null, $headers = array()){
+        $url = self::$pinterest_url . $urlPath;
+        if ($type === 'API') {
+            $url = self::$pinterest_api_url . $urlPath;
+            $type = 'GET';
         }
-        
-        if (!$app_version){
-            return new WP_Error('pinim',__('Error getting App Version.  You may have been temporary blocked by Pinterest because of too much login attemps.','pinim'));
-        }else{
-            $this->_app_version = $app_version;
-            return $app_version;
+        if (empty($headers)) { //TO FIX as client as default headers, maybe we can remove this ?
+            $headers = $this->_get_default_headers();
         }
+        if ($type === 'POST') {
+            $response = $this->client->post($url,$headers,$data);
         
+        } else {
+            $response = $this->client->get($url,$headers);
+        }
+        pinim()->debug_log($url,'_httpRequest url');
+        pinim()->debug_log($headers,'_httpRequest headers');
+        pinim()->debug_log($data,'_httpRequest data');
+        pinim()->debug_log(json_encode($response),'_httpRequest response');
         
+        return $response;
     }
     
     /**
-        $path : URL to get (without the 'https://www.pinterest.com/' prefix)
-        $args : arguments for the request
-        $method : 'POST' or 'GET
-        $update_auth : should we update the csrftoken ?
-        $keys_path : path (array keys) of the datas to return from the response - default is ['resource_response']['data']
-    */
+     * Set cURL url and get the content from curl_exec() call.
+     *
+     * @param string $url
+     * @param array|boolean|null $dataAjax If array - it will be POST request, if TRUE if will be GET, ajax request.
+     * @param string $referer
+     * @return string
+     * @throws \PinterestPinner\PinnerException
+     */
     
-    public function api_response( $path = null,$args,$method='POST',$keys_path=array('resource_response','data') ){
+    public function loadContentAjax($url, $dataAjax = true, $referer = ''){
         
-        $url = self::$pinterest_url . '/' . $path;
+        $app_version = $this->_getAppVersion();
+        if ( is_wp_error($app_version) ) return $app_version;
         
-        $response = null;
-        
-        if ($method=='GET'){
-            $response = wp_remote_get( $url, $args );
-        }else{
-            $response = wp_remote_post( $url, $args );
-        }
-        
-        pinim()->debug_log('api_response() request for: '.$url);
-        pinim()->debug_log( json_encode($args) );
-
-        $bodyraw = wp_remote_retrieve_body($response);
-        if ( is_wp_error($bodyraw) ) return $bodyraw;
-
-        $token = $this->set_csrftoken($response); //udpate token & cookies for further requests
-        if ( is_wp_error($token) ) return $token;
-
-        $data = null;
-
-        $body = $this->maybe_decode_response($bodyraw);
-        
-        pinim()->debug_log('api_response() response for: '.$url);
-        pinim()->debug_log( json_encode($body) );
-
-        //check for errors
-        if ( isset($body['resource_response']['error']) && $body['resource_response']['error'] ) {
-            $error = $body['resource_response']['error'];
-            $error_msg = ( isset($error['message']) ) ? $error['message'] : $error['code'];
-            return new WP_Error('pinim',$error_msg,$error);
+        if (is_array($dataAjax)) {
             
-        }
+            $csrftoken = $this->get_csrftoken();
+            if ( is_wp_error($csrftoken) ) return $csrftoken;
+            
+            $headers = array_merge($this->_get_default_headers(), array(
+                'X-NEW-APP' => '1',
+                'X-APP-VERSION' => $app_version,
+                'X-Requested-With' => 'XMLHttpRequest',
+                'Accept' => 'application/json, text/javascript, */*; q=0.01',
+                'X-CSRFToken' => $csrftoken,
+                'Referer' => self::$pinterest_url . $referer,
+            ));
+            $response = $this->_httpRequest('POST', $url, $dataAjax, $headers);
+            
+        } elseif ($dataAjax === true) {
 
-        //fetch data
-        if ( $key_exists = pinim_array_keys_exists($keys_path, $body) ){
-            $data = pinim_get_array_value($keys_path, $body);
-        }else{
-            pinim()->debug_log('Unable to get path from response : ' . implode('>',$keys_path) );
-            pinim()->debug_log( json_encode($body) );
-            return new WP_Error('pinim',sprintf( __('Unable to get %s from the response','pinim'),'<em>'.implode('>',$keys_path).'</em>' ) );
+            $headers = array_merge($this->_get_default_headers(), array(
+                'X-NEW-APP' => '1',
+                'X-APP-VERSION' => $app_version,
+                'X-Requested-With' => 'XMLHttpRequest',
+                'Accept' => 'application/json, text/javascript, */*; q=0.01',
+                'X-Pinterest-AppState' => 'active',
+            ));
+            $response = $this->_httpRequest('GET', $url, null, $headers);
         }
         
-        //bookmark (pagination)
-        $bookmark = pinim_get_array_value(array('resource','options','bookmarks',0), $body);
+        if ( is_wp_error($response) ) return $response;
         
-        return array(
-            'data'      => $data,
-            'bookmark'  => $bookmark
-        );
+        return $this->_populate_response($response);
+    }
+    
+    /**
+     * Set cURL url and get the content from curl_exec() call.
+     *
+     * @param string $url
+     * @return string
+     * @throws \PinterestPinner\PinnerException
+     */
+    
+    public function loadContent($url)
+    {
+        $response = $this->_httpRequest('GET', $url);
+        if ( is_wp_error($response) ) return $response;
+        
+        return $this->_populate_response($response);
+    }
+    
+    
+    /**
+     * Parse the response from _httpRequest().
+     *
+     * @param $response
+     * @return string
+     * @throws \PinterestPinner\PinnerException
+     */
+    protected function _populate_response($response){
 
+        $code = (int)substr($response->status_code, 0, 2);
+        if ($code !== 20) {
+            $error_msg = ''; //TO FIX find status message from Requests_Session
+            $error = sprintf(__("HTTP error %s when requesting %s ","pinim"),$response->status_code,urldecode($response->url));
+            if ($error_msg) $error.=': '.$error_msg;
+            return new WP_Error('pinim',$error);
+        }
+        
+        //headers
+        //is a Requests_Response_Headers object, convert it to an array
+        $headers = (array)$response->headers;
+        //weird array were the (single) key is named 'data*', so extract first value
+        $this->remote_response['headers'] = array_values($headers)[0]; 
+        
+        //body
+        $this->remote_response['body'] = (string)$response->body;
+
+        if (substr($this->remote_response['body'], 0, 1) === '{') { //is JSON
+            $this->remote_response['body'] = @json_decode($this->remote_response['body'], true);
+        }
+        
+        return true;
+        
+    }
+    
+    function get_default_username(){
+        $userData = $this->get_user_datas();
+        if (!isset($userData['username'])) {
+            return new WP_Error('Missing username in user data.','pinim');
+        }
+        return $userData['username'];
     }
     
     /**
@@ -398,24 +356,19 @@ class Pinim_Bridge{
                 $login = $this->do_login();
                 if (is_wp_error($login)) return $login;
 
-                $headers = $this->get_logged_headers();
-                if ( is_wp_error($headers) ) return $headers;
+                //TO FIX enable for other users
+                $loaded = $this->loadContent('/me/');
+                if ( is_wp_error($loaded) ) return $loaded;
 
-                $args = array(
-                    'headers'       => $headers,
-                    'cookies'       => $this->cookies
-                );
+                $json = $this->extract_header_json($this->remote_response['body']);
 
-                $api_response = $this->api_response( $username,$args,'GET',array('module','tree','data') );
-
-                if ( is_wp_error($api_response) ){
-                    return new WP_Error( 'pinim',sprintf(__("Error while getting user data '%s': %s",'pinim'),$username,$api_response->get_error_message()) );
+                if ( $userdata = pinim_get_array_value(array('tree','data'), $json) ){
+                    pinim()->set_session_data('userdata',$userdata);
                 }
 
-                $userdata = $api_response['data'];
 
-                pinim()->set_session_data('userdata',$userdata);
-                
+
+
             }
 
             return $userdata;
@@ -428,60 +381,84 @@ class Pinim_Bridge{
      * @return \WP_Error
      */
     
-    public function get_user_boards($username){
-
-        $login = $this->do_login();
-
-        if (is_wp_error($login)){
-            return $login;
-        }
+    public function get_user_boards($username = null){
         
-        $page_boards = array();
-
-        //TO FIX to check : do we need bookmark here ?
-        $data_options = array(
-            'filter'            => 'all', // all | public | secret ?
-            'field_set_key'     => 'grid_item',
-            'username'          => $username,
-            'sort'              => 'profile',
-            //'bookmarks'         => ($bookmark) ? (array)$bookmark : null
-        );
-
-        $data = array(
-            'data' => json_encode(array(
-                'options' => $data_options,
-                'context' => new \stdClass,
-            )),
-            'source_url' => sprintf('/%s/',$username),
-            '_' => time()*1000 //js timestamp
-        );
-
-        $headers = $this->get_logged_headers(true);
-        if (is_wp_error($headers)) return $headers;
-
-        $args = array(
-            'headers'       => $headers,
-            'cookies'       => $this->cookies,
-            'body'          => $data,
-        );
-
-        $api_response = $this->api_response('resource/BoardsResource/get/',$args,'GET');
-        
-        if ( is_wp_error($api_response) ){
-            return new WP_Error( 'pinim',sprintf(__('Error getting boards from user %s : %s.  Try refreshing the page !','pinim'),'</em>'.$username.'</em>',$api_response->get_error_message()) );
+        if (!$username){
+            $username = $this->get_default_username();
+            if ( is_wp_error($username) ) return $username;
         }
 
-        //remove items that have not the "board" type (like module items)
-        $page_boards = array_filter(
-            (array)$api_response['data'],
-            function ($e) {
-                return $e['type'] == 'board';
+        if ( !isset($this->userboards[$username]) ){ //TO FIX check var name
+            
+            $boards_data = array();
+            $loaded = $this->loadContentAjax('/resource/BoardsResource/get/?' . http_build_query(array(
+                    'source_url' => '/' . $username . '/',
+                    'data' => json_encode(array(
+                        'options' => array(
+                            'filter'            => 'all',
+                            'field_set_key'     => 'grid_item',
+                            'username'          => $username,
+                            'sort'              => 'profile',
+                        ),
+                        'context' => new stdClass,
+                    )),
+                    '_' => time() . '999',
+                )), true);
+            
+            if ( is_wp_error($loaded) ) return $loaded;
+            
+            if ( $boards_data = pinim_get_array_value(array('resource_response','data'), $this->remote_response['body']) ){
+                
+                //precaution - remove items that have not the "board" type (like module items)
+                $boards_data = array_filter(
+                    $boards_data,
+                    function ($e) {
+                        return $e['type'] == 'board';
+                    }
+                );  
+                
+                $boards_data = array_values($boards_data); //reset keys
+                
             }
-        );  
-        return array_values($page_boards); //reset keys
+
+            $this->boards[$username] = $boards_data;
+            
+        }
+        
+        return $this->boards[$username];
         
         
 
+    }
+
+    public function get_api_pins($board = null){
+        
+        $pins = array();
+
+        $response = $this->_httpRequest(
+            'API',
+            '/v3/pidgets/users/' . urlencode($board->username) . '/pins/'
+        );
+        
+        if ($response->status_code === 200) {
+            $body = json_decode($response->body);
+            
+            if ( $pins = pinim_get_array_value(array('data','pins'), $body) ) {
+                if ($board) {
+                    $board_id = $board->board_id;
+                    $pins = array_filter(
+                        $pins,
+                        function ($pin) use ($board_id) {
+                            return $pin['board']['id'] == $board_id;
+                        }
+                    );
+                }
+                
+            }
+
+        }
+        
+        return $pins;
     }
     
     /**
@@ -492,15 +469,11 @@ class Pinim_Bridge{
      * @param type $stop_at_pin_id
      * @return \WP_Error
      */
-
     public function get_board_pins($board, $max=0,$stop_at_pin_id=null){
         $board_page = 0;
         $board_pins = array();
-
         while ($board->bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
-
             $query = $this->get_board_pins_page($board);
-
             if ( is_wp_error($query) ){
                 
                 if(empty($board_pins)){
@@ -511,13 +484,9 @@ class Pinim_Bridge{
                 
                 return new WP_Error( 'pinim', $message, $board_pins ); //return already loaded pins with error
             }
-
             $board->bookmark = $query['bookmark'];
-
             if (isset($query['pins'])){
-
                 $page_pins = $query['pins'];
-
                 //stop if this pin ID is found
                 if ($stop_at_pin_id){
                     foreach($page_pins as $key=>$pin){
@@ -530,21 +499,104 @@ class Pinim_Bridge{
                 }
                 
                 $board_pins = array_merge($board_pins,$page_pins);
-
                 //limit reached
                 if ( ($max) && ( count($board_pins)> $max) ){
                     $board_pins = array_slice($board_pins, 0, $max);
                     $board->bookmark = '-end-';
                     break;
                 }
-
             }
-
             $board_page++;
             
         }
-
         return $board_pins;
+    }
+    
+    /**
+     * 
+     * @param type $board
+     * @param type $bookmark
+     * @return \WP_Error
+     */
+    private function get_board_pins_page($board){
+        
+        pinim()->debug_log('get_board_pins_page() : '. $board->slug);
+        
+        //TO FIX
+        //return new WP_Error('pinim','TO FIX get_board_pins_page()');
+
+        $page_pins = array();
+        $data_options = array();
+        $url = null;
+        $secret = null;
+
+        $login = $this->do_login();
+        if (is_wp_error($login)) return $login;
+
+        if ($board->slug == 'likes'){
+
+            $loaded = $this->loadContentAjax('/resource/UserLikesResource/get/?' . http_build_query(array(
+                'source_url' => '/' . $board->username . '/',
+                'data' => json_encode(array(
+                    'options' => array(
+                        'username'          => $board->username,
+                        'bookmark'          => ( $board->bookmark ) ? (array)$board->bookmark : null
+                    ),
+                    'context' => new stdClass,
+                )),
+                '_' => time() . '999',
+            )), true);
+
+        }else{
+            
+            $loaded = $this->loadContentAjax('/resource/BoardFeedResource/get/?' . http_build_query(array(
+                'source_url' => '/' . $board->username . '/' . $board->slug . '/',
+                'data' => json_encode(array(
+                    'options' => array(
+                        'board_id'                  => $board->board_id,
+                        'add_pin_rep_with_place'    => null,
+                        'board_url'                 => $board->get_datas('url'),
+                        'page_size'                 => null,
+                        'prepend'                   => true,
+                        'access'                    => array('write','delete'),
+                        'board_layout'              => 'default',
+                        'bookmark'                  => ( $board->bookmark ) ? (array)$board->bookmark : null
+                    ),
+                    'context' => new stdClass,
+                )),
+                '_' => time() . '999',
+            )), true);
+
+            
+        }
+
+        
+        if ( is_wp_error($loaded) ){
+            return new WP_Error( 'pinim',sprintf(__('Error getting pins for board %s: %s','pinim'),'<em>'.$board->get_datas('url').'</em>',$loaded->get_error_message()) );
+        }
+        
+        //pins
+        $page_pins = pinim_get_array_value(array('body','resource_response','data'), $this->remote_response);
+
+        //remove items that have not the "pin" type (like module items)
+        $page_pins = array_filter(
+            (array)$page_pins,
+            function ($e) {
+                return $e['type'] == 'pin';
+            }
+        );  
+        $page_pins = array_values($page_pins); //reset keys
+        
+        //bookmark
+        $bookmark = null;
+        if ( $bookmarks = pinim_get_array_value(array('body','resource','options','bookmarks'), $this->remote_response) ){
+            $bookmark = $bookmarks[0];
+        }
+
+        return array(
+            'pins'      => $page_pins,
+            'bookmark'  => $bookmark
+        );
 
     }
     
@@ -583,7 +635,7 @@ class Pinim_Bridge{
         if (is_wp_error($board_args)) return $board_args;
 
         $args = array(
-            'headers'       => $this->get_default_headers()
+            'headers'       => $this->_get_default_headers()
         );
 
         $response = wp_remote_get( self::$pinterest_url.$board_args['url'], $args );
@@ -604,102 +656,5 @@ class Pinim_Bridge{
         return new WP_Error('pinim',__('Error getting Board ID.','pinim'));
     }
 
-    
-    /**
-     * 
-     * @param type $board
-     * @param type $bookmark
-     * @return \WP_Error
-     */
-    private function get_board_pins_page($board){
-        
-        pinim()->debug_log('get_board_pins_page() : '. $board->slug);
-
-        $page_pins = array();
-        $data_options = array();
-        $url = null;
-        $secret = null;
-
-        $login = $this->do_login();
-        if (is_wp_error($login)) return $login;
-
-        if ($board->slug == 'likes'){
-            $url = 'resource/UserLikesResource/get/';
-            $data_options = array_merge($data_options,array(
-                    'username'  => $board->username
-                )
-            );
-        }else{
-            $url = 'resource/BoardFeedResource/get/';
-            $data_options = array_merge($data_options,array(
-                    'board_id'                  => $board->board_id,
-                    'add_pin_rep_with_place'    => null,
-                    'board_url'                 => $board->get_datas('url'),
-                    'page_size'                 => null,
-                    'prepend'                   => true,
-                    'access'                    => array('write','delete'),
-                    'board_layout'              => 'default',
-                )
-            );
-            
-        }
-
-        if ($board->bookmark){ //used for pagination. Bookmark is defined when it is not the first page.
-            $data_options['bookmarks'] = (array)$board->bookmark;
-        }
-        
-        $data = array(
-            'data' => json_encode(array(
-                'options' => $data_options,
-                'context' => new \stdClass,
-            )),
-            'source_url' => $board->get_datas('url'),
-            '_' => time()*1000 //js timestamp
-        );
-
-        $extra_headers = array(
-            //'Referer'   => '/'
-            'X-Pinterest-AppState'  => 'background'
-        );
-        
-        $headers = $this->get_logged_headers(true,$extra_headers);
-        if (is_wp_error($headers)) return $headers;
-
-        $args = array(
-            'headers'       => $headers,
-            'cookies'       => $this->cookies,
-            'body'          => $data,
-        );
-    
-        $api_response = $this->api_response($url,$args);
-        
-        if ( is_wp_error($api_response) ){
-            return new WP_Error( 'pinim',sprintf(__('Error getting pins for board %s: %s','pinim'),'<em>'.$board->get_datas('url').'</em>',$api_response->get_error_message()) );
-        }
-
-        //remove items that have not the "pin" type (like module items)
-        $page_pins = array_filter(
-            (array)$api_response['data'],
-            function ($e) {
-                return $e['type'] == 'pin';
-            }
-        );  
-        $page_pins = array_values($page_pins); //reset keys
-
-        return array(
-            'pins'      => $page_pins,
-            'bookmark'  => $api_response['bookmark']
-        );
-
-    }
-    /*
-     * Converts an array to a string with keys and values
-     
-    private function implode_api_error($input){
-        if (!is_array($input)) return $input;
-        $input = array_filter($input);
-        return implode('; ', array_map(function ($v, $k) { return sprintf('%s="%s"', $k, $v); }, $input, array_keys($input)));
-    }
-    */
 }
 

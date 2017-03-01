@@ -482,7 +482,7 @@ class PinIm {
 
             //public boards
             $list[] = sprintf(
-                '<span><strike>'.__('%1$s private boards','pinim').'</strike></span>',
+                '<span>'.__('%1$s private boards','pinim').'</span>',
                 '<strong>'.$secret_board_count.'</strong>'
             );
 
