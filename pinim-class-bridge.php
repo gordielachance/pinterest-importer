@@ -403,6 +403,7 @@ class Pinim_Bridge{
 
         if ( ($username == $me_username) && (!$this->isLoggedIn) ){
             $message = __("We were unable to grab your private boards since you are not logged to Pinterest.",'pinim');
+            pinim()->debug_log($message,' get_user_boards()');
             add_settings_error('feedback_boards', 'not-logged', $message,'inline');
         }
 
