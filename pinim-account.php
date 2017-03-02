@@ -49,6 +49,16 @@ class Pinim_Account {
                 add_settings_error('feedback_login', 'do_login', $logged->get_error_message(),'inline' );
                 return;
             }
+            
+            //TO FIX TO CHECK important
+            /*
+            The intended behaviour is that get_user_boards() is called AFTER the redirection below.
+            BUT seems there is a tricky thing to debug here :
+            After the redirection, we are logged out : seems that the session is not maintened or something.
+            Because of that, we are unable to fetch the private boards.
+            So keep this here for now; until we find a way to maintain the session.
+            */
+            pinim()->bridge->get_user_boards();
 
             //redirect to next step
             $args = array(
