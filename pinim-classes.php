@@ -310,6 +310,11 @@ class Pinim_Board_Item{
             $bookmark = $this->bookmark; //uncomplete queue
 
             if ( !$this->raw_pins || $bookmark ){
+		    
+		//private boards requires to be logged
+		if ( $this->is_private_board() ){
+			$logged = pinim()->bridge->do_login();
+		}
 
                 $pinterest_query = pinim()->bridge->get_board_pins($this);
 
