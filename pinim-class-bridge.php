@@ -225,8 +225,8 @@ class Pinim_Bridge{
             $response = $this->client->get($url,$headers);
         }
         pinim()->debug_log($url,'_httpRequest url');
-        pinim()->debug_log($headers,'_httpRequest headers');
-        pinim()->debug_log($data,'_httpRequest data');
+        pinim()->debug_log(json_encode($headers),'_httpRequest headers');
+        pinim()->debug_log(json_encode($data),'_httpRequest data');
         //pinim()->debug_log(json_encode($response),'_httpRequest response');
         
         return $response;
