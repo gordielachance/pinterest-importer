@@ -49,16 +49,6 @@ class Pinim_Account {
                 add_settings_error('feedback_login', 'do_login', $logged->get_error_message(),'inline' );
                 return;
             }
-            
-            //TO FIX TO CHECK important
-            /*
-            The intended behaviour is that get_user_boards() is called AFTER the redirection below.
-            BUT seems there is a tricky thing to debug here :
-            After the redirection, we are logged out : seems that the session is not maintened or something.
-            Because of that, we are unable to fetch the private boards.
-            So keep this here for now; until we find a way to maintain the session.
-            */
-            pinim()->bridge->get_user_boards();
 
             //redirect to next step
             $args = array(
@@ -107,7 +97,7 @@ class Pinim_Account {
 
     function login_field_callback(){
         $option = pinim()->get_session_data('login');
-        $disabled = disabled( pinim()->bridge->is_logged_in() , true, false);
+        $disabled = disabled( pinim()->bridge->isLoggedIn, true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Username');
         $input = sprintf(
@@ -124,7 +114,7 @@ class Pinim_Account {
     
     function password_field_callback(){
         $option = pinim()->get_session_data('password');
-        $disabled = disabled( pinim()->bridge->is_logged_in() , true, false);
+        $disabled = disabled( pinim()->bridge->isLoggedIn , true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Password');
         
@@ -145,10 +135,6 @@ class Pinim_Account {
         $logged = $this->do_bridge_login($login,$password);
         if ( is_wp_error($logged) ) return $logged;
 
-        //store login / password
-        pinim()->set_session_data('login',$login);
-        pinim()->set_session_data('password',$password);
-
         //try to get user datas
         $user_datas = pinim()->bridge->get_user_datas();
 
@@ -163,7 +149,7 @@ class Pinim_Account {
     **/
     function do_bridge_login($login = null, $password = null){
        
-        if ( !$logged = pinim()->bridge->is_logged_in() ){
+        if ( !$logged = pinim()->bridge->isLoggedIn ){
             
             if (!$login) $login = pinim()->get_session_data('login');
             $login = trim($login);

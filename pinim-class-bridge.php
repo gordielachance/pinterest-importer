@@ -43,6 +43,7 @@ class Pinim_Bridge{
      */
     public function set_login($login){
         $this->login = $login;
+        pinim()->set_session_data('login',$login);
         return $this;
     }
     /**
@@ -52,6 +53,7 @@ class Pinim_Bridge{
      */
     public function set_password($password){
         $this->password = $password;
+        pinim()->set_session_data('password',$password);
         return $this;
     }
     
@@ -133,23 +135,32 @@ class Pinim_Bridge{
 
     }
     
-    public function is_logged_in(){
-        return pinim()->get_session_data('is_logged_in');
-    }
-    
     /**
      * Try to log in to Pinterest.
      * @return \WP_Error
      */
     public function do_login(){
         
-        if ( !$is_logged_in = $this->is_logged_in() ){
+        if ( !$this->isLoggedIn ){
             
             pinim()->debug_log('do_login()');
+            
+            //login cached
+            if ( !$this->login && ( $login = pinim()->get_session_data('login') ) ){
+                $this->set_login($login);
+            }
+
+            //pwd cached
+            if ( !$this->password && ( $password = pinim()->get_session_data('password') ) ){
+                $this->set_password($password);
+            }
             
             if (!isset($this->login) or !isset($this->password)) {
                 return new WP_Error('pinim',__('Missing login and/or password','pinim'));
             }
+            
+            // reset CSRF token if any (TO FIX : if any !)
+            $this->get_csrftoken('/', true);
 
             $postData = array(
                 'data' => json_encode(array(
@@ -180,13 +191,11 @@ class Pinim_Bridge{
             }
 
             $this->isLoggedIn = true;
-            $is_logged_in = true;
-            pinim()->set_session_data('is_logged_in',$is_logged_in);
             pinim()->debug_log('has logged in');
 
         }
 
-        return $is_logged_in;
+        return $this->isLoggedIn;
 
     }
     
@@ -386,6 +395,10 @@ class Pinim_Bridge{
         if (!$username){
             $username = $this->get_default_username();
             if ( is_wp_error($username) ) return $username;
+            
+            //login so we are able to get private boards
+            $this->do_login();
+            
         }
         
         $userboards_stored = pinim()->get_session_data('user_datas_boards');
@@ -526,9 +539,11 @@ class Pinim_Bridge{
     private function get_board_pins_page($board){
         
         pinim()->debug_log('get_board_pins_page() : '. $board->slug);
-        
-        //TO FIX
-        //return new WP_Error('pinim','TO FIX get_board_pins_page()');
+                
+        //login so we are able to get private boards
+        if ( $board->is_private_board() ){
+            $this->do_login();
+        }
 
         $page_pins = array();
         $data_options = array();
