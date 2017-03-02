@@ -1062,8 +1062,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             
             $bar_width = $percent;
             
-            $imported = $board->get_count_imported_pins();
-            $text_bar = $imported.'/'.$board->get_datas('pin_count');
+            $text_bar = $percent.'/'.$board->get_datas('pin_count');
             $text_bar .= '<i class="fa fa-refresh" aria-hidden="true"></i>';
 
             switch($percent){
@@ -1169,7 +1168,12 @@ class Pinim_Boards_Table extends WP_List_Table {
     function get_sortable_columns() {
         $sortable_columns = array(
             'title'                 => array('title',false),     //true means it's already sorted
+            'private'               => array('private',false),
             'pin_count_remote'      => array('pin_count_remote',false),
+            'pin_count_imported'    => array('pin_count_imported',false),
+            'autocache'             => array('autocache',false),
+            'in_queue'              => array('in_queue',false),
+            'username'              => array('username',false),
             
         );
         
@@ -1497,7 +1501,6 @@ class Pinim_Boards_Table extends WP_List_Table {
          */
         $per_page = pinim()->get_options('boards_per_page');
         
-        
         /**
          * REQUIRED. Now we need to define our column headers. This includes a complete
          * array of columns to be displayed (slugs & titles), a list of columns
@@ -1545,9 +1548,7 @@ class Pinim_Boards_Table extends WP_List_Table {
          * to a custom query. The returned data will be pre-sorted, and this array
          * sorting technique would be unnecessary.
          */
-        
-        
-        /*
+
         function usort_reorder($a,$b){
 
             $orderby = 'title';
@@ -1560,16 +1561,31 @@ class Pinim_Boards_Table extends WP_List_Table {
                 case 'title':
                     $result = strcmp($a->get_datas('name'), $b->get_datas('name'));
                 break;
+                case 'private':
+                    $result = $a->is_private_board() - $b->is_private_board();
+                break;
                 case 'pin_count_remote':
                     $result = $a->get_datas('pin_count') - $b->get_datas('pin_count');
+                break;
+                case 'pin_count_imported':
+                    $result = $a->get_pc_imported_pins() - $b->get_pc_imported_pins();
+                break;
+                case 'autocache':
+                    $result = $a->get_options('autocache') - $b->get_options('autocache');
+                break;
+                case 'in_queue':
+                    $result = $a->in_queue  - $b->in_queue;
+                break;
+                case 'username':
+                    $result = $a->username  - $b->username;
                 break;
                 
             }
 
             return ($order==='asc') ? $result : -$result; //Send final sort direction to usort
         }
-        
-        //usort($data, 'usort_reorder');
+
+        usort($data, 'usort_reorder');
         
         
         /***********************************************************************
