@@ -366,9 +366,6 @@ class Pinim_Bridge{
         
             pinim()->debug_log('get_user_datas() for user:' . $username);
 
-            $login = $this->do_login();
-            if (is_wp_error($login)) return $login;
-
             $loaded = $this->loadContent(sprintf('/%s/',$username));
             if ( is_wp_error($loaded) ) return $loaded;
 
@@ -555,9 +552,6 @@ class Pinim_Bridge{
         $data_options = array();
         $url = null;
         $secret = null;
-
-        $login = $this->do_login();
-        if (is_wp_error($login)) return $login;
 
         if ($board->slug == 'likes'){
 
