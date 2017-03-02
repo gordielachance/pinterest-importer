@@ -392,15 +392,20 @@ class Pinim_Bridge{
     
     public function get_user_boards($username = null){
         
-        if (!$username){
-            $username = $this->get_default_username();
-            if ( is_wp_error($username) ) return $username;
-            
-            //login so we are able to get private boards
-            $this->do_login();
-            
-        }
+        $me_username = $this->get_default_username();
         
+        if (!$username){
+            if ( is_wp_error($me_username) ){
+                return $me_username;
+            }
+            $username = $me_username;
+        }
+
+        if ( ($username == $me_username) && (!$this->isLoggedIn) ){
+            $message = __("We were unable to grab your private boards since you are not logged to Pinterest.",'pinim');
+            add_settings_error('feedback_boards', 'not-logged', $message,'inline');
+        }
+
         $userboards_stored = pinim()->get_session_data('user_datas_boards');
         
         $userboards = array();
@@ -489,6 +494,11 @@ class Pinim_Bridge{
      * @return \WP_Error
      */
     public function get_board_pins($board, $max=0,$stop_at_pin_id=null){
+
+        if ( $board->is_private_board() && (!$this->isLoggedIn) ){
+            return new WP_Error( 'pinim', __("Grabbing pins from a private board requires to be logged to Pinterest","pinim"), $board->board_id );
+        }
+        
         $board_page = 0;
         $board_pins = array();
         while ($board->bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
@@ -540,11 +550,6 @@ class Pinim_Bridge{
         
         pinim()->debug_log('get_board_pins_page() : '. $board->slug);
                 
-        //login so we are able to get private boards
-        if ( $board->is_private_board() ){
-            $this->do_login();
-        }
-
         $page_pins = array();
         $data_options = array();
         $url = null;
