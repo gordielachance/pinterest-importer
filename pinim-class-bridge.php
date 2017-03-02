@@ -19,6 +19,8 @@ class Pinim_Bridge{
     
     protected $client = null; //web client
     protected $remote_response = array('headers'=>null,'body'=>null);
+    
+    public $isLoggedIn = false;
 
     public function __construct(){
         // use Requests_Session here because it does maintain a cookie session
@@ -399,9 +401,7 @@ class Pinim_Bridge{
         }
 
         if ( ($username == $me_username) && (!$this->isLoggedIn) ){
-            $message = __("We were unable to grab your private boards since you are not logged to Pinterest.",'pinim');
-            pinim()->debug_log($message,' get_user_boards()');
-            add_settings_error('feedback_boards', 'not-logged', $message,'inline');
+            pinim()->debug_log("Private boards will be ignored as you are not logged to Pinterest.",' get_user_boards()');
         }
 
         $userboards_stored = pinim()->get_session_data('user_datas_boards');
@@ -415,7 +415,7 @@ class Pinim_Bridge{
         }else{
             
             $loaded = $this->loadContentAjax('/resource/BoardsResource/get/?' . http_build_query(array(
-                    'source_url' => sprintf('/%s/',$board->username),
+                    'source_url' => sprintf('/%s/',$username),
                     'data' => json_encode(array(
                         'options' => array(
                             'filter'            => 'all', // all | public | private

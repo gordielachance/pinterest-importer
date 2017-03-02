@@ -311,10 +311,11 @@ class Pinim_Board_Item{
 
             if ( !$this->raw_pins || $bookmark ){
 		    
-		//private boards requires to be logged
-		if ( $this->is_private_board() ){
-			$logged = pinim()->bridge->do_login();
-		}
+                //private boards requires to be logged
+                if ( $this->is_private_board() ){
+                    $logged = pinim()->bridge->do_login();
+                    if (is_wp_error($logged) ) return $logged;
+                }
 
                 $pinterest_query = pinim()->bridge->get_board_pins($this);
 
