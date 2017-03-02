@@ -54,8 +54,8 @@ class Pinim_Board_Item{
             'slug'          => $this->slug,
             'url'           => $this->short_url,
             'board_id'      => $this->board_id,
-            'autocache'     => false,
-            'private'       => false,
+            'autocache'     => null,
+            'private'       => null,
             'categories'    => null
         );
         
