@@ -17,7 +17,15 @@ class Pinim_Account {
     
     function init(){
         add_action( 'admin_menu',array( $this,'admin_menu' ),9,2);
+        add_action('admin_init',array($this,'logout'));
         add_action( 'current_screen', array( $this, 'page_account_init') );
+    }
+    
+    function logout(){
+        if ( isset($_REQUEST['logout']) ){
+            pinim()->destroy_session();
+            add_settings_error('feedback_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated inline');
+        }
     }
     
     function admin_menu(){
@@ -35,10 +43,7 @@ class Pinim_Account {
         $screen = get_current_screen();
         if ($screen->id != 'pin_page_account') return;
         
-        if ( isset($_REQUEST['logout']) ){
-            pinim()->destroy_session();
-            add_settings_error('feedback_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated inline');
-        }elseif ( isset($_POST['pinim_form_login']) ){
+        if ( isset($_POST['pinim_form_login']) ){
 
             $login = ( isset($_POST['pinim_form_login']['username']) ? $_POST['pinim_form_login']['username'] : null);
             $password = ( isset($_POST['pinim_form_login']['password']) ? $_POST['pinim_form_login']['password'] : null);
