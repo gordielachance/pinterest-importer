@@ -134,3 +134,40 @@ function pinim_get_list_from_array($input,$parent_slugs=array() ){
     }
 
 }
+
+/**
+ * Validates a board url, like
+ * 'https://www.pinterest.com/USERNAME/SLUG/'
+ * or '/USERNAME/SLUG/'
+ * @param type $url
+* @param type $return
+ * @return \WP_Error
+ */
+
+function pinim_validate_board_url($url, $return=null){
+    preg_match("~(?:http(?:s)?://(?:www\.)?pinterest.com)?/([^/]+)/([^/]+)/?~", $url, $matches);
+
+    if (!isset($matches[1]) || !isset($matches[2])){
+        return new WP_Error('pinim',__('This board URL is not valid','pinim'));
+    }
+    
+    $output = null;
+    
+    switch ($return){
+        case 'username':
+            $output = $matches[1];
+        break;
+        case 'slug':
+            $output = $matches[2];
+        break;
+        case 'short_url':
+            $output = pinim_get_board_url($matches[1],$matches[2], true);
+        break;
+        default: //long url
+            $output = pinim_get_board_url($matches[1],$matches[2]);
+        break;
+        
+    }
+
+    return $output;
+}

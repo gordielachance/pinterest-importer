@@ -225,7 +225,7 @@ class PinIm {
                 $boards_settings = pinim_get_boards_options();
                 foreach((array)$boards_settings as $key=>$board){
                     if (!isset($board['username']) || !isset($board['slug']) ) continue;
-                    $boards_settings[$key]['url'] = Pinim_Bridge::get_short_url($board['username'],$board['slug']);
+                    $boards_settings[$key]['url'] = pinim_get_board_url($board['username'],$board['slug'], true);
                 }
                 update_user_meta( get_current_user_id(), $this->meta_name_user_boards_options, $boards_settings);
             }
@@ -460,14 +460,14 @@ class PinIm {
         
         $user_icon = $user_text = $user_stats = null;
 
-        $user_data = pinim_account()->get_user_infos();
+        $user_data = pinim()->bridge->get_user_datas();
         if ( !is_wp_error($user_data) && $user_data ) { //logged
             
-            $user_icon = pinim_account()->get_user_infos('image_medium_url');
-            $username = pinim_account()->get_user_infos('username');
-            $board_count = (int)pinim_account()->get_user_infos('board_count');
-            $secret_board_count = (int)pinim_account()->get_user_infos('secret_board_count');
-            $like_count = (int)pinim_account()->get_user_infos('like_count');
+            $user_icon = pinim()->bridge->get_user_datas('image_medium_url');
+            $username = pinim()->bridge->get_user_datas('username');
+            $board_count = (int)pinim()->bridge->get_user_datas('board_count');
+            $secret_board_count = (int)pinim()->bridge->get_user_datas('secret_board_count');
+            $like_count = (int)pinim()->bridge->get_user_datas('like_count');
 
             //names
             $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$username.'</strong>');

@@ -140,7 +140,8 @@ class Pinim_Account {
         pinim()->set_session_data('password',$password);
 
         //try to get user datas
-        $user_datas = $this->get_user_infos();
+        $user_datas = pinim()->bridge->get_user_datas();
+
         if (is_wp_error($user_datas)) return $user_datas;
 
         return true;
@@ -164,11 +165,6 @@ class Pinim_Account {
                 return new WP_Error( 'pinim',__('Missing login and/or password','pinim') );
             }
 
-           //force use Pinterest username
-            if (strpos($login, '@') !== false) {
-                return new WP_Error( 'pinim',__('Use your Pinterest username here, not an email address.','pinim').' <code>https://www.pinterest.com/USERNAME/</code>' );
-            }
-
             //try to auth
             pinim()->bridge->set_login($login)->set_password($password);
             $logged = pinim()->bridge->do_login();
@@ -182,37 +178,6 @@ class Pinim_Account {
         return $logged;
 
    }
-    
-    /**
-     * Get datas for a user, from session cache or from Pinterest.
-     * @param type $username
-     * @return type
-     */
-    
-    function get_user_infos($keys = null,$username = null){
-        
-        //ignore when logging out
-        if ( isset($_REQUEST['logout']) ) return;
-        
-        if (!$username) $username = pinim()->get_session_data('login');
-        
-        $session_data = pinim()->get_session_data('user_datas');
-
-        if ( !isset($session_data[$username]) ){
-            
-            $userdata = pinim()->bridge->get_user_datas($username);
-            if ( is_wp_error($userdata) ) return $userdata;
-
-            $session_data[$username] = $userdata;
-
-            pinim()->set_session_data('user_datas',$session_data);
-            
-        }
-        
-        $datas = $session_data[$username];
-        return pinim_get_array_value($keys, $datas);
-
-    }
 
 }
 

@@ -170,25 +170,20 @@ class Pinim_Bridge{
             // Force reload CSRF token, it's different for logged in user
             $this->get_csrftoken('/', true);
             
-            $error = null;
-            
-            
-            
             if ( !$data = pinim_get_array_value(array('resource_response','data'), $this->remote_response['body']) ){
                 if( $resource_response_error = pinim_get_array_value(array('resource_response','error'), $this->remote_response['body']) ){
                     $error_message = $resource_response_error;
                 }else{
                     $error_message = __("Unknown error.","pinim");
                 }
-                    return new WP_Error( 'pinim',sprintf(__('Error while trying to login: %s','pinim'),$error_message ) );
+                return new WP_Error( 'pinim',sprintf(__('Error while trying to login: %s','pinim'),$error_message ) );
             }
 
             $this->isLoggedIn = true;
             $is_logged_in = true;
             pinim()->set_session_data('is_logged_in',$is_logged_in);
             pinim()->debug_log('has logged in');
-            
-            
+
         }
 
         return $is_logged_in;
@@ -232,7 +227,7 @@ class Pinim_Bridge{
         pinim()->debug_log($url,'_httpRequest url');
         pinim()->debug_log($headers,'_httpRequest headers');
         pinim()->debug_log($data,'_httpRequest data');
-        pinim()->debug_log(json_encode($response),'_httpRequest response');
+        //pinim()->debug_log(json_encode($response),'_httpRequest response');
         
         return $response;
     }
@@ -336,42 +331,47 @@ class Pinim_Bridge{
     }
     
     function get_default_username(){
-        $userData = $this->get_user_datas();
-        if (!isset($userData['username'])) {
+        if ( !$username = $this->get_user_datas('username') ) {
             return new WP_Error('Missing username in user data.','pinim');
         }
-        return $userData['username'];
+        return $username;
     }
     
     /**
      * Get datas for a user.
      * @return \WP_Error
      */
-    public function get_user_datas($username){
+    public function get_user_datas($keys = null,$username = null){
         
-            if ( !$userdata = pinim()->get_session_data('userdata') ){
-                
-                pinim()->debug_log('get_user_datas() for user:' . $username);
+        if (!$username) $username = 'me'; //when the http request will be made, this will redirect to the logged user URL
+        
+        $userdatas = array();
+        
+        $userdatas_stored = pinim()->get_session_data('user_datas');
 
-                $login = $this->do_login();
-                if (is_wp_error($login)) return $login;
+        if ( pinim_array_keys_exists($username, $userdatas_stored) ){
+            
+            $userdatas = pinim_get_array_value($username, $userdatas_stored);
+            
+        }else{
+        
+            pinim()->debug_log('get_user_datas() for user:' . $username);
 
-                //TO FIX enable for other users
-                $loaded = $this->loadContent('/me/');
-                if ( is_wp_error($loaded) ) return $loaded;
+            $login = $this->do_login();
+            if (is_wp_error($login)) return $login;
 
-                $json = $this->extract_header_json($this->remote_response['body']);
+            $loaded = $this->loadContent(sprintf('/%s/',$username));
+            if ( is_wp_error($loaded) ) return $loaded;
 
-                if ( $userdata = pinim_get_array_value(array('tree','data'), $json) ){
-                    pinim()->set_session_data('userdata',$userdata);
-                }
+            $json = $this->extract_header_json($this->remote_response['body']);
 
-
-
-
+            if ( $userdatas = pinim_get_array_value(array('tree','data'), $json) ){
+                $userdatas_stored[$username] = $userdatas;
+                pinim()->set_session_data('user_datas',$userdatas_stored);
             }
-
-            return $userdata;
+        }
+        
+        return pinim_get_array_value($keys, $userdatas);
         
     }
 
@@ -387,15 +387,22 @@ class Pinim_Bridge{
             $username = $this->get_default_username();
             if ( is_wp_error($username) ) return $username;
         }
-
-        if ( !isset($this->userboards[$username]) ){ //TO FIX check var name
+        
+        $userboards_stored = pinim()->get_session_data('user_datas_boards');
+        
+        $userboards = array();
+        
+        if ( pinim_array_keys_exists($username, $userboards_stored) ){
             
-            $boards_data = array();
+            $userboards = pinim_get_array_value($username, $userboards_stored);
+            
+        }else{
+            
             $loaded = $this->loadContentAjax('/resource/BoardsResource/get/?' . http_build_query(array(
                     'source_url' => '/' . $username . '/',
                     'data' => json_encode(array(
                         'options' => array(
-                            'filter'            => 'all',
+                            'filter'            => 'all', // all | public | private
                             'field_set_key'     => 'grid_item',
                             'username'          => $username,
                             'sort'              => 'profile',
@@ -407,27 +414,26 @@ class Pinim_Bridge{
             
             if ( is_wp_error($loaded) ) return $loaded;
             
-            if ( $boards_data = pinim_get_array_value(array('resource_response','data'), $this->remote_response['body']) ){
+            if ( $userboards = pinim_get_array_value(array('resource_response','data'), $this->remote_response['body']) ){
                 
                 //precaution - remove items that have not the "board" type (like module items)
-                $boards_data = array_filter(
-                    $boards_data,
+                $userboards = array_filter(
+                    $userboards,
                     function ($e) {
                         return $e['type'] == 'board';
                     }
                 );  
                 
-                $boards_data = array_values($boards_data); //reset keys
+                $userboards = array_values($userboards); //reset keys
                 
             }
 
-            $this->boards[$username] = $boards_data;
-            
         }
         
-        return $this->boards[$username];
+        $userboards_stored[$username] = $userboards;
+        pinim()->set_session_data('user_datas_boards',$userboards_stored);
         
-        
+        return $userboards;
 
     }
 
@@ -475,7 +481,6 @@ class Pinim_Bridge{
         while ($board->bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
             $query = $this->get_board_pins_page($board);
             if ( is_wp_error($query) ){
-                
                 if(empty($board_pins)){
                     $message = $query->get_error_message();
                 }else{
@@ -600,45 +605,16 @@ class Pinim_Bridge{
 
     }
     
-    static function get_short_url($username,$slug){
-        return sprintf('/%1$s/%2$s/',$username,$slug);
-    }
-    
-    /**
-     * Validates a board url, like
-     * 'https://www.pinterest.com/USERNAME/SLUG/'
-     * or '/USERNAME/SLUG/'
-     * @param type $url
-     * @return \WP_Error
-     */
-    
-    static function validate_board_url($url){
-        preg_match("~(?:http(?:s)?://(?:www\.)?pinterest.com)?/([^/]+)/([^/]+)/?~", $url, $matches);
-        
-        if (!isset($matches[1]) || !isset($matches[2])){
-            return new WP_Error('pinim_validate_board_url',__('This board URL is not valid','pinim'));
-        }
-        
-        $output = array(
-            'url'       => self::get_short_url($matches[1],$matches[2]),
-            'url_full'  => self::$pinterest_url . self::get_short_url($matches[1],$matches[2]),
-            'username'  => $matches[1],
-            'slug'      => $matches[2],
-        );
-
-        return $output;
-    }
-    
     public function get_board_id($url){
-        $board_args = self::validate_board_url($url);
+        $board_url = pinim_validate_board_url($url);
         
-        if (is_wp_error($board_args)) return $board_args;
+        if (is_wp_error($board_url)) return $board_url;
 
         $args = array(
             'headers'       => $this->_get_default_headers()
         );
 
-        $response = wp_remote_get( self::$pinterest_url.$board_args['url'], $args );
+        $response = wp_remote_get( $board_url, $args );
         $body = wp_remote_retrieve_body($response);
         
         if ( is_wp_error($body) ){
