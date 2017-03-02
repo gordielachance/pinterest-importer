@@ -295,6 +295,9 @@ class Pinim_Boards {
     
     function get_boards_user(){
         $boards = array();
+	    
+	//login is required to get private boards
+	$logged = pinim()->bridge->do_login();
 
         $user_data = pinim()->bridge->get_user_datas();
         if ( is_wp_error($user_data) ) return $user_data;
