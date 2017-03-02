@@ -399,7 +399,7 @@ class Pinim_Bridge{
         }else{
             
             $loaded = $this->loadContentAjax('/resource/BoardsResource/get/?' . http_build_query(array(
-                    'source_url' => '/' . $username . '/',
+                    'source_url' => sprintf('/%s/',$board->username),
                     'data' => json_encode(array(
                         'options' => array(
                             'filter'            => 'all', // all | public | private
@@ -541,7 +541,7 @@ class Pinim_Bridge{
         if ($board->slug == 'likes'){
 
             $loaded = $this->loadContentAjax('/resource/UserLikesResource/get/?' . http_build_query(array(
-                'source_url' => '/' . $board->username . '/',
+                'source_url' => sprintf('/%s/',$board->username),
                 'data' => json_encode(array(
                     'options' => array(
                         'username'          => $board->username,
@@ -555,7 +555,7 @@ class Pinim_Bridge{
         }else{
             
             $loaded = $this->loadContentAjax('/resource/BoardFeedResource/get/?' . http_build_query(array(
-                'source_url' => '/' . $board->username . '/' . $board->slug . '/',
+                'source_url' => sprintf('/%s/%s/',$board->username,$board->slug),
                 'data' => json_encode(array(
                     'options' => array(
                         'board_id'                  => $board->board_id,
