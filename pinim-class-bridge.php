@@ -412,10 +412,6 @@ class Pinim_Bridge{
             $username = $me_username;
         }
 
-        if ( ($username == $me_username) && (!$this->isLoggedIn) ){
-            pinim()->debug_log("Private boards will be ignored as you are not logged to Pinterest.",' get_user_boards()');
-        }
-
         $userboards_stored = pinim()->get_session_data('user_datas_boards');
         
         $userboards = array();
@@ -425,6 +421,10 @@ class Pinim_Bridge{
             $userboards = pinim_get_array_value($username, $userboards_stored);
             
         }else{
+            
+            if ( ($username == $me_username) && (!$this->isLoggedIn) ){
+                pinim()->debug_log("Private boards will be ignored as you are not logged to Pinterest.",' get_user_boards()');
+            }
             
             $loaded = $this->loadContentAjax('/resource/BoardsResource/get/?' . http_build_query(array(
                     'source_url' => sprintf('/%s/',$username),
