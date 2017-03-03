@@ -146,9 +146,7 @@ class Pinim_Bridge{
     public function do_login(){
         
         if ( !$this->isLoggedIn ){
-            
-            pinim()->debug_log('do_login()');
-            
+
             //login cached
             if ( !$this->login && ( $login = pinim()->get_session_data('login') ) ){
                 $this->set_login($login);
@@ -162,6 +160,8 @@ class Pinim_Bridge{
             if (!isset($this->login) or !isset($this->password)) {
                 return new WP_Error('pinim',__('Missing login and/or password','pinim'));
             }
+            
+            pinim()->debug_log('do_login()');
             
             // reset CSRF token if any (TO FIX : if any !)
             $this->get_csrftoken('/', true);
@@ -356,7 +356,13 @@ class Pinim_Bridge{
      */
     public function get_user_datas($keys = null,$username = null){
         
-        if (!$username) $username = 'me'; //when the http request will be made, this will redirect to the logged user URL
+        $me_username = pinim()->get_session_data('user_datas','me','username');
+
+        if ( (!$username ) || ( ($username) && ($username == $me_username) ) ){
+            $username = 'me'; //when the http request will be made, this will redirect to the logged user URL
+        }
+        
+        if (!$username) return false;
         
         $userdatas = array();
         
@@ -367,6 +373,10 @@ class Pinim_Bridge{
             $userdatas = pinim_get_array_value($username, $userdatas_stored);
             
         }else{
+            
+            if (($username == 'me') && !$this->isLoggedIn){
+                return new WP_Error( 'pinim', __("Unable to get your informations as you are not logged to Pinterest","pinim") );
+            }
         
             pinim()->debug_log('get_user_datas() for user:' . $username);
 
