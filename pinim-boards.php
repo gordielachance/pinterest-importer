@@ -297,7 +297,7 @@ class Pinim_Boards {
         $boards = array();
 	    
         //login is required to get private boards
-        if ( !$logged = pinim()->bridge->do_login() ){
+        if ( !pinim()->get_session_data('user_datas_boards') && ( !$logged = pinim()->bridge->isLoggedIn ) ){
             $message = __("Private boards will be ignored as you are not logged to Pinterest.",'pinim');
             add_settings_error('feedback_boards', 'not-logged', $message,'inline');
         }
