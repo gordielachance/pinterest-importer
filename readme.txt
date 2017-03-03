@@ -84,6 +84,9 @@ function pin_custom_content($post,$pin,$is_update){
 
 == Changelog ==
 
+= 0.5.1 =
+* Fixed logout
+
 = 0.5.0 =
 * Now able to get private boards again
 * Improved HTTP requests
