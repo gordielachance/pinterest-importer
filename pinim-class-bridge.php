@@ -544,19 +544,25 @@ class Pinim_Bridge{
      */
     private function get_board_pins_page($board){
         
-        pinim()->debug_log($board->slug,'get_board_pins_page()');
+        pinim()->debug_log(array('slug'=>$board->slug,'bookmark'=>$board->bookmarks),'get_board_pins_page()');
                 
         $page_pins = array();
         $data_options = array();
         $url = null;
         $secret = null;
+        
+        $options_default = array();
+        if ( $board->bookmarks ){
+            $options_default['bookmarks'] = (array)$board->bookmarks;
+        }
 
         if ($board->slug == 'likes'){
             
-            $options = array(
-                'username'          => $board->username,
-                'bookmarks'         => ( $board->bookmarks ) ? (array)$board->bookmarks : null
+            $options_likes = array(
+                'username'          => $board->username
             );
+            
+            $options = array_merge($options_default,$options_likes);
             
             $query = array(
                 'source_url' => sprintf('/%s/',$board->username),
@@ -571,16 +577,17 @@ class Pinim_Bridge{
 
         }else{
             
-            $options = array(
+            $options_board = array(
                 'board_id'                  => $board->board_id,
                 'add_pin_rep_with_place'    => null,
                 'board_url'                 => $board->get_datas('url'),
                 'page_size'                 => null,
                 'prepend'                   => true,
                 'access'                    => array('write','delete'),
-                'board_layout'              => 'default',
-                'bookmarks'                 => ( $board->bookmarks ) ? (array)$board->bookmarks : null
+                'board_layout'              => 'default'
             );
+            
+            $options = array_merge($options_default,$options_board);
             
             $query = array(
                 'source_url' => sprintf('/%s/%s/',$board->username,$board->slug),
@@ -589,7 +596,7 @@ class Pinim_Bridge{
                     'context' => new stdClass,
                 )),
                 '_' => time() . '999',
-            )
+            );
             
             $loaded = $this->loadContentAjax('/resource/BoardFeedResource/get/?' . http_build_query($query), true);
 
