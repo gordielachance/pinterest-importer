@@ -108,6 +108,8 @@ class Pinim_Bridge{
 
     private function get_csrftoken($url = '/login/', $force_reset = false){
         
+        $token = null;
+        
         if ($force_reset){
             pinim()->set_session_data('csrftoken',null);
         }elseif ( $token = pinim()->get_session_data('csrftoken') ) {
