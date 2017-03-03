@@ -171,3 +171,8 @@ function pinim_validate_board_url($url, $return=null){
 
     return $output;
 }
+
+function pinim_get_pin_capability($cap = 'edit_posts'){
+    $post_type_obj = get_post_type_object( pinim()->pin_post_type );
+    return $post_type_obj->cap->$cap;
+}

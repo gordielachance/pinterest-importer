@@ -33,7 +33,7 @@ class Pinim_Account {
             sprintf('edit.php?post_type=%s',pinim()->pin_post_type), 
             __('Pinterest Account','pinim'), 
             __('Pinterest Account','pinim'), 
-            'manage_options', //TO FIX
+            pinim_get_pin_capability(), //capability required
             'account', 
             array($this, 'page_account')
         );

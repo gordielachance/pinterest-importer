@@ -27,7 +27,7 @@ class Pinim_Boards {
             sprintf('edit.php?post_type=%s',pinim()->pin_post_type), 
             __('Pinterest Boards','pinim'), 
             __('Pinterest Boards','pinim'), 
-            'manage_options', //TO FIX
+            pinim_get_pin_capability(), //capability required
             'boards', 
             array($this, 'page_boards')
         );
