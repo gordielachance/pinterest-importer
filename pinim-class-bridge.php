@@ -486,7 +486,6 @@ class Pinim_Bridge{
     /**
      * Get all pins for a board.
      * @param type $board
-     * @param type $bookmark
      * @param type $max
      * @param type $stop_at_pin_id
      * @return \WP_Error
@@ -499,7 +498,7 @@ class Pinim_Bridge{
         
         $board_page = 0;
         $board_pins = array();
-        while ($board->bookmark != '-end-') { //end loop when bookmark "-end-" is returned by pinterest
+        while ($board->bookmarks != '-end-') { //end loop when bookmarks "-end-" is returned by pinterest
             $query = $this->get_board_pins_page($board);
             if ( is_wp_error($query) ){
                 if(empty($board_pins)){
@@ -510,7 +509,7 @@ class Pinim_Bridge{
                 
                 return new WP_Error( 'pinim', $message, $board_pins ); //return already loaded pins with error
             }
-            $board->bookmark = $query['bookmark'];
+            $board->bookmarks = $query['bookmarks'];
             if (isset($query['pins'])){
                 $page_pins = $query['pins'];
                 //stop if this pin ID is found
@@ -518,7 +517,7 @@ class Pinim_Bridge{
                     foreach($page_pins as $key=>$pin){
                         if (isset($pin['id']) && $pin['id']==$stop_at_pin_id){
                             $page_pins = array_slice($page_pins, 0, $key+1);
-                            $board->bookmark = '-end-';
+                            $board->bookmarks = '-end-';
                             break;
                         }
                     }
@@ -528,7 +527,7 @@ class Pinim_Bridge{
                 //limit reached
                 if ( ($max) && ( count($board_pins)> $max) ){
                     $board_pins = array_slice($board_pins, 0, $max);
-                    $board->bookmark = '-end-';
+                    $board->bookmarks = '-end-';
                     break;
                 }
             }
@@ -541,12 +540,11 @@ class Pinim_Bridge{
     /**
      * 
      * @param type $board
-     * @param type $bookmark
      * @return \WP_Error
      */
     private function get_board_pins_page($board){
         
-        pinim()->debug_log('get_board_pins_page() : '. $board->slug);
+        pinim()->debug_log($board->slug,'get_board_pins_page()');
                 
         $page_pins = array();
         $data_options = array();
@@ -554,38 +552,46 @@ class Pinim_Bridge{
         $secret = null;
 
         if ($board->slug == 'likes'){
-
-            $loaded = $this->loadContentAjax('/resource/UserLikesResource/get/?' . http_build_query(array(
+            
+            $options = array(
+                'username'          => $board->username,
+                'bookmarks'         => ( $board->bookmarks ) ? (array)$board->bookmarks : null
+            );
+            
+            $query = array(
                 'source_url' => sprintf('/%s/',$board->username),
                 'data' => json_encode(array(
-                    'options' => array(
-                        'username'          => $board->username,
-                        'bookmark'          => ( $board->bookmark ) ? (array)$board->bookmark : null
-                    ),
+                    'options' => $options,
                     'context' => new stdClass,
                 )),
                 '_' => time() . '999',
-            )), true);
+            );
+
+            $loaded = $this->loadContentAjax('/resource/UserLikesResource/get/?' . http_build_query($query), true);
 
         }else{
             
-            $loaded = $this->loadContentAjax('/resource/BoardFeedResource/get/?' . http_build_query(array(
+            $options = array(
+                'board_id'                  => $board->board_id,
+                'add_pin_rep_with_place'    => null,
+                'board_url'                 => $board->get_datas('url'),
+                'page_size'                 => null,
+                'prepend'                   => true,
+                'access'                    => array('write','delete'),
+                'board_layout'              => 'default',
+                'bookmarks'                 => ( $board->bookmarks ) ? (array)$board->bookmarks : null
+            );
+            
+            $query = array(
                 'source_url' => sprintf('/%s/%s/',$board->username,$board->slug),
                 'data' => json_encode(array(
-                    'options' => array(
-                        'board_id'                  => $board->board_id,
-                        'add_pin_rep_with_place'    => null,
-                        'board_url'                 => $board->get_datas('url'),
-                        'page_size'                 => null,
-                        'prepend'                   => true,
-                        'access'                    => array('write','delete'),
-                        'board_layout'              => 'default',
-                        'bookmark'                  => ( $board->bookmark ) ? (array)$board->bookmark : null
-                    ),
+                    'options' => $options,
                     'context' => new stdClass,
                 )),
                 '_' => time() . '999',
-            )), true);
+            )
+            
+            $loaded = $this->loadContentAjax('/resource/BoardFeedResource/get/?' . http_build_query($query), true);
 
             
         }
@@ -607,15 +613,15 @@ class Pinim_Bridge{
         );  
         $page_pins = array_values($page_pins); //reset keys
         
-        //bookmark
-        $bookmark = null;
+        //bookmarks
+        $bookmarks = null;
         if ( $bookmarks = pinim_get_array_value(array('body','resource','options','bookmarks'), $this->remote_response) ){
-            $bookmark = $bookmarks[0];
+            $bookmarks = $bookmarks[0];
         }
 
         return array(
             'pins'      => $page_pins,
-            'bookmark'  => $bookmark
+            'bookmarks' => $bookmarks
         );
 
     }

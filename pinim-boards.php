@@ -459,7 +459,7 @@ class Pinim_Boards {
             case 'not_cached':
                 
                 foreach((array)$boards as $board){
-                    if ( $board->bookmark ==  '-end-' ) continue;
+                    if ( $board->bookmarks ==  '-end-' ) continue;
                     $output[] = $board;
 
                 }

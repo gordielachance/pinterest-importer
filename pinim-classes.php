@@ -14,7 +14,7 @@ class Pinim_Board_Item{
     var $raw_pins = array();
     var $pins = array();
     
-    var $bookmark;
+    var $bookmarks;
 
     protected $options_default;
     protected $session_default;
@@ -68,7 +68,7 @@ class Pinim_Board_Item{
             'slug'          => $this->slug,
             'url'           => $this->short_url,
             'raw_pins'      => null,
-            'bookmark'      => null,
+            'bookmarks'     => null,
             'in_queue'      => false,
         );
         
@@ -150,7 +150,7 @@ class Pinim_Board_Item{
         if ( $board_session ){
             $this->datas = $board_session['datas'];
             $this->raw_pins = $board_session['raw_pins'];
-            $this->bookmark = $board_session['bookmark'];
+            $this->bookmarks = $board_session['bookmarks'];
             $this->in_queue = $board_session['in_queue'];
         }
 
@@ -168,7 +168,7 @@ class Pinim_Board_Item{
             'url'           => $this->short_url,
             'datas'         => $this->datas,
             'raw_pins'      => $this->raw_pins,
-            'bookmark'      => $this->bookmark,
+            'bookmarks'     => $this->bookmarks,
             'in_queue'      => $this->in_queue,
         );
 
@@ -274,7 +274,7 @@ class Pinim_Board_Item{
     }
     
     function is_queue_complete(){
-        return ($this->bookmark == '-end-');
+        return ($this->bookmarks == '-end-');
     }
     
     //TO FIX TO CHECK
@@ -307,9 +307,7 @@ class Pinim_Board_Item{
         
         if (!$this->is_queue_complete()){
 
-            $bookmark = $this->bookmark; //uncomplete queue
-
-            if ( !$this->raw_pins || $bookmark ){
+            if ( !$this->raw_pins || $this->bookmarks ){
 		    
                 //private boards requires to be logged
                 if ( $this->is_private_board() ){
@@ -1078,7 +1076,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                 break;
             }
 
-            if ( !$board->bookmark ){ //queue not started
+            if ( !$board->bookmarks ){ //queue not started
                 $pc_status_classes[] = "offline";
                 $link = pinim_get_menu_url(
                     array(
