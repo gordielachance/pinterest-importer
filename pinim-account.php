@@ -17,7 +17,15 @@ class Pinim_Account {
     
     function init(){
         add_action( 'admin_menu',array( $this,'admin_menu' ),9,2);
+        add_action('admin_init',array($this,'logout'));
         add_action( 'current_screen', array( $this, 'page_account_init') );
+    }
+    
+    function logout(){
+        if ( isset($_REQUEST['logout']) ){
+            pinim()->destroy_session();
+            add_settings_error('feedback_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated inline');
+        }
     }
     
     function admin_menu(){
@@ -25,7 +33,7 @@ class Pinim_Account {
             sprintf('edit.php?post_type=%s',pinim()->pin_post_type), 
             __('Pinterest Account','pinim'), 
             __('Pinterest Account','pinim'), 
-            'manage_options', //TO FIX
+            pinim_get_pin_capability(), //capability required
             'account', 
             array($this, 'page_account')
         );
@@ -35,10 +43,7 @@ class Pinim_Account {
         $screen = get_current_screen();
         if ($screen->id != 'pin_page_account') return;
         
-        if ( isset($_REQUEST['logout']) ){
-            pinim()->destroy_session();
-            add_settings_error('feedback_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated inline');
-        }elseif ( isset($_POST['pinim_form_login']) ){
+        if ( isset($_POST['pinim_form_login']) ){
 
             $login = ( isset($_POST['pinim_form_login']['username']) ? $_POST['pinim_form_login']['username'] : null);
             $password = ( isset($_POST['pinim_form_login']['password']) ? $_POST['pinim_form_login']['password'] : null);
@@ -97,7 +102,7 @@ class Pinim_Account {
 
     function login_field_callback(){
         $option = pinim()->get_session_data('login');
-        $disabled = disabled( pinim()->bridge->is_logged_in() , true, false);
+        $disabled = disabled( pinim()->bridge->isLoggedIn, true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Username');
         $input = sprintf(
@@ -114,7 +119,7 @@ class Pinim_Account {
     
     function password_field_callback(){
         $option = pinim()->get_session_data('password');
-        $disabled = disabled( pinim()->bridge->is_logged_in() , true, false);
+        $disabled = disabled( pinim()->bridge->isLoggedIn , true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Password');
         
@@ -135,12 +140,9 @@ class Pinim_Account {
         $logged = $this->do_bridge_login($login,$password);
         if ( is_wp_error($logged) ) return $logged;
 
-        //store login / password
-        pinim()->set_session_data('login',$login);
-        pinim()->set_session_data('password',$password);
-
         //try to get user datas
-        $user_datas = $this->get_user_infos();
+        $user_datas = pinim()->bridge->get_user_datas();
+
         if (is_wp_error($user_datas)) return $user_datas;
 
         return true;
@@ -152,7 +154,7 @@ class Pinim_Account {
     **/
     function do_bridge_login($login = null, $password = null){
        
-        if ( !$logged = pinim()->bridge->is_logged_in() ){
+        if ( !$logged = pinim()->bridge->isLoggedIn ){
             
             if (!$login) $login = pinim()->get_session_data('login');
             $login = trim($login);
@@ -162,11 +164,6 @@ class Pinim_Account {
 
             if (!$login || !$password){
                 return new WP_Error( 'pinim',__('Missing login and/or password','pinim') );
-            }
-
-           //force use Pinterest username
-            if (strpos($login, '@') !== false) {
-                return new WP_Error( 'pinim',__('Use your Pinterest username here, not an email address.','pinim').' <code>https://www.pinterest.com/USERNAME/</code>' );
             }
 
             //try to auth
@@ -182,37 +179,6 @@ class Pinim_Account {
         return $logged;
 
    }
-    
-    /**
-     * Get datas for a user, from session cache or from Pinterest.
-     * @param type $username
-     * @return type
-     */
-    
-    function get_user_infos($keys = null,$username = null){
-        
-        //ignore when logging out
-        if ( isset($_REQUEST['logout']) ) return;
-        
-        if (!$username) $username = pinim()->get_session_data('login');
-        
-        $session_data = pinim()->get_session_data('user_datas');
-
-        if ( !isset($session_data[$username]) ){
-            
-            $userdata = pinim()->bridge->get_user_datas($username);
-            if ( is_wp_error($userdata) ) return $userdata;
-
-            $session_data[$username] = $userdata;
-
-            pinim()->set_session_data('user_datas',$session_data);
-            
-        }
-        
-        $datas = $session_data[$username];
-        return pinim_get_array_value($keys, $datas);
-
-    }
 
 }
 

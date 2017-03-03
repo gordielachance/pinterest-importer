@@ -2,7 +2,7 @@
 
 class Pinim_Board_Item{
     
-    var $pinterest_url;
+    var $short_url;
     var $username;
     var $slug;
     var $board_id;
@@ -14,30 +14,32 @@ class Pinim_Board_Item{
     var $raw_pins = array();
     var $pins = array();
     
-    var $bookmark;
+    var $bookmarks;
 
     protected $options_default;
     protected $session_default;
 
     function __construct($url,$datas=null){
         
-        $board_args = Pinim_Bridge::validate_board_url($url);
-
-        $this->username = $board_args['username'];
-        $this->slug = $board_args['slug'];
-        $this->pinterest_url = $board_args['url'];
+        $short_url = pinim_validate_board_url($url,'short_url');
         
+        if ( is_wp_error($short_url) ) return $short_url;
+
+        $this->short_url = $short_url;
+        $this->username = pinim_validate_board_url($url,'username');
+        $this->slug = pinim_validate_board_url($url,'slug');
+
         //datas
         if ( $this->slug == 'likes'){
-            $this->datas['id'] = pinim_account()->get_user_infos('id',$this->username);
+            $this->datas['id'] = pinim()->bridge->get_user_datas('id',$this->username);
             $this->datas['name'] = sprintf(__("%s's likes",'pinim'),$this->username).' <i class="fa fa-heart" aria-hidden="true"></i>';
-            $this->datas['pin_count'] = pinim_account()->get_user_infos('like_count',$this->username);
+            $this->datas['pin_count'] = pinim()->bridge->get_user_datas('like_count',$this->username);
             $this->datas['cover_images'] = array(
                 array(
-                    'url'   => pinim_account()->get_user_infos('image_medium_url',$this->username)
+                    'url'   => pinim()->bridge->get_user_datas('image_medium_url',$this->username)
                 )
             );
-            $this->datas['url'] = $this->pinterest_url;
+            $this->datas['url'] = $this->short_url;
         }else{
             $this->datas = (array)$datas;
         }
@@ -50,10 +52,10 @@ class Pinim_Board_Item{
         $this->options_default = array(
             'username'      => $this->username,
             'slug'          => $this->slug,
-            'url'           => $this->pinterest_url,
+            'url'           => $this->short_url,
             'board_id'      => $this->board_id,
-            'autocache'     => false,
-            'private'       => false,
+            'autocache'     => null,
+            'private'       => null,
             'categories'    => null
         );
         
@@ -64,9 +66,9 @@ class Pinim_Board_Item{
         $this->session_default = array(
             'username'      => $this->username,
             'slug'          => $this->slug,
-            'url'           => $this->pinterest_url,
+            'url'           => $this->short_url,
             'raw_pins'      => null,
-            'bookmark'      => null,
+            'bookmarks'     => null,
             'in_queue'      => false,
         );
         
@@ -74,27 +76,7 @@ class Pinim_Board_Item{
 
 
     }
-    
-    function populate_board_url($board_url_full){
-        $pinterest_url = str_replace(pinim()->pinterest_url, '', $board_url_full);
 
-        //extract username & board slug
-        $pattern = '~([^/]+)/([^/]+)~';
-        preg_match($pattern, $pinterest_url, $matches);
-
-        if (!isset($matches[1])){
-            return;
-        }
-        
-        if (!isset($matches[2])){
-            return;
-        }
-        
-        $this->username = $matches[1];
-        $this->slug = $matches[2];
-
-    }
-    
     function get_options($key = null){
         
         if (!$this->options){
@@ -152,7 +134,7 @@ class Pinim_Board_Item{
     function populate_session(){
 
         //get it
-        $boards_sessions = pinim()->get_session_data('user_boards');
+        $boards_sessions = pinim()->get_session_data('boards_options');
         
         //keep only our board
         $board_id = $this->board_id;
@@ -168,7 +150,7 @@ class Pinim_Board_Item{
         if ( $board_session ){
             $this->datas = $board_session['datas'];
             $this->raw_pins = $board_session['raw_pins'];
-            $this->bookmark = $board_session['bookmark'];
+            $this->bookmarks = $board_session['bookmarks'];
             $this->in_queue = $board_session['in_queue'];
         }
 
@@ -177,16 +159,16 @@ class Pinim_Board_Item{
     function save_session(){
         
         //all boards session
-        $boards_sessions = pinim()->get_session_data('user_boards');
+        $boards_sessions = pinim()->get_session_data('boards_options');
 
         $session = array(
             'board_id'      => $this->board_id,
             'username'      => $this->username,
             'slug'          => $this->slug,
-            'url'           => $this->pinterest_url,
+            'url'           => $this->short_url,
             'datas'         => $this->datas,
             'raw_pins'      => $this->raw_pins,
-            'bookmark'      => $this->bookmark,
+            'bookmarks'     => $this->bookmarks,
             'in_queue'      => $this->in_queue,
         );
 
@@ -201,7 +183,7 @@ class Pinim_Board_Item{
 
         $boards_sessions[] = $session;
 
-        if ( $success = pinim()->set_session_data('user_boards',$boards_sessions) ){
+        if ( $success = pinim()->set_session_data('boards_options',$boards_sessions) ){
             $this->populate_session();
             return $success;
         }
@@ -292,7 +274,7 @@ class Pinim_Board_Item{
     }
     
     function is_queue_complete(){
-        return ($this->bookmark == '-end-');
+        return ($this->bookmarks == '-end-');
     }
     
     //TO FIX TO CHECK
@@ -324,14 +306,14 @@ class Pinim_Board_Item{
         $error = null;
         
         if (!$this->is_queue_complete()){
-            
-            //try to auth
-            $logged = pinim_account()->do_bridge_login();
-            if ( is_wp_error($logged) ) return $logged;
 
-            $bookmark = $this->bookmark; //uncomplete queue
-
-            if ( !$this->raw_pins || $bookmark ){
+            if ( !$this->raw_pins || $this->bookmarks ){
+		    
+                //private boards requires to be logged
+                if ( $this->is_private_board() ){
+                    $logged = pinim()->bridge->do_login();
+                    if (is_wp_error($logged) ) return $logged;
+                }
 
                 $pinterest_query = pinim()->bridge->get_board_pins($this);
 
@@ -373,11 +355,6 @@ class Pinim_Board_Item{
         return $this->raw_pins;
         
         
-    }
-    
-    function get_remote_url(){
-        $url = pinim()->pinterest_url.$this->get_datas('url');
-        return $url;
     }
     
 }
@@ -925,7 +902,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         //Build row actions
         $actions = array(
-            'pinterest'  => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$board->get_remote_url(),__('View on Pinterest','pinim'),'view'),
+            'pinterest'  => sprintf('<a href="%1$s" target="_blank">%2$s</a>',pinim_get_board_url($board->username,$board->slug),__('View on Pinterest','pinim'),'view'),
         );
 
         $title = sprintf('%1$s <span class="item-id">(id:%2$s)</span>',$board->get_datas('name'),$board->board_id);
@@ -1083,8 +1060,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             
             $bar_width = $percent;
             
-            $imported = $board->get_count_imported_pins();
-            $text_bar = $imported.'/'.$board->get_datas('pin_count');
+            $text_bar = $percent.'/'.$board->get_datas('pin_count');
             $text_bar .= '<i class="fa fa-refresh" aria-hidden="true"></i>';
 
             switch($percent){
@@ -1100,7 +1076,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                 break;
             }
 
-            if ( !$board->bookmark ){ //queue not started
+            if ( !$board->bookmarks ){ //queue not started
                 $pc_status_classes[] = "offline";
                 $link = pinim_get_menu_url(
                     array(
@@ -1190,7 +1166,12 @@ class Pinim_Boards_Table extends WP_List_Table {
     function get_sortable_columns() {
         $sortable_columns = array(
             'title'                 => array('title',false),     //true means it's already sorted
+            'private'               => array('private',false),
             'pin_count_remote'      => array('pin_count_remote',false),
+            'pin_count_imported'    => array('pin_count_imported',false),
+            'autocache'             => array('autocache',false),
+            'in_queue'              => array('in_queue',false),
+            'username'              => array('username',false),
             
         );
         
@@ -1518,7 +1499,6 @@ class Pinim_Boards_Table extends WP_List_Table {
          */
         $per_page = pinim()->get_options('boards_per_page');
         
-        
         /**
          * REQUIRED. Now we need to define our column headers. This includes a complete
          * array of columns to be displayed (slugs & titles), a list of columns
@@ -1566,9 +1546,7 @@ class Pinim_Boards_Table extends WP_List_Table {
          * to a custom query. The returned data will be pre-sorted, and this array
          * sorting technique would be unnecessary.
          */
-        
-        
-        /*
+
         function usort_reorder($a,$b){
 
             $orderby = 'title';
@@ -1581,16 +1559,31 @@ class Pinim_Boards_Table extends WP_List_Table {
                 case 'title':
                     $result = strcmp($a->get_datas('name'), $b->get_datas('name'));
                 break;
+                case 'private':
+                    $result = $a->is_private_board() - $b->is_private_board();
+                break;
                 case 'pin_count_remote':
                     $result = $a->get_datas('pin_count') - $b->get_datas('pin_count');
+                break;
+                case 'pin_count_imported':
+                    $result = $a->get_pc_imported_pins() - $b->get_pc_imported_pins();
+                break;
+                case 'autocache':
+                    $result = $a->get_options('autocache') - $b->get_options('autocache');
+                break;
+                case 'in_queue':
+                    $result = $a->in_queue  - $b->in_queue;
+                break;
+                case 'username':
+                    $result = $a->username  - $b->username;
                 break;
                 
             }
 
             return ($order==='asc') ? $result : -$result; //Send final sort direction to usort
         }
-        
-        //usort($data, 'usort_reorder');
+
+        usort($data, 'usort_reorder');
         
         
         /***********************************************************************

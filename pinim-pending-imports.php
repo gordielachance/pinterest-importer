@@ -32,12 +32,22 @@ class Pinim_Pending_Imports {
     }
     
     function admin_menu(){
+        
+        $pending_menu_title = __('Pending importation','pinim');
+        
+        //TO FIX show number of pending pins
+        //takes too much resources ?
+        /*
+        if( $pending_count = $this->get_pins_count_pending() ){
+            $pending_menu_title.=__sprintf('<span class="$pending_menu_title">%s</span>',$pending_count);
+        }
+        */
 
         pinim()->page_pending_imports = add_submenu_page(
             sprintf('edit.php?post_type=%s',pinim()->pin_post_type), 
-            __('Pending importation','pinim'), 
-            __('Pending importation','pinim'), 
-            'manage_options', //TO FIX
+            __('Pending importation','pinim'), //page title
+            $pending_menu_title, //menu title
+            pinim_get_pin_capability(), //capability required
             'pending-importation', 
             array($this, 'page_pending_import')
         );
