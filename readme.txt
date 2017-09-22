@@ -3,7 +3,7 @@ Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
 Tags: importer,Pinterest,pins,backup
 Requires at least: 3.5
-Tested up to: 4.7.2
+Tested up to: 4.8.2
 Stable tag: trunk
 License: GPLv2 or later
 
@@ -84,6 +84,11 @@ function pin_custom_content($post,$pin,$is_update){
 
 == Changelog ==
 
+= 0.5.2 =
+* fixed plugin broken due to Pinterest website's changes
+* removed unused function get_board_id
+* TO FIX : 'likes' board no more working
+
 = 0.5.1 =
 * Fixed logout
 
@@ -98,11 +103,6 @@ function pin_custom_content($post,$pin,$is_update){
 * Now uses a 'pin' post type instead of the 'post' default post types.  This makes it easier to handle pins, use specific theme templates or capabilities, etc. + Upgrade routine for previous versions.
 * New 'Pins' menu in the backend with a 'Pinterest Account', 'Pinterest Boards', 'Pending Importation' and 'Settings' pages; which replaces the page tabs from the previous versions.
 * Code improved (a lot !)
-
-TO FIX
-* Date of imported pin does not match
-* Auto-cached boards do not auto-cache
-* Save preference for simple/advanced boards view with default to simple
 
 = 0.4.7 =
 * Less API calls

@@ -83,7 +83,7 @@ class Pinim_Bridge{
             
             if ( !is_wp_error($loaded) ){
                 
-                $json = $this->extract_header_json($this->remote_response['body']);
+                $json = $this->get_inline_json($this->remote_response['body'],'jsInit1');
 
                 if (is_wp_error($json)) return $json;
 
@@ -196,14 +196,16 @@ class Pinim_Bridge{
 
             $this->isLoggedIn = true;
             pinim()->debug_log('has logged in');
-
         }
 
         return $this->isLoggedIn;
 
     }
     
-    private function extract_header_json($body){
+    private function get_inline_json($body,$id){
+        
+        $data = null;
+        
         if (is_string($body) && $body){
             
             libxml_use_internal_errors(true);
@@ -211,15 +213,23 @@ class Pinim_Bridge{
             $dom = new DOMDocument;
             $dom->loadHTML($body);
             $xpath = new DOMXPath($dom);
-            $js_init_node = $xpath->evaluate('//*[@id="jsInit1"][1]');
-            $js_init = $js_init_node->item(0)->nodeValue;
+            $json_node = $xpath->evaluate( sprintf('//*[@id="%s"][1]',$id) );
+            $json = $json_node->item(0)->nodeValue;
 
-            if ($js_init) {
-                return @json_decode($js_init, true);
+            if ($json) {
+                $data = @json_decode($json, true);
             }
         }
         
-        return new WP_Error('pinim',__('Unable to parse the json informations.','pinim'));
+        pinim()->debug_log(array('id'=>$id,'json'=>json_encode($data)),'get_inline_json');
+        
+        if (!$data){
+            return new WP_Error('pinim',__('Unable to parse the json informations.','pinim'));
+        }
+        
+        return $data;
+        
+        
     }
     
     protected function _httpRequest($type = 'GET', $urlPath, $data = null, $headers = array()){
@@ -375,7 +385,7 @@ class Pinim_Bridge{
         }else{
             
             if (($username == 'me') && !$this->isLoggedIn){
-                return new WP_Error( 'pinim', __("Unable to get your informations as you are not logged to Pinterest","pinim") );
+                return new WP_Error( 'pinim', __("Unable to get your user datas as you are not logged to Pinterest","pinim") );
             }
         
             pinim()->debug_log('get_user_datas() for user:' . $username);
@@ -383,11 +393,15 @@ class Pinim_Bridge{
             $loaded = $this->loadContent(sprintf('/%s/',$username));
             if ( is_wp_error($loaded) ) return $loaded;
 
-            $json = $this->extract_header_json($this->remote_response['body']);
-
-            if ( $userdatas = pinim_get_array_value(array('tree','data'), $json) ){
+            $json = $this->get_inline_json($this->remote_response['body'],'initial-state');
+            
+            if ( ( $users = pinim_get_array_value(array('users'), $json) ) && ( $userdatas = reset($users) ) ){
+                
                 $userdatas_stored[$username] = $userdatas;
                 pinim()->set_session_data('user_datas',$userdatas_stored);
+                
+            }else{
+                return new WP_Error( 'pinim', sprintf(__("Unable to get %s's user datas","pinim"),$username ) );
             }
         }
         
@@ -644,33 +658,5 @@ class Pinim_Bridge{
         );
 
     }
-    
-    public function get_board_id($url){
-        $board_url = pinim_validate_board_url($url);
-        
-        if (is_wp_error($board_url)) return $board_url;
-
-        $args = array(
-            'headers'       => $this->_get_default_headers()
-        );
-
-        $response = wp_remote_get( $board_url, $args );
-        $body = wp_remote_retrieve_body($response);
-        
-        if ( is_wp_error($body) ){
-            return $body;
-        }
-
-        $json = $this->extract_header_json($body);
-        if (is_wp_error($json)) return $json;
-        
-        if (isset($json['resourceDataCache']['0']['data']['id'])){
-            $board_id = $json['resourceDataCache']['0']['data']['id'];
-            return $board_id;
-
-        }
-        return new WP_Error('pinim',__('Error getting Board ID.','pinim'));
-    }
-
 }
 
