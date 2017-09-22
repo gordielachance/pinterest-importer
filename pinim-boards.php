@@ -74,7 +74,7 @@ class Pinim_Boards {
                         $input_urls = array_filter($input_urls, 'trim'); // remove any extra \r characters left behind
 
                         foreach ($input_urls as $url) {
-                            $short_url = pinim_validate_board_url($url,'short_url');
+                            $short_url = pinim_get_short_url($url);
                             if ( is_wp_error($short_url) ) continue;
                             $boards_urls[] = $short_url;
                         }
@@ -154,7 +154,7 @@ class Pinim_Boards {
         
         $all_boards = array();
         //check that we are logged
-        $user_data = pinim()->bridge->get_user_datas();
+        $user_data = pinim_account()->get_user_datas();
         if ( is_wp_error($user_data) || !$user_data ){
             $login_url = pinim_get_menu_url(array('page'=>'account'));
             add_settings_error('feedback_boards','not_logged',sprintf(__('Please <a href="%s">login</a> to be able to list your board.','pinim'),$login_url),'error inline');
@@ -292,36 +292,7 @@ class Pinim_Boards {
         </div>
         <?php
     }
-    
-    function get_boards_user(){
-        $boards = array();
-	    
-        //login is required to get private boards
-        if ( !pinim()->get_session_data('user_datas_boards') && ( !$logged = pinim()->bridge->do_login() ) ){
-            $message = __("Private boards will be ignored as you are not logged to Pinterest.",'pinim');
-            add_settings_error('feedback_boards', 'not-logged', $message,'inline');
-        }
 
-        $user_data = pinim()->bridge->get_user_datas();
-        if ( is_wp_error($user_data) ) return $user_data;
-        if ( !$user_data ) return $boards;
-
-        $boards_datas = pinim()->bridge->get_user_boards();
-        if ( is_wp_error($boards_datas) ) return $boards_datas;
-
-        foreach((array)$boards_datas as $single_board_datas){
-            $boards[] = new Pinim_Board_Item($single_board_datas['url'],$single_board_datas);
-        }
-        
-        //likes
-        $username = pinim()->bridge->get_user_datas('username');
-        $likes_url = pinim_get_board_url($username,'likes',true);
-        $boards[] = new Pinim_Board_Item($likes_url);
-        
-        return $boards;
-        
-    }
-    
     function get_boards_followed(){
         
         $boards = array();
@@ -331,7 +302,7 @@ class Pinim_Boards {
         $followed_boards_urls = pinim_get_followed_boards_urls();
 
         foreach((array)$followed_boards_urls as $board_url){
-            $short_url = pinim_validate_board_url($board_url,'short_url');
+            $short_url = pinim_get_short_url($board_url);
             if ( is_wp_error($short_url) ) continue;
             $username = pinim_validate_board_url($board_url,'username');
             $slug = pinim_validate_board_url($board_url,'slug');
@@ -365,8 +336,29 @@ class Pinim_Boards {
 
     function get_boards(){
 
-        $user_boards = $this->get_boards_user();
-        if ( is_wp_error($user_boards) ) return $user_boards;
+        /*user boards*/
+        $user_boards = array();
+
+        $user_data = pinim_account()->get_user_datas();
+        if ( is_wp_error($user_data) ) return $user_data;
+
+        $all_boards = pinim()->bridge->get_user_boards();
+        if ( is_wp_error($all_boards) ) return $all_boards;
+
+        foreach((array)$all_boards as $board){
+            $short_url = pinim_get_short_url($board['url']);
+            try{
+                $board = pinim()->api->boards->get($short_url);
+            }catch (Exception $e) {
+                //TO FIX we should return the actual error
+                $board = new WP_Error( 'pinim',sprintf(__('Error while getting board %s','pinim'),sprintf('<em>%s</em>',$short_url)) );
+            }
+            
+            $user_boards[] = json_decode($board,true);
+        }
+        
+        print_r($user_boards);
+        die("RARA");
         
         $followed_boards = $this->get_boards_followed();
 
@@ -434,7 +426,7 @@ class Pinim_Boards {
         $output = array();
         if( is_wp_error($boards) ) return $output;
         
-        $username = pinim()->bridge->get_user_datas('username');
+        $username = pinim_account()->get_user_datas('username');
         
         switch ($filter){
             case 'autocache':

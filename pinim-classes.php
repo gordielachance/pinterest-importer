@@ -19,33 +19,40 @@ class Pinim_Board_Item{
     protected $options_default;
     protected $session_default;
 
-    function __construct($url,$datas=null){
+    function __construct($datas = null){
         
-        $short_url = pinim_validate_board_url($url,'short_url');
-        
-        if ( is_wp_error($short_url) ) return $short_url;
+        if ($datas){
+            
+            $short_url = pinim_get_short_url($datas['url']);
+            if ( is_wp_error($short_url) ) return $short_url;
+                                                         
+            $this->short_url = $short_url;
+            $this->username = pinim_validate_board_url($datas['url'],'username');
+            $this->slug = pinim_validate_board_url($datas['url'],'slug');
+            
+            print_r($this);die("caca");
 
-        $this->short_url = $short_url;
-        $this->username = pinim_validate_board_url($url,'username');
-        $this->slug = pinim_validate_board_url($url,'slug');
+            //datas
+            if ( $this->slug == 'likes'){
+                $this->datas['id'] = pinim_account()->get_user_datas('id',$this->username);
+                $this->datas['name'] = sprintf(__("%s's likes",'pinim'),$this->username).' <i class="fa fa-heart" aria-hidden="true"></i>';
+                $this->datas['pin_count'] = pinim_account()->get_user_datas('like_count',$this->username);
+                $this->datas['cover_images'] = array(
+                    array(
+                        'url'   => pinim_account()->get_user_datas('image_medium_url',$this->username)
+                    )
+                );
+                $this->datas['url'] = $this->short_url;
+            }else{
+                $this->datas = (array)$datas;
+            }
 
-        //datas
-        if ( $this->slug == 'likes'){
-            $this->datas['id'] = pinim()->bridge->get_user_datas('id',$this->username);
-            $this->datas['name'] = sprintf(__("%s's likes",'pinim'),$this->username).' <i class="fa fa-heart" aria-hidden="true"></i>';
-            $this->datas['pin_count'] = pinim()->bridge->get_user_datas('like_count',$this->username);
-            $this->datas['cover_images'] = array(
-                array(
-                    'url'   => pinim()->bridge->get_user_datas('image_medium_url',$this->username)
-                )
-            );
-            $this->datas['url'] = $this->short_url;
-        }else{
-            $this->datas = (array)$datas;
+            //board id
+            $this->board_id = $this->get_datas('id');                                  
         }
-        
-        //board id
-        $this->board_id = $this->get_datas('id');
+
+
+
 
 
         //options

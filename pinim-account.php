@@ -31,6 +31,7 @@ class Pinim_Account {
         );
     }
     
+    //TO FIX TO CHECK still is required ?
     function page_account_init(){
         
         if ( isset($_REQUEST['logout']) ){
@@ -44,10 +45,9 @@ class Pinim_Account {
         
         if ( isset($_POST['pinim_form_login']) ){
 
-            $login = ( isset($_POST['pinim_form_login']['username']) ? $_POST['pinim_form_login']['username'] : null);
-            $password = ( isset($_POST['pinim_form_login']['password']) ? $_POST['pinim_form_login']['password'] : null);
+            $token = ( isset($_POST['pinim_form_login']['token']) ? $_POST['pinim_form_login']['token'] : null);
 
-            $logged = $this->form_do_login($login,$password);
+            $logged = $this->save_user_token($token);
 
             if (is_wp_error($logged)){
                 add_settings_error('feedback_login', 'do_login', $logged->get_error_message(),'inline' );
@@ -68,6 +68,72 @@ class Pinim_Account {
         
     }
     
+    /*
+    Validate and store access token
+    */
+    function save_user_token($token){
+        
+        $user_id = get_current_user_id();
+        
+        pinim()->api->auth->setOAuthToken($token);
+        $userdatas = $this->get_user_datas();
+
+        if ( is_wp_error($userdatas) ){
+            
+            delete_user_meta($user_id,pinim()->user_token_metaname);
+            return $userdatas;
+            
+        }else{
+            
+            update_user_meta($user_id,pinim()->user_token_metaname,$token);
+            return true;
+            
+        }
+
+    }
+    
+    function get_my_username(){
+        if ( !$username = pinim()->get_session_data('user_datas','me','username') ) {
+            return new WP_Error('Missing username in user data.','pinim');
+        }
+        return $username;
+    }
+    
+    /**
+     * Get datas for a user.
+     * @return \WP_Error
+     */
+    public function get_user_datas($keys = null,$username = 'me'){
+        
+        $me_username = $this->get_my_username();
+        if ($username == $me_username) $username = 'me';
+
+        if ( !$userdatas = pinim()->get_session_data(array('user_datas',$username)) ){
+            if ($username == 'me'){ //me
+                try{
+                    $json = pinim()->api->users->me(array('fields' => 'username,first_name,last_name,image[large],counts'));
+                    $userdatas = json_decode($json, true);
+                }catch (Exception $e) {
+                    //TO FIX we should return the actual error
+                    //https://github.com/dirkgroenen/Pinterest-API-PHP/issues/68
+                    return new WP_Error( 'pinim',__('Error while getting user datas','pinim') );
+                }
+            }else{
+                echo("get_user_datas() [NOT ME] WIP");
+            }
+            
+            if ($userdatas){
+                $all_userdatas = pinim()->get_session_data('user_datas');
+                $all_userdatas[$username] = $userdatas;
+                pinim()->set_session_data('user_datas',$all_userdatas);
+            }
+
+        }
+
+        return pinim_get_array_value($keys, $userdatas);
+        
+    }
+    
     function page_account(){
         ?>
         <div class="wrap">
@@ -78,16 +144,29 @@ class Pinim_Account {
                 add_settings_error('feedback_login', 'no_sessions', __("It seems that your host doesn't support PHP sessions.  This plugin will not work properly.  We'll try to fix this soon.","pinim"),'inline');
             }
 
-            $this->pinim_form_login_desc();
-        
+            $this->pinim_form_login_desc();      
             ?>
             <form id="pinim-form-login" action="<?php echo pinim_get_menu_url(array('page'=>'account'));?>" method="post">
                 <div id="pinim_login_box">
                     <p id="pinim_login_icon"><i class="fa fa-pinterest" aria-hidden="true"></i></p>
+                    
                     <?php settings_errors('feedback_login');?>
-                    <?php $this->login_field_callback();?>
-                    <?php $this->password_field_callback();?>
-                    <?php submit_button(__('Login to Pinterest','pinim'));?>
+                    <!--
+                    <div id="pinim-app-login">
+                        <?php
+                        $boards_url = pinim_get_menu_url(array('page'=>'boards'));
+                        $login_url = pinim()->api->auth->getLoginUrl($boards_url, array('read_public'));
+                        printf('<a class="button button-primary" href="%s">%s</a>',$login_url,__('Authorize Pinterest','pinim'));
+                        ?>
+                    </div>
+                    -->
+                    <div id="pinim-token-login">
+                        <?php $this->token_field_callback();?>
+                        <?php submit_button(__('Login with a token','pinim'));?>
+                    </div>
+                    <?php
+        
+                    ?>
                 </div>
             </form>
         </div>
@@ -95,90 +174,31 @@ class Pinim_Account {
     }
     
     function pinim_form_login_desc(){
-        $session_cache = session_cache_expire();
-        echo '<p class="description">'.sprintf(__('Your login and password will be stored for %1$s minutes in a PHP session. It is not stored in the database.','pinim'),$session_cache)."</p>";
-    }
 
-    function login_field_callback(){
-        $option = pinim()->get_session_data('login');
-        $disabled = disabled( pinim()->bridge->isLoggedIn, true, false);
-        $el_id = 'pinim_form_login_username';
-        $el_txt = __('Username');
+        $link_token = sprintf('<a href="https://developers.pinterest.com/tools/access_token" target="_blank">%s</a>',__('Generate a access token','pinim'));
+        $desc_token = sprintf(__('%s on Pinterest and copy/paste it here.','pinim'),$link_token);
+        printf('<p class="description">%s</p>',$desc_token);
+        
+    }
+    
+    function token_field_callback(){
+        
+        $user_id = get_current_user_id();
+        
+        $option = get_user_meta($user_id,pinim()->user_token_metaname,true);
+        
+        $el_id = 'pinim_user_token';
+        $el_txt = __('Token','pinim');
         $input = sprintf(
-            '<input type="text" id="%1$s" name="%2$s[username]" value="%3$s"%4$s/>',
+            '<input type="text" id="%s" name="%s[token]" value="%s"/>',
             $el_id,
             'pinim_form_login',
-            $option,
-            $disabled
+            $option
         );
         
-        printf('<p><label for="%1$s">%2$s</label>%3$s</p>',$el_id,$el_txt,$input);
+        printf('<p><label for="%s">%s</label>%s</p>',$el_id,$el_txt,$input);
         
     }
-    
-    function password_field_callback(){
-        $option = pinim()->get_session_data('password');
-        $disabled = disabled( pinim()->bridge->isLoggedIn , true, false);
-        $el_id = 'pinim_form_login_username';
-        $el_txt = __('Password');
-        
-        $input = sprintf(
-            '<input type="password" id="%1$s" name="%2$s[password]" value="%3$s"%4$s/>',
-            $el_id,
-            'pinim_form_login',
-            $option,
-            $disabled
-        );
-        
-        printf('<p><label for="%1$s">%2$s</label>%3$s</p>',$el_id,$el_txt,$input);
-    }
-    
-    function form_do_login($login=null,$password=null){
-
-        //try to auth
-        $logged = $this->do_bridge_login($login,$password);
-        if ( is_wp_error($logged) ) return $logged;
-
-        //try to get user datas
-        $user_datas = pinim()->bridge->get_user_datas();
-
-        if (is_wp_error($user_datas)) return $user_datas;
-
-        return true;
-        
-    }
-    
-    /**
-    Login to pinterest using our custom bridge class
-    **/
-    function do_bridge_login($login = null, $password = null){
-       
-        if ( !$logged = pinim()->bridge->isLoggedIn ){
-            
-            if (!$login) $login = pinim()->get_session_data('login');
-            $login = trim($login);
-
-            if (!$password) $password = pinim()->get_session_data('password');
-            $password = trim($password);
-
-            if (!$login || !$password){
-                return new WP_Error( 'pinim',__('Missing login and/or password','pinim') );
-            }
-
-            //try to auth
-            pinim()->bridge->set_login($login)->set_password($password);
-            $logged = pinim()->bridge->do_login();
-
-            if ( is_wp_error($logged) ){
-                return new WP_Error( 'pinim',$logged->get_error_message() );
-            }
-            
-        }
-
-        return $logged;
-
-   }
-
 }
 
 function pinim_account() {

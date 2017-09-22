@@ -1,0 +1,8 @@
+{
+    "config": {
+        "vendor-dir": ""
+    },
+    "require": {
+        "dirkgroenen/Pinterest-API-PHP": "^0.2.11"
+    }
+}

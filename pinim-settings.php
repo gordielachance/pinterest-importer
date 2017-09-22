@@ -27,6 +27,13 @@ class Pinim_Settings {
             
         }else{ //sanitize values
             
+            /*
+            API
+            */
+            
+            $new_input['api_client_id'] = ( isset($input['api_client_id']) ) ? $input['api_client_id'] : null;
+            $new_input['api_client_secret'] = ( isset($input['api_client_secret']) ) ? $input['api_client_secret'] : null;
+            
             //delete boards settings
             if ( isset($input['delete_boards_settings']) ){
                 delete_user_meta( get_current_user_id(), pinim()->meta_name_user_boards_options );
@@ -79,6 +86,29 @@ class Pinim_Settings {
             pinim()->meta_name_options, // Option name
             array( $this, 'settings_sanitize' ) // Sanitize
          );
+        
+        add_settings_section(
+            'settings_api', // ID
+            __('API','pinim'), // Title
+            array( $this, 'pinim_settings_api_desc' ), // Callback
+            'pinim-settings-page' // Page
+        );
+        
+        add_settings_field(
+            'client_id', 
+            __('Client ID','pinim'), 
+            array( $this, 'client_id_callback' ), 
+            'pinim-settings-page', // Page
+            'settings_api' //section
+        );
+        
+        add_settings_field(
+            'client_secret', 
+            __('Client secret','pinim'), 
+            array( $this, 'client_secret_callback' ), 
+            'pinim-settings-page', // Page
+            'settings_api' //section
+        );
         
         add_settings_section(
             'settings_general', // ID
@@ -179,6 +209,30 @@ function page_settings(){
         <?php
     }
     
+    function pinim_settings_api_desc(){
+        
+    }
+    
+    function client_id_callback(){
+        $option = pinim()->get_options('api_client_id');
+        
+        printf(
+            '<input type="text" name="%s[api_client_id]" value="%s" />',
+            pinim()->meta_name_options,
+            $option
+        );
+    }
+    
+    function client_secret_callback(){
+        $option = pinim()->get_options('api_client_secret');
+        
+        printf(
+            '<input type="text" name="%s[api_client_secret]" value="%s" />',
+            pinim()->meta_name_options,
+            $option
+        );
+    }
+    
     function pinim_settings_general_desc(){
         
     }
@@ -259,7 +313,6 @@ function page_settings(){
             $option,
             '<small>'.__("0 = display all boards.","pinim").'</small>'
         );
-        
     }
     
     function pins_per_page_field_callback(){

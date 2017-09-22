@@ -9,6 +9,8 @@ Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
 License: GPL2
 */
 
+use DirkGroenen\Pinterest\Pinterest;
+
 class PinIm {
 
     /** Version ***************************************************************/
@@ -54,6 +56,9 @@ class PinIm {
     
     var $session = null;
     var $bridge = null;
+    var $api = null;
+    
+    var $user_token_metaname = 'pinim_user_token';
     
     var $page_account = null;
     var $page_boards = null;
@@ -117,6 +122,13 @@ class PinIm {
 
         if ( is_admin() ){
             
+            //composer
+            require $this->plugin_dir . '_inc/php/autoload.php';
+            
+            //API
+            
+            $this->api = new Pinterest(pinim()->get_options('api_client_id'), pinim()->get_options('api_client_secret'));
+            
             //communication with Pinterest
             require $this->plugin_dir . 'pinim-class-bridge.php';      
             $this->bridge = new Pinim_Bridge;
@@ -150,6 +162,7 @@ class PinIm {
         
         //sessions
         add_action( 'current_screen', array( $this, 'register_session' ), 1);
+        add_action( 'current_screen', array( $this, 'populate_stored_token'), 5 );
         add_action('wp_logout', array( $this, 'destroy_session' ) );
         add_action('wp_login', array( $this, 'destroy_session' ) );
         
@@ -403,6 +416,18 @@ class PinIm {
         if( !session_id() ) session_start();
     }
     
+    /*
+    If we have a user token stored; load it.
+    */
+    function populate_stored_token(){
+        $screen = get_current_screen();
+        if ( $screen->post_type != $this->pin_post_type ) return;
+        
+        if ( $user_token = get_user_meta(get_current_user_id(),pinim()->user_token_metaname,true) ){
+            pinim()->api->auth->setOAuthToken($user_token);
+        }
+    }
+    
     function destroy_session(){
         $this->delete_session_data();
     }
@@ -459,15 +484,14 @@ class PinIm {
     function plugin_page_header_user(){
         
         $user_icon = $user_text = $user_stats = null;
-
-        $user_data = pinim()->bridge->get_user_datas();
+        
+        $user_data = pinim_account()->get_user_datas();
+        
         if ( !is_wp_error($user_data) && $user_data ) { //logged
-            
-            $user_icon = pinim()->bridge->get_user_datas('image_medium_url');
-            $username = pinim()->bridge->get_user_datas('username');
-            $board_count = (int)pinim()->bridge->get_user_datas('board_count');
-            $secret_board_count = (int)pinim()->bridge->get_user_datas('secret_board_count');
-            $like_count = (int)pinim()->bridge->get_user_datas('like_count');
+
+            $user_icon = pinim_account()->get_user_datas(array('image','large','url'));
+            $username = pinim_account()->get_user_datas('username');
+            $public_board_count = (int)pinim_account()->get_user_datas(array('counts','boards'));
 
             //names
             $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$username.'</strong>');
@@ -477,10 +501,15 @@ class PinIm {
             //public boards
             $list[] = sprintf(
                 '<span>'.__('%1$s public boards','pinim').'</span>',
-                '<strong>'.$board_count.'</strong>'
+                '<strong>'.$public_board_count.'</strong>'
             );
+            
+            /*
+            TO FIX OR TO REMOVE
+            $secret_board_count = (int)pinim_account()->get_user_datas('secret_board_count');
+            $like_count = (int)pinim_account()->get_user_datas('like_count');
 
-            //public boards
+            //secret boards
             $list[] = sprintf(
                 '<span>'.__('%1$s private boards','pinim').'</span>',
                 '<strong>'.$secret_board_count.'</strong>'
@@ -491,6 +520,7 @@ class PinIm {
                 '<span>'.__('%1$s likes','pinim').'</span>',
                 '<strong>'.$like_count.'</strong>'
             );
+            */
 
             $user_stats = implode(",",$list);
 

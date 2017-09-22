@@ -153,7 +153,7 @@ function pinim_get_followed_boards_urls(){
         $urls = get_user_meta( get_current_user_id(), 'pinim_followed_boards_urls', true);
 
         foreach ((array)$urls as $url){
-            $short_url = pinim_validate_board_url($url,'short_url');
+            $short_url = pinim_get_short_url($url);
             if ( is_wp_error($short_url) ) continue;
             $output[] = $short_url;
         }
