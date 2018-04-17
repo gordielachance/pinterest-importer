@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Pinterest Importer
-Description: Backup your Pinterest.com account by importing pins in Wordpress.  Supports boards, secret boards and likes and downloads HD images.
+Description: Backup your Pinterest.com account by importing pins in Wordpress.  Supports boards, secret boards, and downloads HD images.
 Version: 0.5.3
 Author: G.Breant
 Author URI: https://profiles.wordpress.org/grosbouff/#content-plugins
@@ -95,7 +95,6 @@ class PinIm {
                 'boards_per_page'       => 10,
                 'pins_per_page'         => 25,
                 'category_root_id'      => null,
-                'category_likes_id'     => null,
                 'boards_layout'         => 'advanced',
                 'boards_filter'         => 'all',
                 'pins_filter'           => 'pending',
@@ -480,16 +479,10 @@ class PinIm {
                 '<strong>'.$board_count.'</strong>'
             );
 
-            //public boards
+            //private boards
             $list[] = sprintf(
                 '<span>'.__('%1$s private boards','pinim').'</span>',
                 '<strong>'.$secret_board_count.'</strong>'
-            );
-
-            //likes
-            $list[] = sprintf(
-                '<span>'.__('%1$s likes','pinim').'</span>',
-                '<strong>'.$like_count.'</strong>'
             );
 
             $user_stats = implode(",",$list);

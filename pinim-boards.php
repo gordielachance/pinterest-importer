@@ -251,7 +251,7 @@ class Pinim_Boards {
             ?>  
             <form id="pinim-form-user-boards"<?php pinim_classes_attr($form_classes);?> action="<?php echo pinim_get_menu_url(array('page'=>'boards'));?>" method="post">
                 <p class="description">
-                    <?php _e("This is the list of all the boards we've fetched from your profile, including your likes.","pinim");?>
+                    <?php _e("This is the list of all the boards we've fetched from your profile.","pinim");?>
                 </p>
                 <?php
                 $this->table_boards_user->views_display();
@@ -312,12 +312,7 @@ class Pinim_Boards {
         foreach((array)$boards_datas as $single_board_datas){
             $boards[] = new Pinim_Board_Item($single_board_datas['url'],$single_board_datas);
         }
-        
-        //likes
-        $username = pinim()->bridge->get_user_datas('username');
-        $likes_url = pinim_get_board_url($username,'likes',true);
-        $boards[] = new Pinim_Board_Item($likes_url);
-        
+
         return $boards;
         
     }
@@ -339,24 +334,19 @@ class Pinim_Boards {
             //get user boards datas
             $user_boards_data = pinim()->bridge->get_user_boards($username);
             if ( !$user_boards_data || is_wp_error($user_boards_data) ) continue;
-            
-            if ($slug == 'likes'){
-                $boards[] = new Pinim_Board_Item($short_url);
-            }else{
-                //get our board
-                $user_boards_data = array_filter(
-                    (array)$user_boards_data,
-                    function ($e) use ($board_url) {
-                        return $e['url'] == $board_url;
-                    }
-                );  
 
-                if (empty($user_boards_data)) continue;
-                $board_data = array_shift($user_boards_data);
-                $boards[] = new Pinim_Board_Item($board_url,$board_data);
-                
-            }
-        
+            //get our board
+            $user_boards_data = array_filter(
+                (array)$user_boards_data,
+                function ($e) use ($board_url) {
+                    return $e['url'] == $board_url;
+                }
+            );  
+
+            if (empty($user_boards_data)) continue;
+            $board_data = array_shift($user_boards_data);
+            $boards[] = new Pinim_Board_Item($board_url,$board_data);
+
         }
 
         return $boards;
@@ -377,7 +367,7 @@ class Pinim_Boards {
             if ( is_wp_error($board) ) unset($boards[$key]);
         }
 
-        //TO FIX check if we should not save some stuff in the session, at this step (eg. board id for likes)
+        //TO FIX check if we should not save some stuff in the session, at this step
         return $boards;
     }
 

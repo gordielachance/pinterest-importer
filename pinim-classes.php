@@ -30,19 +30,7 @@ class Pinim_Board_Item{
         $this->slug = pinim_validate_board_url($url,'slug');
 
         //datas
-        if ( $this->slug == 'likes'){
-            $this->datas['id'] = pinim()->bridge->get_user_datas('id',$this->username);
-            $this->datas['name'] = sprintf(__("%s's likes",'pinim'),$this->username).' <i class="fa fa-heart" aria-hidden="true"></i>';
-            $this->datas['pin_count'] = pinim()->bridge->get_user_datas('like_count',$this->username);
-            $this->datas['cover_images'] = array(
-                array(
-                    'url'   => pinim()->bridge->get_user_datas('image_medium_url',$this->username)
-                )
-            );
-            $this->datas['url'] = $this->short_url;
-        }else{
-            $this->datas = (array)$datas;
-        }
+        $this->datas = (array)$datas;
         
         //board id
         $this->board_id = $this->get_datas('id');
@@ -326,22 +314,7 @@ class Pinim_Board_Item{
                     $raw_pins = array_merge((array)$this->raw_pins,$pinterest_query);
                 }
                 
-                $raw_pins = array_filter((array)$raw_pins);
-                
-                if ($this->slug=='likes'){
-                    /*
-                     * The board ID in this pin data refers to the "real" board ID of the pin,
-                     * Not our (virtual) likes board.  Let's hack this !
-                     */
-                    
-                    foreach((array)$raw_pins as $key=>$pin){
-                        $pin['board']['id'] = $this->board_id;
-                        $raw_pins[$key] = $pin;
-                    }
-                    
-                }
-                
-                $this->raw_pins = array_filter($raw_pins);
+                $this->raw_pins = array_filter((array)$raw_pins);
 
                 $this->save_session();
 

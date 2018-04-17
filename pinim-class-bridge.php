@@ -587,52 +587,28 @@ class Pinim_Bridge{
             $options_default['bookmarks'] = (array)$board->bookmarks;
         }
 
-        if ($board->slug == 'likes'){
-            
-            $options_likes = array(
-                'username'          => $board->username
-            );
-            
-            $options = array_merge($options_default,$options_likes);
-            
-            $query = array(
-                'source_url' => sprintf('/%s/',$board->username),
-                'data' => json_encode(array(
-                    'options' => $options,
-                    'context' => new stdClass,
-                )),
-                '_' => time() . '999',
-            );
+        $options_board = array(
+            'board_id'                  => $board->board_id,
+            'add_pin_rep_with_place'    => null,
+            'board_url'                 => $board->get_datas('url'),
+            'page_size'                 => null,
+            'prepend'                   => true,
+            'access'                    => array('write','delete'),
+            'board_layout'              => 'default'
+        );
 
-            $loaded = $this->loadContentAjax('/resource/UserLikesResource/get/?' . http_build_query($query), true);
+        $options = array_merge($options_default,$options_board);
 
-        }else{
-            
-            $options_board = array(
-                'board_id'                  => $board->board_id,
-                'add_pin_rep_with_place'    => null,
-                'board_url'                 => $board->get_datas('url'),
-                'page_size'                 => null,
-                'prepend'                   => true,
-                'access'                    => array('write','delete'),
-                'board_layout'              => 'default'
-            );
-            
-            $options = array_merge($options_default,$options_board);
-            
-            $query = array(
-                'source_url' => sprintf('/%s/%s/',$board->username,$board->slug),
-                'data' => json_encode(array(
-                    'options' => $options,
-                    'context' => new stdClass,
-                )),
-                '_' => time() . '999',
-            );
-            
-            $loaded = $this->loadContentAjax('/resource/BoardFeedResource/get/?' . http_build_query($query), true);
+        $query = array(
+            'source_url' => sprintf('/%s/%s/',$board->username,$board->slug),
+            'data' => json_encode(array(
+                'options' => $options,
+                'context' => new stdClass,
+            )),
+            '_' => time() . '999',
+        );
 
-            
-        }
+        $loaded = $this->loadContentAjax('/resource/BoardFeedResource/get/?' . http_build_query($query), true);
 
         
         if ( is_wp_error($loaded) ){

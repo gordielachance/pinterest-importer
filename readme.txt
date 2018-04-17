@@ -7,7 +7,7 @@ Tested up to: 4.9.5
 Stable tag: trunk
 License: GPLv2 or later
 
-Backup your Pinterest.com account by importing pins in Wordpress.  Supports boards, secret boards and likes.
+Backup your Pinterest.com account by importing pins in Wordpress.  Supports boards, secret boards, and downloads HD images.
 
 == Description ==
 
@@ -19,7 +19,7 @@ Better use it quick !
 
 * Nice GUI
 * Uses a custom post type, which makes it easy to use specific theme templates or capabilities, etc.
-* Get pins from your boards, secret boards, and likes; but also from public boards by other users
+* Get pins from your boards and secret boards; but also from public boards by other users
 * Assign a Wordpress category to each of your board (or let us handle it automatically)
 * Supports both image & video pins; and sets automatically the corresponding post format
 * Downloads original HD images from pins
@@ -86,11 +86,11 @@ function pin_custom_content($post,$pin,$is_update){
 
 = 0.5.3 =
 * fixed plugin broken due to Pinterest website's changes
+* Removed support for likes as it as been removed from Pinterest
 
 = 0.5.2 =
 * fixed plugin broken due to Pinterest website's changes
 * removed unused function get_board_id
-* TO FIX : 'likes' board no more working
 
 = 0.5.1 =
 * Fixed logout
