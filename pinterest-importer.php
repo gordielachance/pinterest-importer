@@ -464,9 +464,20 @@ class PinIm {
             
             $user_icon = pinim()->bridge->get_user_datas('image_medium_url');
             $username = pinim()->bridge->get_user_datas('username');
-            $board_count = (int)pinim()->bridge->get_user_datas('board_count');
-            $secret_board_count = (int)pinim()->bridge->get_user_datas('secret_board_count');
-            $like_count = (int)pinim()->bridge->get_user_datas('like_count');
+            
+            //counts
+            $board_count = $secret_board_count = 0;
+            
+            $user_boards = pinim_boards()->get_boards_user();
+            if ( !is_wp_error($user_boards) ){
+                foreach((array)$user_boards as $board){
+                    if ( $board->is_private_board() ){
+                        $secret_board_count++;
+                    }else{
+                        $board_count++;
+                    }
+                }
+            }
 
             //names
             $user_text = sprintf(__('Logged as %s','pinim'),'<strong>'.$username.'</strong>');
