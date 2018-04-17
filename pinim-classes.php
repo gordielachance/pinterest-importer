@@ -877,8 +877,14 @@ class Pinim_Boards_Table extends WP_List_Table {
         $actions = array(
             'pinterest'  => sprintf('<a href="%1$s" target="_blank">%2$s</a>',pinim_get_board_url($board->username,$board->slug),__('View on Pinterest','pinim'),'view'),
         );
+        
+        $board_name  = $board->get_datas('name');
+        
+        if ( $board->is_private_board() ){
+            $board_name .= ' <i class="fa fa-key" aria-hidden="true"></i>';
+        }
 
-        $title = sprintf('%1$s <span class="item-id">(id:%2$s)</span>',$board->get_datas('name'),$board->board_id);
+        $title = sprintf('%s <span class="item-id">(id:%s)</span>',$board_name,$board->board_id);
 
         
         return $title.$this->row_actions($actions);
