@@ -392,16 +392,21 @@ class Pinim_Bridge{
 
             $loaded = $this->loadContent(sprintf('/%s/',$username));
             if ( is_wp_error($loaded) ) return $loaded;
-
-            $json = $this->get_inline_json($this->remote_response['body'],'initial-state');
             
-            if ( ( $users = pinim_get_array_value(array('users'), $json) ) && ( $userdatas = reset($users) ) ){
-                
+
+            $json = $this->get_inline_json($this->remote_response['body'],'jsInit1');
+            $userdatas = pinim_get_array_value(array('context','user'), $json);
+            
+            if ( $userdatas ){
                 $userdatas_stored[$username] = $userdatas;
                 pinim()->set_session_data('user_datas',$userdatas_stored);
-                
             }else{
-                return new WP_Error( 'pinim', sprintf(__("Unable to get %s's user datas","pinim"),$username ) );
+                if ( ($username == 'me') ){
+                    return new WP_Error( 'pinim', __("Unable to get the logged user datas","pinim") );
+                }else{
+                    return new WP_Error( 'pinim', sprintf(__("Unable to get %s's user datas","pinim"),$username ) );
+                }
+                
             }
         }
         
