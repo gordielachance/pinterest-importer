@@ -103,7 +103,7 @@ class Pinim_Account {
         $option = pinim()->get_session_data('login');
         $disabled = disabled( pinim()->bridge->isLoggedIn, true, false);
         $el_id = 'pinim_form_login_username';
-        $el_txt = __('Username');
+        $el_txt = __('Email');
         $input = sprintf(
             '<input type="text" id="%1$s" name="%2$s[username]" value="%3$s"%4$s/>',
             $el_id,
