@@ -33,10 +33,15 @@ class Pinim_Account {
     
     function page_account_init(){
         
-        if ( isset($_REQUEST['logout']) ){
+        if ( isset($_REQUEST['do_logout']) ){
             pinim()->destroy_session();
+            $logged_out_link = pinim_get_menu_url(array('page'=>'account','did_logout'=>true));
+            wp_redirect( $logged_out_link );
+            die();
+        }
+        
+        if ( isset($_REQUEST['did_logout']) ){
             add_settings_error('feedback_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated inline');
-            return;
         }
         
         $screen = get_current_screen();
@@ -152,7 +157,7 @@ class Pinim_Account {
     Login to pinterest using our custom bridge class
     **/
     function do_bridge_login($login = null, $password = null){
-       
+
         if ( !$logged = pinim()->bridge->isLoggedIn ){
             
             if (!$login) $login = pinim()->get_session_data('login');

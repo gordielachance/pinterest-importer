@@ -403,11 +403,12 @@ class PinIm {
     }
     
     function destroy_session(){
+        $this->debug_log('destroy_session');
         $this->delete_session_data();
     }
 
+    //Would be better to use transients here, but that would mean that we would store pwd in db.
     function set_session_data($key,$data){
-
         $_SESSION['pinim'][$key] = $data;
         return true;
     }
@@ -499,7 +500,7 @@ class PinIm {
             $user_stats = implode(",",$list);
 
             $user_icon = sprintf('<img src="%s" class="img-cover"/>',$user_icon);
-            $logout_link = pinim_get_menu_url(array('page'=>'account','logout'=>true));
+            $logout_link = pinim_get_menu_url(array('page'=>'account','do_logout'=>true));
 
             $content = sprintf('<span id="user-info-thumb">%1$s</span><span id="user-info-username">%2$s</span> <small id="user-info-stats">(%3$s)</small> — <a id="user-logout-link" href="%4$s">%5$s</a>',$user_icon,$user_text,$user_stats,$logout_link,__('Logout','pinim'));
             
