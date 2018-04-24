@@ -12,17 +12,19 @@ class Pinim_Bridge{
     static $pinterest_url               = 'https://www.pinterest.com';
     static $pinterest_api_url           = 'https://api.pinterest.com';
 
-    private $_csrftoken = null;
-    
     private $login = null;
     private $password = null;
     
     protected $client = null; //web client
-    protected $remote_response = array('headers'=>null,'body'=>null);
+    protected $remote_response = null;
+    protected $cookies = null;
     
-    public $isLoggedIn = false;
+    public $isLoggedIn = null;
 
     public function __construct(){
+        
+        $this->cookies = new \Requests_Cookie_Jar();
+        
         // use Requests_Session here because it does maintain a cookie session
         
         $config = array(
@@ -30,7 +32,7 @@ class Pinim_Bridge{
             'headers'   => $this->_get_default_headers(),
             'data'      => array(),
             'options'    => array(
-                'cookies'    => new \Requests_Cookie_Jar(),
+                'cookies'    => $this->cookies,
                 'verify'    => false //SSL verify
             )
         );
@@ -68,58 +70,13 @@ class Pinim_Bridge{
             'User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML => like Gecko) Iron/31.0.1700.0 Chrome/31.0.1700.0',
         );
     }
-    
-    /**
-     * Get Pinterest App Version.
-     * @return \WP_Error
-     */
-    private function _getAppVersion(){
 
-        if ( !$app_version = pinim()->get_session_data('app_version') ){
-            
-            pinim()->debug_log('_getAppVersion():');
-            
-            $loaded = $this->loadContent('/login/');
-            
-            if ( !is_wp_error($loaded) ){
-                
-                $json = $this->get_inline_json($this->remote_response['body'],'jsInit1');
+    private function get_initial_csrftoken(){
 
-                if (is_wp_error($json)) return $json;
+        $loaded = $this->loadContent('/login/');
+        if ( is_wp_error($loaded) ) return $loaded;
 
-                if ( $data = pinim_get_array_value(array('context','app_version'), $json) ) {
-                    $app_version = $json['context']['app_version'];
-                    pinim()->set_session_data('app_version',$app_version);
-                }
-                
-            }
-
-            pinim()->debug_log($app_version);
-        }
-        
-        if (!$app_version){
-            return new WP_Error('pinim',__('Error getting App Version.  You may have been temporary blocked by Pinterest because of too much login attemps.','pinim'));
-        }else{
-            return $app_version;
-        }
-        
-        
-    }
-
-    private function get_csrftoken($url = '/login/', $force_reset = false){
-        
-        $token = null;
-        
-        if ($force_reset){
-            pinim()->set_session_data('csrftoken',null);
-        }elseif ( $token = pinim()->get_session_data('csrftoken') ) {
-            return $token;
-        }
-
-        if (!$this->remote_response['headers']) {
-            $loaded = $this->loadContent($url);
-            if ( is_wp_error($loaded) ) return $loaded;
-        }
+        //try to extract CSRF cookie from response headers
 
         $cookies = pinim_get_array_value(array('set-cookie'), $this->remote_response['headers']);
 
@@ -131,14 +88,13 @@ class Pinim_Bridge{
         preg_match('/csrftoken=(.*)[\b;\s]/isU', $cookies, $match);
         if (isset($match[1]) and $match[1]) {
                 $token = $match[1];
-                pinim()->set_session_data('csrftoken',$token);
-                pinim()->debug_log('set_csrftoken() : ' . $token);
+                pinim()->debug_log('get_initial_csrftoken() : ' . $token);
         }
 
         return $token;
 
     }
-    
+
     /**
      * Try to log in to Pinterest.
      * @return \WP_Error
@@ -162,9 +118,6 @@ class Pinim_Bridge{
             }
             
             pinim()->debug_log('do_login()');
-            
-            // reset CSRF token if any (TO FIX : if any !)
-            $this->get_csrftoken('/', true);
 
             $postData = array(
                 'data' => json_encode(array(
@@ -180,11 +133,9 @@ class Pinim_Bridge{
             );
             
             $loaded = $this->loadContentAjax('/resource/UserSessionResource/create/', $postData, '/login/');
+            
             if ( is_wp_error($loaded) ) return $loaded;
-            
-            // Force reload CSRF token, it's different for logged in user
-            $this->get_csrftoken('/', true);
-            
+
             if ( !$data = pinim_get_array_value(array('resource_response','data'), $this->remote_response['body']) ){
                 if( $resource_response_error = pinim_get_array_value(array('resource_response','error'), $this->remote_response['body']) ){
                     $error_message = $resource_response_error;
@@ -193,6 +144,7 @@ class Pinim_Bridge{
                 }
                 return new WP_Error( 'pinim',sprintf(__('Error while trying to login: %s','pinim'),$error_message ) );
             }
+
 
             $this->isLoggedIn = true;
             pinim()->debug_log('has logged in');
@@ -233,6 +185,14 @@ class Pinim_Bridge{
     }
     
     protected function _httpRequest($type = 'GET', $urlPath, $data = null, $headers = array()){
+        
+        // We need a csrf token to make the login request, or it ill return a 403.
+        if ($urlPath == '/resource/UserSessionResource/create/'){
+            $csrftoken = $this->get_initial_csrftoken();
+            $headers['X-CSRFToken'] = $csrftoken;
+        }
+        
+        
         $url = self::$pinterest_url . $urlPath;
         if ($type === 'API') {
             $url = self::$pinterest_api_url . $urlPath;
@@ -241,12 +201,18 @@ class Pinim_Bridge{
         if (empty($headers)) { //TO FIX as client as default headers, maybe we can remove this ?
             $headers = $this->_get_default_headers();
         }
+        
+        //TOFIX TOCHECK
+        $options = array('cookies' => $this->cookies);
+
         if ($type === 'POST') {
-            $response = $this->client->post($url,$headers,$data);
+            $response = $this->client->post($url,$headers,$data,$options);
         
         } else {
-            $response = $this->client->get($url,$headers);
+            $response = $this->client->get($url,$headers,$options);
         }
+
+        $this->cookies = $response->cookies;
         pinim()->debug_log($url,'_httpRequest url');
         pinim()->debug_log(json_encode($headers),'_httpRequest headers');
         pinim()->debug_log(json_encode($data),'_httpRequest data');
@@ -265,38 +231,32 @@ class Pinim_Bridge{
      * @throws \PinterestPinner\PinnerException
      */
     
-    public function loadContentAjax($url, $dataAjax = true, $referer = ''){
+    public function loadContentAjax($url, $postData = array(), $referer = ''){
         
-        $app_version = $this->_getAppVersion();
-        if ( is_wp_error($app_version) ) return $app_version;
-        
-        if (is_array($dataAjax)) {
-            
-            $csrftoken = $this->get_csrftoken();
-            if ( is_wp_error($csrftoken) ) return $csrftoken;
-            
+        //build headers
+
+        if ( $postData ) {
             $headers = array_merge($this->_get_default_headers(), array(
                 'X-NEW-APP' => '1',
-                'X-APP-VERSION' => $app_version,
                 'X-Requested-With' => 'XMLHttpRequest',
                 'Accept' => 'application/json, text/javascript, */*; q=0.01',
-                'X-CSRFToken' => $csrftoken,
+                'Origin' => 'https://www.pinterest.com',
                 'Referer' => self::$pinterest_url . $referer,
+                'Content-Type' => 'application/x-www-form-urlencoded; charset=UTF-8',
+                'Accept-Encoding' => 'gzip, deflate, br',
             ));
-            $response = $this->_httpRequest('POST', $url, $dataAjax, $headers);
+            $response = $this->_httpRequest('POST', $url, $postData, $headers);
             
-        } elseif ($dataAjax === true) {
-
+        }else{
             $headers = array_merge($this->_get_default_headers(), array(
                 'X-NEW-APP' => '1',
-                'X-APP-VERSION' => $app_version,
                 'X-Requested-With' => 'XMLHttpRequest',
                 'Accept' => 'application/json, text/javascript, */*; q=0.01',
                 'X-Pinterest-AppState' => 'active',
             ));
             $response = $this->_httpRequest('GET', $url, null, $headers);
         }
-        
+
         if ( is_wp_error($response) ) return $response;
         
         return $this->_populate_response($response);
@@ -310,11 +270,11 @@ class Pinim_Bridge{
      * @throws \PinterestPinner\PinnerException
      */
     
-    public function loadContent($url)
-    {
+    public function loadContent($url){
+
         $response = $this->_httpRequest('GET', $url);
         if ( is_wp_error($response) ) return $response;
-        
+
         return $this->_populate_response($response);
     }
     
@@ -445,7 +405,7 @@ class Pinim_Bridge{
                 pinim()->debug_log("Private boards will be ignored as you are not logged to Pinterest.",' get_user_boards()');
             }
             
-            $loaded = $this->loadContentAjax('/resource/BoardsResource/get/?' . http_build_query(array(
+            $url_args = http_build_query(array(
                     'source_url' => sprintf('/%s/',$username),
                     'data' => json_encode(array(
                         'options' => array(
@@ -457,7 +417,10 @@ class Pinim_Bridge{
                         'context' => new stdClass,
                     )),
                     '_' => time() . '999',
-                )), true);
+            ));
+            $url = sprintf('/resource/BoardsResource/get/?%s',$url_args);
+            
+            $loaded = $this->loadContentAjax($url);
             
             if ( is_wp_error($loaded) ) return $loaded;
             
@@ -599,16 +562,17 @@ class Pinim_Bridge{
 
         $options = array_merge($options_default,$options_board);
 
-        $query = array(
+        $url_args = http_build_query(array(
             'source_url' => sprintf('/%s/%s/',$board->username,$board->slug),
             'data' => json_encode(array(
                 'options' => $options,
                 'context' => new stdClass,
             )),
             '_' => time() . '999',
-        );
+        ));
+        $url = sprintf('/resource/BoardFeedResource/get/?%s',$url_args);
 
-        $loaded = $this->loadContentAjax('/resource/BoardFeedResource/get/?' . http_build_query($query), true);
+        $loaded = $this->loadContentAjax($url);
 
         
         if ( is_wp_error($loaded) ){
