@@ -132,7 +132,13 @@ class Pinim_Bridge{
                     . 'text=Log In, type=submit, size=large)',
             );
             
-            $loaded = $this->loadContentAjax('/resource/UserSessionResource/create/', $postData, '/login/');
+            // We need a csrf token to make the login request, or it ill return a 403.
+            $headers = array(
+                'X-CSRFToken' =>    $this->get_initial_csrftoken(),
+                'Referer' =>        sprintf('%s/login/',self::$pinterest_url)
+            );
+            
+            $loaded = $this->loadContentAjax('/resource/UserSessionResource/create/', $postData, $headers);
             
             if ( is_wp_error($loaded) ) return $loaded;
 
@@ -186,22 +192,14 @@ class Pinim_Bridge{
     
     protected function _httpRequest($type = 'GET', $urlPath, $data = null, $headers = array()){
         
-        // We need a csrf token to make the login request, or it ill return a 403.
-        if ($urlPath == '/resource/UserSessionResource/create/'){
-            $csrftoken = $this->get_initial_csrftoken();
-            $headers['X-CSRFToken'] = $csrftoken;
-        }
-        
-        
         $url = self::$pinterest_url . $urlPath;
         if ($type === 'API') {
             $url = self::$pinterest_api_url . $urlPath;
             $type = 'GET';
         }
-        if (empty($headers)) { //TO FIX as client as default headers, maybe we can remove this ?
-            $headers = $this->_get_default_headers();
-        }
         
+        $headers = wp_parse_args( $headers,$this->_get_default_headers() );
+
         //TOFIX TOCHECK
         $options = array('cookies' => $this->cookies);
 
@@ -231,29 +229,38 @@ class Pinim_Bridge{
      * @throws \PinterestPinner\PinnerException
      */
     
-    public function loadContentAjax($url, $postData = array(), $referer = ''){
-        
+    public function loadContentAjax($url, $postData = array(), $headers = array()){
+
         //build headers
+        $shared_headers = array(
+            'X-NEW-APP' => '1',
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json, text/javascript, */*; q=0.01',
+        );
 
         if ( $postData ) {
-            $headers = array_merge($this->_get_default_headers(), array(
-                'X-NEW-APP' => '1',
-                'X-Requested-With' => 'XMLHttpRequest',
-                'Accept' => 'application/json, text/javascript, */*; q=0.01',
+            
+            //TOFIX TO CLEAN ?
+            $post_headers = array(
                 'Origin' => 'https://www.pinterest.com',
-                'Referer' => self::$pinterest_url . $referer,
                 'Content-Type' => 'application/x-www-form-urlencoded; charset=UTF-8',
                 'Accept-Encoding' => 'gzip, deflate, br',
-            ));
+            );
+            
+            $post_headers = wp_parse_args($shared_headers,$post_headers);
+            $headers = wp_parse_args($post_headers,$headers);
+
             $response = $this->_httpRequest('POST', $url, $postData, $headers);
             
         }else{
-            $headers = array_merge($this->_get_default_headers(), array(
-                'X-NEW-APP' => '1',
-                'X-Requested-With' => 'XMLHttpRequest',
-                'Accept' => 'application/json, text/javascript, */*; q=0.01',
+            //TO FIX USEFUL ?
+            $get_headers = array(
                 'X-Pinterest-AppState' => 'active',
-            ));
+            );
+            
+            $get_headers = wp_parse_args($shared_headers,$get_headers);
+            $headers = wp_parse_args($headers,$get_headers);
+            
             $response = $this->_httpRequest('GET', $url, null, $headers);
         }
 
