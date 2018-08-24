@@ -85,9 +85,10 @@ function pin_custom_content($post,$pin,$is_update){
 
 == Changelog ==
 
-= 0.5.9 =
+= 0.6.0 =
 * Finally resurrected !
 * Now uses [php-pinterest-bot library](https://github.com/seregazhuk/php-pinterest-bot) by [seregazhuk](https://github.com/seregazhuk)
+* Settings for boards followed
 
 = 0.5.3 =
 * fixed plugin broken due to Pinterest website's changes
