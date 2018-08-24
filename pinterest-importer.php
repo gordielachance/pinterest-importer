@@ -9,6 +9,9 @@ Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
 License: GPL2
 */
 
+require plugin_dir_path( __FILE__ ) . '_inc/php/vendor/autoload.php';
+use seregazhuk\PinterestBot\Factories\PinterestBot;
+
 class PinIm {
 
     /** Version ***************************************************************/
@@ -47,7 +50,6 @@ class PinIm {
     public $meta_name_options = 'pinim_options';
     public $meta_name_user_boards_options = 'pinim_boards_settings';
 
-    var $boards_followed_urls = array();
     var $user_boards_options = null;
     var $pinterest_url = 'https://www.pinterest.com';
     var $root_term_name = 'Pinterest.com';
@@ -117,8 +119,7 @@ class PinIm {
         if ( is_admin() ){
             
             //communication with Pinterest
-            require $this->plugin_dir . 'pinim-class-bridge.php';      
-            $this->bridge = new Pinim_Bridge;
+            $this->bot = PinterestBot::create();
             
             require $this->plugin_dir . 'pinim-classes.php';
             //require $this->plugin_dir . 'pinim-ajax.php';
@@ -459,17 +460,20 @@ class PinIm {
     function plugin_page_header_user(){
         
         $user_icon = $user_text = $user_stats = null;
-
-        $user_data = pinim()->bridge->get_user_datas();
-        if ( !is_wp_error($user_data) && $user_data ) { //logged
+        
+        
+        if ( pinim()->get_session_data() ) { //session exists
             
-            $user_icon = pinim()->bridge->get_user_datas('image_medium_url');
-            $username = pinim()->bridge->get_user_datas('username');
+            $user_data = pinim_account()->get_user_profile();
+
+            $user_icon = $user_data['profile_image_url'];
+            $username = $user_data['username'];
             
             //counts
             $board_count = $secret_board_count = 0;
             
             $user_boards = pinim_boards()->get_boards_user();
+
             if ( !is_wp_error($user_boards) ){
                 foreach((array)$user_boards as $board){
                     if ( $board->is_private_board() ){
