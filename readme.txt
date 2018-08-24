@@ -3,7 +3,7 @@ Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
 Tags: importer,Pinterest,pins,backup
 Requires at least: 3.5
-Tested up to: 4.9.5
+Tested up to: 4.9.8
 Stable tag: trunk
 License: GPLv2 or later
 
@@ -40,7 +40,8 @@ This would be very appreciated — Thanks !
 3. Enjoy !
 
 = Contributors =
-[Contributors are listed here](https://github.com/gordielachance/pinterest-importer/contributors)
+* [seregazhuk](https://github.com/seregazhuk) for the (nice!) [php-pinterest-bot library](https://github.com/seregazhuk/php-pinterest-bot)
+* Other contributors are listed [here](https://github.com/gordielachance/pinterest-importer/contributors)
 
 = Notes =
 
@@ -83,6 +84,11 @@ function pin_custom_content($post,$pin,$is_update){
 
 
 == Changelog ==
+
+= 0.6.0 =
+* Finally resurrected !
+* Now uses [php-pinterest-bot library](https://github.com/seregazhuk/php-pinterest-bot) by [seregazhuk](https://github.com/seregazhuk)
+* Settings for boards followed
 
 = 0.5.3 =
 * fixed plugin broken due to Pinterest website's changes

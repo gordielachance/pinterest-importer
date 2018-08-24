@@ -33,6 +33,7 @@ class Pinim_Account {
     
     function page_account_init(){
         
+        //want to logout
         if ( isset($_REQUEST['do_logout']) ){
             pinim()->destroy_session();
             $logged_out_link = pinim_get_menu_url(array('page'=>'account','did_logout'=>true));
@@ -40,6 +41,7 @@ class Pinim_Account {
             die();
         }
         
+        //has logout
         if ( isset($_REQUEST['did_logout']) ){
             add_settings_error('feedback_login', 'clear_cache', __( 'You have logged out, and the plugin cache has been cleared', 'pinim' ), 'updated inline');
         }
@@ -47,12 +49,20 @@ class Pinim_Account {
         $screen = get_current_screen();
         if ($screen->id != 'pin_page_account') return;
         
+        //send auth form
         if ( isset($_POST['pinim_form_login']) ){
 
-            $login = ( isset($_POST['pinim_form_login']['username']) ? $_POST['pinim_form_login']['username'] : null);
-            $password = ( isset($_POST['pinim_form_login']['password']) ? $_POST['pinim_form_login']['password'] : null);
+            $login = ( isset($_POST['pinim_form_login']['username']) ? trim($_POST['pinim_form_login']['username']) : null);
+            $password = ( isset($_POST['pinim_form_login']['password']) ? trim($_POST['pinim_form_login']['password']) : null);
+            
+            //store login & password in session for further authentification
+            if ($login && $password){
+                pinim()->set_session_data('login',$login);
+                pinim()->set_session_data('password',$password);
+            }
 
-            $logged = $this->form_do_login($login,$password);
+            //auth to pinterest
+            $logged = $this->do_pinterest_auth();
 
             if (is_wp_error($logged)){
                 add_settings_error('feedback_login', 'do_login', $logged->get_error_message(),'inline' );
@@ -72,7 +82,7 @@ class Pinim_Account {
         }
         
     }
-    
+
     function page_account(){
         ?>
         <div class="wrap">
@@ -106,7 +116,7 @@ class Pinim_Account {
 
     function login_field_callback(){
         $option = pinim()->get_session_data('login');
-        $disabled = disabled( pinim()->bridge->isLoggedIn, true, false);
+        $disabled = disabled( pinim()->bot->auth->isLoggedIn(), true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Email');
         $input = sprintf(
@@ -123,7 +133,7 @@ class Pinim_Account {
     
     function password_field_callback(){
         $option = pinim()->get_session_data('password');
-        $disabled = disabled( pinim()->bridge->isLoggedIn , true, false);
+        $disabled = disabled( pinim()->bot->auth->isLoggedIn() , true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Password');
         
@@ -137,45 +147,26 @@ class Pinim_Account {
         
         printf('<p><label for="%1$s">%2$s</label>%3$s</p>',$el_id,$el_txt,$input);
     }
-    
-    function form_do_login($login=null,$password=null){
 
-        //try to auth
-        $logged = $this->do_bridge_login($login,$password);
-        if ( is_wp_error($logged) ) return $logged;
-
-        //try to get user datas
-        $user_datas = pinim()->bridge->get_user_datas();
-
-        if (is_wp_error($user_datas)) return $user_datas;
-
-        return true;
-        
-    }
-    
     /**
     Login to pinterest using our custom bridge class
     **/
-    function do_bridge_login($login = null, $password = null){
+    function do_pinterest_auth(){
 
-        if ( !$logged = pinim()->bridge->isLoggedIn ){
+        if ( !$logged = pinim()->bot->auth->isLoggedIn() ){
             
-            if (!$login) $login = pinim()->get_session_data('login');
-            $login = trim($login);
-
-            if (!$password) $password = pinim()->get_session_data('password');
-            $password = trim($password);
+            $login = pinim()->get_session_data('login');
+            $password = pinim()->get_session_data('password');
 
             if (!$login || !$password){
                 return new WP_Error( 'pinim',__('Missing login and/or password','pinim') );
             }
 
             //try to auth
-            pinim()->bridge->set_login($login)->set_password($password);
-            $logged = pinim()->bridge->do_login();
+            $result = pinim()->bot->auth->login($login,$password);
 
-            if ( is_wp_error($logged) ){
-                return new WP_Error( 'pinim',$logged->get_error_message() );
+            if (!$result) {
+                return new WP_Error( 'php-pinterest-bot',pinim()->bot->getLastError() );
             }
             
         }
@@ -183,6 +174,23 @@ class Pinim_Account {
         return $logged;
 
    }
+    
+    function get_user_profile(){
+        if ( !$user_data = pinim()->get_session_data('profile') ){
+
+            //auth to pinterest
+            $this->do_pinterest_auth();
+            
+            if ( $logged = pinim()->bot->auth->isLoggedIn() ){
+                $user_data = pinim()->bot->user->profile();
+                pinim()->set_session_data('profile',$user_data);
+            }else{
+                return new WP_Error( 'php-pinterest-bot',pinim()->bot->getLastError() );
+            }
+        }
+        
+        return $user_data;
+    }
 
 }
 

@@ -96,7 +96,7 @@ function pinim_get_user_url($username){
 function pinim_get_board_url($username,$slug, $short = false){
     $url = sprintf('/%1$s/%2$s/',$username,$slug);
     if (!$short){
-        $url = Pinim_Bridge::$pinterest_url . $url;
+        $url = pinim()->pinterest_url . $url;
     }
     
     return esc_url($url);
@@ -141,29 +141,6 @@ function pinim_get_pin_meta($key = false, $post_id = false, $single = false){
 function pinim_get_pin_log($post_id,$keys = null){
     $log = unserialize(pinim_get_pin_meta('log',$post_id,true));
     return pinim_get_array_value($keys, $log);
-}
-
-function pinim_get_followed_boards_urls(){
-    
-    $output = array();
-    
-    if ( !pinim()->get_options('enable_follow_boards') ) return $output;
-    
-    if (!pinim()->boards_followed_urls) {
-        $urls = get_user_meta( get_current_user_id(), 'pinim_followed_boards_urls', true);
-
-        foreach ((array)$urls as $url){
-            $short_url = pinim_validate_board_url($url,'short_url');
-            if ( is_wp_error($short_url) ) continue;
-            $output[] = $short_url;
-        }
-        
-        pinim()->boards_followed_urls = $output;
-        
-        
-    }
-    
-    return pinim()->boards_followed_urls;
 }
 
 function pinim_get_boards_options($keys = null){

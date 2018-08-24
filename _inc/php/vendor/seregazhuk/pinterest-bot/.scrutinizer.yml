@@ -1,0 +1,24 @@
+build:
+    environment:
+        php:
+            version: 7.0.20
+    nodes:
+        analysis:
+            project_setup:
+                override: true
+            tests:
+                override: [php-scrutinizer-run]
+
+tools:
+    php_cs_fixer:
+        config: { level: psr2 }
+
+checks:
+    php:
+        code_rating: true
+        duplication: true
+
+filter:
+    excluded_paths:
+        - tests/*
+        - examples/*

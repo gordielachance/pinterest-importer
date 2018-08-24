@@ -1,0 +1,10 @@
+/humbuglog.txt
+vendor
+index.php
+.DS_Store
+.idea
+composer.lock
+composer.phar
+logs
+pinterest_cookie
+phpunit.xml
