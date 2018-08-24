@@ -2,7 +2,7 @@
 /*
 Plugin Name: Pinterest Importer
 Description: Backup your Pinterest.com account by importing pins in Wordpress.  Supports boards, secret boards, and downloads HD images.
-Version: 0.5.3
+Version: 0.5.9
 Author: G.Breant
 Author URI: https://profiles.wordpress.org/grosbouff/#content-plugins
 Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
@@ -19,12 +19,12 @@ class PinIm {
     /**
     * @public string plugin version
     */
-    public $version = '0.5.3';
+    public $version = '0.5.9';
 
     /**
     * @public string plugin DB version
     */
-    public $db_version = '208';
+    public $db_version = '209';
 
     /** Paths *****************************************************************/
 
