@@ -1,0 +1,56 @@
+[
+    {
+        "name": "seregazhuk/pinterest-bot",
+        "version": "v5.8.2",
+        "version_normalized": "5.8.2.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/seregazhuk/php-pinterest-bot.git",
+            "reference": "3dd651232ca86523a7e1a577dc0e9dc7862d0d00"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/seregazhuk/php-pinterest-bot/zipball/3dd651232ca86523a7e1a577dc0e9dc7862d0d00",
+            "reference": "3dd651232ca86523a7e1a577dc0e9dc7862d0d00",
+            "shasum": ""
+        },
+        "require": {
+            "ext-curl": "*",
+            "ext-fileinfo": "*",
+            "php": ">=7.0"
+        },
+        "require-dev": {
+            "codeclimate/php-test-reporter": "^0.4",
+            "mockery/mockery": "1.0",
+            "phpunit/phpunit": "~6.5"
+        },
+        "time": "2018-08-17T11:37:07+00:00",
+        "type": "package",
+        "installation-source": "dist",
+        "autoload": {
+            "files": [
+                "src/Helpers/functions.php"
+            ],
+            "psr-4": {
+                "seregazhuk\\PinterestBot\\": "src"
+            }
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "authors": [
+            {
+                "name": "Sergey Zhuk",
+                "email": "seregazhuk88@gmail.com",
+                "role": "Developer"
+            }
+        ],
+        "description": "PHP library for Pintrest",
+        "keywords": [
+            "lib",
+            "php",
+            "pinterest"
+        ]
+    }
+]

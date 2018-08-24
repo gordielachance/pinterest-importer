@@ -1,0 +1,5 @@
+{
+    "require": {
+        "seregazhuk/pinterest-bot": "^5.8"
+    }
+}
