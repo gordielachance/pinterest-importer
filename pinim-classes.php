@@ -1313,7 +1313,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             'in_queue'      => $link_in_queue
         );
         
-        if ( $followed_count ){
+        if ( pinim()->get_options('enable_followed') && $followed_count ){
             $links['user'] = $link_user;
             $links['followed'] = $link_followed;
         }

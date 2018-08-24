@@ -100,7 +100,7 @@ class PinIm {
                 'boards_layout'         => 'advanced',
                 'boards_filter'         => 'all',
                 'pins_filter'           => 'pending',
-                'enable_follow_boards'  => true,
+                'enable_followed'       => false,
                 'default_status'        => 'publish',
                 'can_autocache'         => 'on',
                 'can_autoprivate'       => 'on'

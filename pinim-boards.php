@@ -250,6 +250,11 @@ class Pinim_Boards {
             
         }
         
+        //keep only boards (not stories or ads or...)
+        $raw_boards = array_filter((array)$raw_boards, function($board){
+            return ($board['type'] == 'board');
+        });
+        
         foreach((array)$raw_boards as $raw_board){
             $boards[] = new Pinim_Board_Item($raw_board['url'],$raw_board);
         }
@@ -261,8 +266,6 @@ class Pinim_Boards {
     function get_boards_followed(){
         
         $boards = $raw_boards = array();
-        
-        if ( !pinim()->get_options('enable_follow_boards') ) return $boards;
         
         //get raw boards from cache or request them
         
@@ -290,20 +293,19 @@ class Pinim_Boards {
             $boards[] = new Pinim_Board_Item($raw_board['url'],$raw_board);
         }
 
-
-
         return $boards;
 
     }
 
     function get_boards(){
 
-        $user_boards = $this->get_boards_user();
-        if ( is_wp_error($user_boards) ) return $user_boards;
+        $boards = $this->get_boards_user();
+        if ( is_wp_error($boards) ) return $boards;
         
-        $followed_boards = $this->get_boards_followed();
-
-        $boards = array_merge($user_boards,$followed_boards);
+        if ( pinim()->get_options('enable_followed') ){
+            $followed_boards = $this->get_boards_followed();
+            $boards = array_merge($boards,$followed_boards);
+        }
 
         //remove boards with errors
         foreach ((array)$boards as $key=>$board){

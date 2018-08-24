@@ -53,6 +53,9 @@ class Pinim_Settings {
             
             //autocache
             $new_input['can_autocache']  = isset ($input['can_autocache']) ? 'on' : 'off';
+            
+            //followed
+            $new_input['enable_followed']  = isset ($input['enable_followed']) ? 'on' : 'off';
 
             //auto private
             $new_input['can_autoprivate']  = isset ($input['can_autoprivate']) ? 'on' : 'off';
@@ -111,6 +114,14 @@ class Pinim_Settings {
             'settings_general'//section
         );
         
+        add_settings_field(
+            'enable_followed', 
+            __('Followed boards','pinim'), 
+            array( $this, 'enable_followed_callback' ), 
+            'pinim-settings-page', // Page
+            'settings_general'//section
+        );
+
         add_settings_section(
             'settings_import', // ID
             __('Import','pinim'), // Title
@@ -189,11 +200,22 @@ function page_settings(){
         $warning = '<i class="fa fa-exclamation-triangle" aria-hidden="true"></i> '.__("Auto-caching too many boards, or boards with a large amount of pins will slow the plugin, because we need to query informations for each pin of each board.","pinim");
         
         printf(
-            '<input type="checkbox" name="%1$s[can_autocache]" value="on" %2$s/> %3$s<br/><p><small>%4$s</small></p>',
+            '<input type="checkbox" name="%1$s[can_autocache]" value="on" %2$s/> %3$s<p><small>%4$s</small></p>',
             pinim()->meta_name_options,
             checked( $option, 'on', false ),
             __("Enable board auto-caching.","pinim"),
             $warning
+        );
+    }
+    
+    function enable_followed_callback(){
+        $option = pinim()->get_options('enable_followed');
+        
+        printf(
+            '<input type="checkbox" name="%s[enable_followed]" value="on" %s/> %s',
+            pinim()->meta_name_options,
+            checked( $option, 'on', false ),
+            __("List followed boards in addition of users boards.","pinim")
         );
     }
     
