@@ -55,14 +55,14 @@ class PinIm {
     var $root_term_name = 'Pinterest.com';
     
     var $session = null;
-    var $bridge = null;
     
     var $page_account = null;
     var $page_boards = null;
     var $page_pending_imports = null;
     var $page_settings = null;
     
-    var $processed_pins_ids = null;
+    private $processed_pins_ids = null;
+    private $uploads_dir = null;
 
     /**
     * @var The one true Instance
@@ -96,13 +96,13 @@ class PinIm {
             $this->options_default = array(
                 'boards_per_page'       => 10,
                 'pins_per_page'         => 25,
+                'pagination_limit'      => 50,
                 'category_root_id'      => null,
                 'boards_layout'         => 'advanced',
                 'boards_filter'         => 'all',
                 'pins_filter'           => 'pending',
                 'enable_followed'       => false,
                 'default_status'        => 'publish',
-                'can_autocache'         => 'on',
                 'can_autoprivate'       => 'on'
             );
         
@@ -114,7 +114,7 @@ class PinIm {
         require $this->plugin_dir . 'pinim-functions.php';
         require $this->plugin_dir . 'pinim-templates.php';
         
-        $this->processed_pins_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
+        
 
         if ( is_admin() ){
             
@@ -132,6 +132,13 @@ class PinIm {
 
         }
 
+    }
+    
+    public function get_processed_pin_ids(){
+        if (!$this->processed_pins_ids){
+            $this->processed_pins_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
+        }
+        return $this->processed_pins_ids;
     }
 
     function setup_actions(){  
@@ -162,7 +169,7 @@ class PinIm {
     }
     
     function pins_list_views($views){
-        $pending_count = pinim_pending_imports()->get_pins_count_pending();
+        $pending_count = pinim_pending_imports()->get_all_raw_pins();
         $awaiting_url = pinim_get_menu_url(array('page'=>'pending-importation'));
 
         $views['pending_import'] = sprintf('<a href="%s">%s <span class="count">(%s)</span></a>',$awaiting_url,__('Pending importation','pinim'),$pending_count);
@@ -350,7 +357,6 @@ class PinIm {
         //localize vars
         $localize_vars=array();
         $localize_vars['ajaxurl']=admin_url( 'admin-ajax.php' );
-        $localize_vars['update_warning']=__( 'Updating a pin will override it.  Continue ?',   'pinim' );
         wp_localize_script('pinim','pinimL10n', $localize_vars);
         
     }
@@ -409,7 +415,7 @@ class PinIm {
     }
 
     //Would be better to use transients here, but that would mean that we would store pwd in db.
-    function set_session_data($key,$data){
+    function set_cached_data($key,$data){
         $_SESSION['pinim'][$key] = $data;
         return true;
     }
@@ -425,7 +431,7 @@ class PinIm {
         unset($_SESSION['pinim']);
     }
     
-    function get_session_data($keys = null){
+    function get_cached_data($keys = null){
         
         if (!isset($_SESSION['pinim'])) return null;
         $session = $_SESSION['pinim'];
@@ -438,7 +444,7 @@ class PinIm {
         $screen = get_current_screen();
         if ( $screen->post_type != pinim()->pin_post_type ) return;
 
-        $pins_count = count( pinim()->processed_pins_ids );
+        $pins_count = count( pinim()->get_processed_pin_ids() );
         if ($pins_count > 1){
             $rate_link_wp = 'https://wordpress.org/support/view/plugin-reviews/pinterest-importer?rate#postform';
             $rate_link = '<a href="'.$rate_link_wp.'" target="_blank" href=""><i class="fa fa-star"></i> '.__('Reviewing the plugin','pinim').'</a>';
@@ -462,7 +468,7 @@ class PinIm {
         $user_icon = $user_text = $user_stats = null;
         
         
-        if ( pinim()->get_session_data() ) { //session exists
+        if ( pinim()->get_cached_data() ) { //session exists
             
             $user_data = pinim_account()->get_user_profile();
 
@@ -532,6 +538,23 @@ class PinIm {
         } else {
             error_log($prefix.$message);
         }
+    }
+    
+    /*
+    Get path where are written pinim files
+    */
+    function get_uploads_dir(){
+        
+        if (!$this->uploads_dir){
+            $dir = WP_CONTENT_DIR . '/uploads/pinim';
+            if (!file_exists($dir)) {
+                wp_mkdir_p($dir);
+            }
+            $this->uploads_dir = trailingslashit($dir);
+        }
+        
+        return $this->uploads_dir;
+
     }
 
 }

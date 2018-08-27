@@ -156,7 +156,7 @@
                 color:white;
             }
 
-            &.offline,&.empty{
+            &.empty{
                 .pinim-pc-bar-fill{
                     width:100%!important;
                 }
@@ -193,7 +193,7 @@
                     text-align:center;
                 }
 
-                .column-pin_count_imported{
+                .column-cached_pins_imported{
                     text-align:center;
                 }
 

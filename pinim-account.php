@@ -57,8 +57,8 @@ class Pinim_Account {
             
             //store login & password in session for further authentification
             if ($login && $password){
-                pinim()->set_session_data('login',$login);
-                pinim()->set_session_data('password',$password);
+                pinim()->set_cached_data('login',$login);
+                pinim()->set_cached_data('password',$password);
             }
 
             //auth to pinterest
@@ -115,7 +115,7 @@ class Pinim_Account {
     }
 
     function login_field_callback(){
-        $option = pinim()->get_session_data('login');
+        $option = pinim()->get_cached_data('login');
         $disabled = disabled( pinim()->bot->auth->isLoggedIn(), true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Email');
@@ -132,7 +132,7 @@ class Pinim_Account {
     }
     
     function password_field_callback(){
-        $option = pinim()->get_session_data('password');
+        $option = pinim()->get_cached_data('password');
         $disabled = disabled( pinim()->bot->auth->isLoggedIn() , true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Password');
@@ -155,8 +155,8 @@ class Pinim_Account {
 
         if ( !$logged = pinim()->bot->auth->isLoggedIn() ){
             
-            $login = pinim()->get_session_data('login');
-            $password = pinim()->get_session_data('password');
+            $login = pinim()->get_cached_data('login');
+            $password = pinim()->get_cached_data('password');
 
             if (!$login || !$password){
                 return new WP_Error( 'pinim',__('Missing login and/or password','pinim') );
@@ -176,14 +176,14 @@ class Pinim_Account {
    }
     
     function get_user_profile(){
-        if ( !$user_data = pinim()->get_session_data('profile') ){
+        if ( !$user_data = pinim()->get_cached_data('profile') ){
 
             //auth to pinterest
             $this->do_pinterest_auth();
             
             if ( $logged = pinim()->bot->auth->isLoggedIn() ){
                 $user_data = pinim()->bot->user->profile();
-                pinim()->set_session_data('profile',$user_data);
+                pinim()->set_cached_data('profile',$user_data);
             }else{
                 return new WP_Error( 'php-pinterest-bot',pinim()->bot->getLastError() );
             }
