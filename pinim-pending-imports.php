@@ -41,31 +41,30 @@ class Pinim_Pending_Imports {
 
     }
     
-    private function bulk_import_pins($raw_pins){
+    private function bulk_import_pins($pending_pins){
 
         $existing_pins = pinim()->get_processed_pin_ids();
         $imported_pins = array();
 
-        foreach((array)$raw_pins as $key=>$raw_pin){
+        foreach((array)$pending_pins as $key=>$pin){
             
-            if ( in_array( $raw_pin['id'],$existing_pins ) ){
-                pinim()->debug_log(sprintf('pin #%s already exist, skip it',$pin_id),'process_bulk_pin_action');
+            if ( in_array( $pin->pin_id,$existing_pins ) ){
+                pinim()->debug_log(sprintf('pin #%s already exist, skip it',$pin->pin_id),'bulk_import_pins');
                 continue;
             }
 
             //save pin
-            $pin = new Pinim_Raw_Pin_Item($raw_pin);
             $success = $pin->save();
             if (!is_wp_error($success)){
                 $imported_pins[] = $pin;
             }else{
-                pinim()->debug_log(sprintf('error while importing pin #%s: %s',$pin_id,$success->get_error_message()),'process_bulk_pin_action');
-                add_settings_error('feedback_pending_import', 'import_pin_'.$pin_id, $success->get_error_message(),'inline');
+                pinim()->debug_log(sprintf('error while importing pin #%s: %s',$pin->pin_id,$success->get_error_message()),'bulk_import_pins');
+                add_settings_error('feedback_pending_import', 'import_pin_'.$pin->pin_id, $success->get_error_message(),'inline');
             }
 
         }
 
-        $bulk_count = count($raw_pins);
+        $bulk_count = count($pending_pins);
         $success_count = count($imported_pins);
 
         add_settings_error('feedback_pending_import', 'import_pins', 
@@ -78,8 +77,12 @@ class Pinim_Pending_Imports {
         $screen = get_current_screen();
         if ($screen->id != 'pin_page_pending-importation') return;
         
+        $bulk_pin_ids = array();
+        $bulk_pins = array();
+        
+        
         //process boards listing form
-        $form_pins = isset($_POST['pinim_form_boards']) ? $_POST['pinim_form_boards'] : null;
+        $form_pins = isset($_POST['pinim_form_pins']) ? $_POST['pinim_form_pins'] : null;
 
         //bulk action
         $action = ( isset($_REQUEST['action']) && ($_REQUEST['action']!=-1)  ? $_REQUEST['action'] : null);
@@ -90,6 +93,7 @@ class Pinim_Pending_Imports {
         if (!$action || !$form_pins) return;
 
         //get pins
+        
         $form_pins = array_filter( //keep only boards that are checked
             (array)$_POST['pinim_form_pins'],
             function ($e) {
@@ -97,19 +101,27 @@ class Pinim_Pending_Imports {
             }
         );
         
+        //get pin ids
+        foreach((array)$form_pins as $form_pin){
+            $bulk_pin_ids[] = $form_pin['id'];
+            
+        }
+        
         //
-        pinim()->debug_log(json_encode(array('action'=>$action,'board_ids'=>$bulk_boards_ids)),'process_bulk_pin_action');
+        pinim()->debug_log(json_encode(array('action'=>$action,'pin_ids'=>$bulk_pin_ids)),'process_bulk_pin_action');
         //
         
-        foreach((array)$form_pins as $pin){
-            $bulk_pins_ids[] = $pin['id'];
+        //get pins
+        foreach((array)$bulk_pin_ids as $pin_id){
+            $bulk_pins[] = new Pinim_Pending_Pin($pin_id);
         }
+
+        if(!$bulk_pins) return;
 
         switch ($action) {
 
             case 'bulk_import_pins':
-
-
+                $success = $this->bulk_import_pins($bulk_pins);
 
                 //redirect to processed pins
                 $url = pinim_get_menu_url();
@@ -135,8 +147,9 @@ class Pinim_Pending_Imports {
                 if (!$pin_id) return;
                 
                 //save pin
-                $pin = new Pinim_Raw_Pin_Item($pin_id);
-                $success = $pin->save();
+                $pin = new Pinim_Pending_Pin($pin_id);
+                $pins = array($pin);
+                $success = $this->bulk_import_pins($pins);
                 if (is_wp_error($success)){
                     add_settings_error('feedback_pending_import', 'import_pin', $success->get_error_message(),'inline');
                 }
@@ -145,7 +158,12 @@ class Pinim_Pending_Imports {
 
             case 'import_all_pins':
                 $all_raw_pins = $this->get_all_raw_pins();
-                $this->bulk_import_pins($all_raw_pins);
+                $all_pins = array();
+                foreach((array)$all_raw_pins as $raw_pin){
+                    $all_pins[] = new Pinim_Pending_Pin($raw_pin);
+                }
+                
+                $success = $this->bulk_import_pins($all_pins);
             break;
                 
         }
@@ -171,7 +189,7 @@ class Pinim_Pending_Imports {
         $all_raw_pins = $this->get_all_raw_pins();
 
         foreach ((array)$all_raw_pins as $raw_pin){
-            $pins[] = new Pinim_Raw_Pin_Item($raw_pin);
+            $pins[] = new Pinim_Pending_Pin($raw_pin);
         }
         
         $this->table_pins->input_data = $pins;

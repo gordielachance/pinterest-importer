@@ -44,7 +44,7 @@ class Pinim_Settings {
             
             //default post status
             if ( isset ($input['default_status']) ){
-                $stati = Pinim_Raw_Pin_Item::get_allowed_stati();
+                $stati = Pinim_Pending_Pin::get_allowed_stati();
                 $stati_keys = array_keys($stati);
                 if (in_array($input['default_status'],$stati_keys)){
                     $new_input['default_status'] = $input['default_status'];
@@ -201,7 +201,7 @@ function page_settings(){
     
     function default_status_callback(){
         $option = pinim()->get_options('default_status');
-        $stati = Pinim_Raw_Pin_Item::get_allowed_stati();
+        $stati = Pinim_Pending_Pin::get_allowed_stati();
 
         $select_options = array();
 

@@ -406,7 +406,7 @@ class Pinim_Board_Item{
 
 }
 
-class Pinim_Raw_Pin_Item{
+class Pinim_Pending_Pin{
     
     var $pin_id;
     var $board_id;
@@ -424,7 +424,6 @@ class Pinim_Raw_Pin_Item{
                 $this->populate_datas($data_or_id);
             }else{ //id
                 if ( $datas = $this->get_raw_pin($data_or_id) ){
-                    die("nono");
                     $this->populate_datas($datas);
                 }
                 
@@ -700,7 +699,7 @@ class Pinim_Raw_Pin_Item{
         $post['post_title'] = $this->get_post_title();
         
         //set content
-        //we will add our custom content (embed image or video) later with Pinim_Raw_Pin_Item::append_medias()
+        //we will add our custom content (embed image or video) later with Pinim_Pending_Pin::append_medias()
         $post['post_content'] = $this->get_post_content();
         
         //set tags
@@ -732,7 +731,7 @@ class Pinim_Raw_Pin_Item{
         // We should reverse that.
 
         
-        //populate the post.  Can't use Pinim_Raw_Pin_Item::get_post() here since the pin ID as not been stored yet.
+        //populate the post.  Can't use Pinim_Pending_Pin::get_post() here since the pin ID as not been stored yet.
         $this->post = get_post($post_id);
 
         //set post format
