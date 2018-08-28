@@ -43,15 +43,24 @@ class Pinim_Pending_Imports {
     
     private function bulk_import_pins($pending_pins){
 
-        $existing_pins = pinim()->get_processed_pin_ids();
+        $existing_pin_ids = pinim()->get_processed_pin_ids();
         $imported_pins = array();
-
+        
+        //remove pins that already exists in the DB
+        $dupe_count = 0;
         foreach((array)$pending_pins as $key=>$pin){
             
-            if ( in_array( $pin->pin_id,$existing_pins ) ){
+            if ( in_array( $pin->pin_id,$existing_pin_ids ) ){
                 pinim()->debug_log(sprintf('pin #%s already exist, skip it',$pin->pin_id),'bulk_import_pins');
+                unset($pending_pins[$key]);
+                $dupe_count+=1;
                 continue;
             }
+        }
+        
+        if (!$pending_pins) return true;
+
+        foreach((array)$pending_pins as $key=>$pin){
 
             //save pin
             $success = $pin->save();
@@ -187,6 +196,15 @@ class Pinim_Pending_Imports {
         
         //display pins
         $all_raw_pins = $this->get_all_raw_pins();
+        
+        //remove pins that already exists in the DB
+        $existing_pin_ids = pinim()->get_processed_pin_ids();
+        foreach((array)$all_raw_pins as $key=>$pin){
+            if ( in_array( $pin['id'],$existing_pin_ids ) ){
+                unset($all_raw_pins[$key]);
+                continue;
+            }
+        }
 
         foreach ((array)$all_raw_pins as $raw_pin){
             $pins[] = new Pinim_Pending_Pin($raw_pin);

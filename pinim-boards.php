@@ -238,6 +238,15 @@ class Pinim_Boards {
 
             //display feedback with import links
             if ( $pending_pins = pinim_pending_imports()->get_all_raw_pins() ){
+                
+                //remove pins that already exists in the DB
+                $existing_pin_ids = pinim()->get_processed_pin_ids();
+                foreach((array)$pending_pins as $key=>$pin){
+                    if ( in_array( $pin['id'],$existing_pin_ids ) ){
+                        unset($pending_pins[$key]);
+                        continue;
+                    }
+                }
 
                 $pending_count = count($pending_pins);
                 $feedback =  array( __("We're ready to process !","pinim") );
