@@ -51,6 +51,9 @@ class Pinim_Boards {
         if (!$action || !$form_boards) return;
 
         //get boards
+        $bulk_boards_ids = array();
+        $all_boards = $this->get_boards();
+        
         $form_boards = array_filter( //keep only boards that are checked
             (array)$_POST['pinim_form_boards'],
             function ($e) {
@@ -58,19 +61,19 @@ class Pinim_Boards {
             }
         );
         
-        //
-        pinim()->debug_log(json_encode(array('action'=>$action,'board_ids'=>$bulk_boards_ids)),'process_bulk_board_action');
-        //
-        
         foreach((array)$form_boards as $board){
             $bulk_boards_ids[] = $board['id'];
         }
+        
+        //
+        pinim()->debug_log(json_encode(array('action'=>$action,'board_ids'=>$bulk_boards_ids)),'process_bulk_board_action');
+        //
 
         //get boards from their IDs
         $boards = array_filter(
             (array)$all_boards,
-            function ($e) use ($boards_ids) {
-                return ( in_array($e->board_id,$boards_ids) );
+            function ($e) use ($bulk_boards_ids) {
+                return ( in_array($e->board_id,$bulk_boards_ids) );
             }
         ); 
 
