@@ -294,40 +294,39 @@ class Pinim_Board_Item{
         if ( !$log_file = $this->get_board_raw_pins_log_path() ) return;
         wp_delete_file($log_file);
     }
-
+    
+    /*
+    Get the raw pins from Pinterest.
+    As we get the newest pin first on Pinterest, process the last page first.
+    If a cache exist, don't get the last XX pages.
+    */
+    
     function get_pins(){
 
-        if ( !$this->needs_refresh ) return;
         pinim()->debug_log('get_pins...',sprintf('board #%s',$this->board_id));
         
-        //check at which page we should start grabbing pins
-        $cached_pin_ids = $this->get_cached_pin_ids();
-        $cached_pins = count($cached_pin_ids);
-        
-        $limit = pinim()->get_options('pagination_limit');
         $total_pins = $this->get_datas('pin_count');
+        $limit = pinim()->get_options('pagination_limit');
         $total_pages = ceil($total_pins / $limit);
-        $current_page = 1;
-        
-        $cached_pages = floor($cached_pins / $limit);
-        $stop_page = $total_pages - $cached_pages;
-        
-        /*
-        print_r("total:" . $total_pages);
-        echo"<br/>";
-        print_r("cached:" . $cached_pages);
-        echo"<br/>";
-        print_r("stop:" . $stop_page);
-        echo"<br/>";
-        die();
-        */
 
-        if ($stop_page != $total_pages){
-            pinim()->debug_log(sprintf('We already have grabbed %s/%s pages of pins, will grab the first %s pages',$cached_pages,$total_pages,$stop_page),sprintf('board #%s',$this->board_id));
+        $cached_pin_ids = $this->get_cached_pin_ids();
+        $pin_offset = count($cached_pin_ids);
+        $page_offset = floor($pin_offset / $limit);
+        
+        if ($pin_offset >= $total_pins){
+            $this->needs_refresh = false;
+            pinim()->debug_log('cache full, no need to get pins.',sprintf('board #%s',$this->board_id));
+            return;
         }
-
-        while($this->needs_refresh){
-
+        
+        $current_page = $total_pages - $page_offset;  //we start at the last page
+        
+        if ($page_offset){
+            pinim()->debug_log(sprintf('(%s pages of cache already exists (%s pins) and will be ignored.',$page_offset,$page_offset*$limit),sprintf('board #%s',$this->board_id));
+        }
+        
+        while( $current_page > 0 ){
+            
             $new_pins = $this->get_pins_page($current_page);
 
             if ( is_wp_error($new_pins) ){
@@ -347,25 +346,22 @@ class Pinim_Board_Item{
                 pinim()->debug_log(sprintf('(ignored %s duplicate pins)',$duplicate_pin_count),sprintf('board #%s',$this->board_id));
             }
 
-            //add pins at the end of existing array
-            $this->raw_pins = array_merge((array)$this->raw_pins,(array)$new_pins);
+            //add new pins at the beginning
+            $this->raw_pins = array_merge((array)$new_pins,((array)$this->raw_pins));
             
             //update pins cache at each slice (in case the script crashes)
             $success = $this->write_pins_cache();
             if ( is_wp_error($success) ) break;
 
-            //updates needs refresh
-            if ( $current_page >= $stop_page){
-                $this->needs_refresh = false;
-                pinim()->debug_log(sprintf('get_pins... completed, %s pins in cache',count($this->raw_pins)),sprintf('board #%s',$this->board_id));
-                break;
-            }
-            $current_page += 1;
+            $current_page -= 1;
+            
         }
 
+        $this->needs_refresh = false;
+        pinim()->debug_log(sprintf('get_pins... completed, %s pins in cache',count($this->raw_pins)),sprintf('board #%s',$this->board_id));
+                                 
     }
 
-    
     private function get_pins_page($page=1){
         
         //private boards requires to be logged

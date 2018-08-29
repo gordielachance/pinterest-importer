@@ -80,8 +80,6 @@ class Pinim_Boards {
 
                 foreach((array)$boards as $board){
 
-                    if ( !$board->needs_refresh ) continue;
-
                     //
                     $success = $board->get_pins();
                     if (is_wp_error($success)){    
@@ -154,8 +152,6 @@ class Pinim_Boards {
         switch ($action) {
 
             case 'build_board_cache':
-
-                if ( !$board->needs_refresh ) continue;
 
                 //
                 $success = $board->get_pins();

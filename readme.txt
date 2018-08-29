@@ -19,7 +19,7 @@ Better use it quick !
 
 * Nice GUI
 * Uses a custom post type, which makes it easy to use specific theme templates or capabilities, etc.
-* Get pins from your boards and secret boards; but also from public boards by other users
+* Get pins from your boards and secret boards; but also from your followed boards.
 * Assign a Wordpress category to each of your board (or let us handle it automatically)
 * Supports both image & video pins; and sets automatically the corresponding post format
 * Downloads original HD images from pins
@@ -27,6 +27,7 @@ Better use it quick !
 * Displays the original pin data in a metabox (Pinterest Log)
 * Set pin creation date as post date
 * Handles hashtags, which are converted to post tags
+* Caches raw pins in a JSON file; which is updated when necessary, without the need of a full board reload.
 
 = Donate! =
 It truly took me a LOT of time to code this plugin.
@@ -84,6 +85,12 @@ function pin_custom_content($post,$pin,$is_update){
 
 
 == Changelog ==
+
+= 0.7.0 =
+* Lots of code cleanup
+* Clearer interface
+* Store raw pins in a cached JSON file; which can be updated (without a full reload) when the board 'pin_count' exceed the total of cached pins.
+* Link to clear that cache if the user wants a full reload.
 
 = 0.6.0 =
 * Finally resurrected !
