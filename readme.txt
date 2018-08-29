@@ -172,7 +172,6 @@ function pin_custom_content($post,$pin,$is_update){
 * Improved remote image download + merged pinim_fetch_remote_image() and pinim_process_post_image() into pinim_attach_remote_image() 
 * Added "updated" sortable column for pins (when have been processed)
 * Fixed boards / pins sortable columns
-* Fixed missing slash in pin's get_remote_url()
 = 0.2.3 =
 * Added support for likes
 * Warning for users who don't have sessions enabled
@@ -182,8 +181,6 @@ function pin_custom_content($post,$pin,$is_update){
 * Small bugs fixes
 = 0.2.0 =
 * Fully rewritten !  No more needs to save / upload an HTML file.  SO COOL !
-= 0.1.3 =
-* Replaced http:// by https:// in pinim_get_pin_url(); pinim_get_user_url(); pinim_get_board_url(); because wp_remote_get() was returning 301.
 = 0.1.2 =
 * Updated plugin's readme.txt
 * quoted_printable_decode() to decode MHTML

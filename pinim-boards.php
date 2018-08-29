@@ -459,7 +459,7 @@ class Pinim_Boards {
             case 'user':
 
                 foreach((array)$boards as $board){
-                    if($board->get_username() != $username) continue;
+                    if($board->username != $username) continue;
                     $output[] = $board;
                 }
                 
@@ -468,7 +468,7 @@ class Pinim_Boards {
             case 'followed':
 
                 foreach((array)$boards as $board){
-                    if($board->get_username() == $username) continue;
+                    if($board->username == $username) continue;
                     $output[] = $board;
                 }
                 

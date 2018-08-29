@@ -65,45 +65,6 @@ function pinim_image_exists($img_url){
 }
 
 /**
- * Get a Pinterest pin url from its ID
- * @param type $pin_id
- * @return type
- */
-
-function pinim_get_pin_url($pin_id){
-    $pin_url = sprintf('https://www.pinterest.com/pin/%s',$pin_id);
-    return $pin_url;
-}
-
-/**
- * Get a Pinterest user url from its username
- * @param type $username
- * @return type
- */
-
-function pinim_get_user_url($username){
-    $user_url = sprintf('https://www.pinterest.com/%s',$username);
-    return $user_url;
-}
-
-/**
- * Get a Pinterest board url from its username & board slug
- * @param type $username
- * @param type $board_slug
- * @return type
- */
-
-function pinim_get_board_url($username,$slug, $short = false){
-    $url = sprintf('/%1$s/%2$s/',$username,$slug);
-    if (!$short){
-        $url = pinim()->pinterest_url . $url;
-    }
-    
-    return esc_url($url);
-}
-
-
-/**
  * Get a single pinterest meta (if key is defined) or all the pinterest metas for a post ID
  * @param type $key (optional)
  * @param type $post_id
@@ -169,11 +130,6 @@ function pinim_get_root_category_id(){
         }
     }
     return false;
-}
-
-function pinim_get_pinterest_pin_url($pin_id){
-    $url = pinim()->pinterest_url.'/pin/'.$pin_id;
-    return $url;
 }
 
 function pinim_get_pin_id_for_post($post_id = null){

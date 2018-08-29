@@ -3,6 +3,7 @@
 class Pinim_Board_Item{
 
     var $board_id;
+    var $username;
 
     var $datas = array();
     var $options = array(); //db stored options
@@ -30,8 +31,10 @@ class Pinim_Board_Item{
     function populate_datas($datas){
         $this->datas = (array)$datas;
         
-        //board id
+        //basic data
         $this->board_id = $this->get_datas( 'id' );
+        $this->username = $this->get_datas( array('owner','username') );
+
         $this->populate_cached_raw_pins();
         
         /*
@@ -397,11 +400,10 @@ class Pinim_Board_Item{
         
     }
     
-    function get_remote_url(){
-        return $this->get_datas('url');
-    }
-    function get_username(){
-        return $this->get_datas( array('owner','username') );
+    function get_pinterest_board_url(){
+        $url = $this->get_datas( array('url') );
+        $url = pinim()->pinterest_url . $url;
+        return $url;
     }
 
 }
@@ -490,17 +492,14 @@ class Pinim_Pending_Pin{
         if (!$this->post){
             if ($post_id = pinim_get_post_by_pin_id($this->pin_id)){
                 $this->post = get_post($post_id);
-                
-                $this->datas = pinim_get_pin_log($this->post->ID);
-                $this->board_id = pinim_get_pin_meta('board_id',$this->post->ID,true);
-                
+                $datas = pinim_get_pin_log($this->post->ID);
+                $this->populate_datas($datas);
             }
-            
         }
 
         return $this->post;
     }
-    
+
     function get_link_action_import(){
         //Refresh cache
         $link_args = array(
@@ -875,6 +874,12 @@ class Pinim_Pending_Pin{
         return $attachment_id;
     }
     
+    function get_pinterest_pin_url(){
+        $url = sprintf('/pin/%s',$this->pin_id);
+        $url = pinim()->pinterest_url . $url;
+        return $url;
+    }
+    
 }
 
 
@@ -959,7 +964,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         //Build row actions
         $actions = array(
-            'pinterest'  => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$board->get_remote_url(),__('View on Pinterest','pinim'),'view'),
+            'pinterest'  => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$board->get_pinterest_board_url(),__('View on Pinterest','pinim'),'view'),
         );
         
         $board_name  = $board->get_datas('name');
@@ -1002,7 +1007,7 @@ class Pinim_Boards_Table extends WP_List_Table {
     }
     
     function column_username($board){
-        return $board->get_username();
+        return $board->username;
     }
     
     function column_cache($board){
@@ -1638,7 +1643,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                     $result = $a->get_pc_cached_pins_imported() - $b->get_pc_cached_pins_imported();
                 break;
                 case 'username':
-                    $result = $a->get_username()  - $b->get_username();
+                    $result = $a->username  - $b->username;
                 break;
                 
             }
@@ -1770,7 +1775,7 @@ class Pinim_Pending_Pins_Table extends WP_List_Table {
         $pin_id = $this->get_pin_id($pin);
         
         return array(
-            'pinterest'     => sprintf('<a href="%1$s" target="_blank">%2$s</a>',pinim_get_pinterest_pin_url($pin_id),__('View on Pinterest','pinim'),'view'),
+            'pinterest'     => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$pin->get_pinterest_pin_url(),__('View on Pinterest','pinim'),'view'),
             'import'        => $pin->get_link_action_import()
         );
     }

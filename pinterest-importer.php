@@ -96,7 +96,7 @@ class PinIm {
             $this->options_default = array(
                 'boards_per_page'       => 10,
                 'pins_per_page'         => 25,
-                'pagination_limit'      => 50,
+                'pagination_limit'      => 50, //pinterest default is 50
                 'category_root_id'      => null,
                 'boards_layout'         => 'advanced',
                 'boards_filter'         => 'all',
@@ -180,7 +180,11 @@ class PinIm {
     function pins_row_actions($actions, $post){
         if ( $post->post_type == $this->pin_post_type ) {
             if ( $pin_id = pinim_get_pin_id_for_post($post->ID) ){
-                $url = pinim_get_pinterest_pin_url($pin_id);
+
+                $pin = new Pinim_Pending_Pin();
+                $pin->pin_id = $pin_id;
+                
+                $url = $pin->get_pinterest_pin_url();
                 $actions['pinterest']  = sprintf('<a href="%1$s" target="_blank">%2$s</a>',$url,__('View on Pinterest','pinim'),'view');
             }
         }
@@ -216,30 +220,8 @@ class PinIm {
                 $result = $wpdb->get_results ( $querystr );
                 
             }
-            
-            if($current_version < '204'){
-                $boards_settings = pinim_get_boards_options();
-                foreach((array)$boards_settings as $key=>$board){
-                    if (isset($board['id'])){
-                        $boards_settings[$key]['board_id'] = $board['id'];
-                        unset($boards_settings[$key]['id']);
-                    }
-                }
-                update_user_meta( get_current_user_id(), $this->meta_name_user_boards_options, $boards_settings);
-            }
-            
-            if($current_version < '206'){
-                $boards_settings = pinim_get_boards_options();
-                foreach((array)$boards_settings as $key=>$board){
-                    if (!isset($board['username']) || !isset($board['slug']) ) continue;
-                    $boards_settings[$key]['url'] = pinim_get_board_url($board['username'],$board['slug'], true);
-                }
-                update_user_meta( get_current_user_id(), $this->meta_name_user_boards_options, $boards_settings);
-            }
+
         }
-
-
-
 
         //update DB version
         update_option("_pinterest-importer-db_version", $this->db_version );
