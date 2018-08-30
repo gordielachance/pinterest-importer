@@ -138,7 +138,7 @@ class Pinim_Board_Item{
     }
 
     /*
-    This is heavy computing, so cache this.
+    This is heavy computing, so cache this. //TOUFIX TO CHECK ?
     */
     
     function get_count_cached_pins_imported(){
@@ -1009,6 +1009,8 @@ class Pinim_Boards_Table extends WP_List_Table {
     function column_cache($board){
 
         $output = null;
+        $total_pins_count  = $board->get_datas('pin_count');
+        $cache_pins_count = count($board->raw_pins);
         
         //build cache bt
         $build_bt_class = array('button');
@@ -1028,6 +1030,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         
         //clear cache bt
         $clear_bt_class = array('button');
+
         if ( !$board->raw_pins ){
             $clear_bt_class[] = 'disabled';
         }
@@ -1041,9 +1044,6 @@ class Pinim_Boards_Table extends WP_List_Table {
         );
 
         $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$clear_bt_class),$clear_bt,__('Clear','pinim'));
-        
-        $total_pins_count  = $board->get_datas('pin_count');
-        $cache_pins_count = count($board->raw_pins);
         $pin_cache_txt = sprintf( _n( '%s/%s cached pin', '%s/%s cached pins', $cache_pins_count,'pinim' ), $cache_pins_count,$total_pins_count);
         $output .= sprintf('<small>%s</small>',$pin_cache_txt);
 
@@ -1173,8 +1173,14 @@ class Pinim_Boards_Table extends WP_List_Table {
 
             $pc_status_classes = pinim_get_classes_attr($pc_status_classes);
             $red_opacity = (100 - $percent) / 100;
-
-            $output .= sprintf('<p><span %1$s><span class="pinim-pc-bar-fill" style="width:%2$s"><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-yellow"></span><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-red" style="opacity:%3$s"></span><span class="pinim-pc-bar-text">%4$s</span></span></p>',$pc_status_classes,$bar_width.'%',$red_opacity,$text_bar);
+            
+            $text_bar_el = sprintf('<span class="pinim-pc-bar-text">%s</span>',$text_bar);
+            $yellow_bar_el = '<span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-yellow"></span>';
+            $red_bar_el = sprintf('<span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-red" style="opacity:%s"></span>',$red_opacity);
+            $bar_fill = sprintf('<span class="pinim-pc-bar-fill" style="width:%s">%s%s%s',$bar_width.'%',$yellow_bar_el,$red_bar_el,$text_bar_el);
+            $bar_wrapper = sprintf('<p><span %s>%s</span></p>',$pc_status_classes,$bar_fill);
+            
+            $output .= $bar_wrapper;
             
         }
         
