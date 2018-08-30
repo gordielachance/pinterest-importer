@@ -173,23 +173,27 @@ class Pinim_Account {
 
         return $logged;
 
-   }
+    }
     
-    function get_user_profile(){
-        if ( !$user_data = pinim()->get_cached_data('profile') ){
+    function get_user_profile(){ //TOUFIX cache ?
+
+        $user_profile = get_user_meta( get_current_user_id(),pinim()->usermeta_profile,true );
+
+        
+        if ( !$user_profile ){
 
             //auth to pinterest
             $this->do_pinterest_auth();
             
             if ( $logged = pinim()->bot->auth->isLoggedIn() ){
-                $user_data = pinim()->bot->user->profile();
-                pinim()->set_cached_data('profile',$user_data);
+                $user_profile = pinim()->bot->user->profile();
+                $success = update_user_meta( get_current_user_id(),pinim()->usermeta_profile, $user_profile );
             }else{
                 return new WP_Error( 'php-pinterest-bot',pinim()->bot->getLastError() );
             }
         }
         
-        return $user_data;
+        return $user_profile;
     }
 
 }

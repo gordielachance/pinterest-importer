@@ -63,6 +63,12 @@ class PinIm {
     
     private $processed_pins_ids = null;
     private $uploads_dir = null;
+    
+    var $usermeta_profile = 'pinim_profile';
+    var $usermeta_boards = 'pinim_boards';
+    var $usermeta_followed_boards = 'pinim_followed_boards';
+    var $usermeta_boards_filter = 'pinim_boards_filter';
+    var $usermeta_layout_filter = 'pinim_layout_filter';
 
     /**
     * @var The one true Instance
@@ -393,6 +399,12 @@ class PinIm {
     
     function destroy_session(){
         $this->debug_log('destroy_session');
+
+        //force update profile & user boards by deleting the user metas
+        delete_user_meta( get_current_user_id(), $this->usermeta_profile );
+        delete_user_meta( get_current_user_id(), $this->usermeta_boards );
+        delete_user_meta( get_current_user_id(), $this->usermeta_followed_boards );
+        
         $this->delete_session_data();
     }
 

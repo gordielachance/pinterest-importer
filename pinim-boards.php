@@ -297,31 +297,33 @@ class Pinim_Boards {
         $boards = $raw_boards = array();
         
         //get raw boards from cache or request them
-        
-        if ( !$raw_boards = pinim()->get_cached_data('raw_user_boards') ){
-            
+        if ( !$raw_boards = get_user_meta( get_current_user_id(),pinim()->usermeta_boards,true ) ){
+
             //auth to pinterest
             pinim_account()->do_pinterest_auth();
 
             if ( $logged = pinim()->bot->auth->isLoggedIn() ){
 
                 $raw_boards = pinim()->bot->boards->forMe();
-                pinim()->set_cached_data('raw_user_boards',$raw_boards);
+                
+                $success = update_user_meta( get_current_user_id(),pinim()->usermeta_boards,$raw_boards );
 
             }
             
         }
         
-        //keep only boards (not stories or ads or...)
-        $raw_boards = array_filter((array)$raw_boards, function($board){
-            return ($board['type'] == 'board');
-        });
-        
-        foreach((array)$raw_boards as $raw_board){
-            $new_board = new Pinim_Board_Item();
-            $new_board->populate_datas($raw_board);
-            //TOUFIX check for board ID ?
-            $boards[] = $new_board;
+        if ($raw_boards){
+            //keep only boards (not stories or ads or...)
+            $raw_boards = array_filter((array)$raw_boards, function($board){
+                return ($board['type'] == 'board');
+            });
+
+            foreach((array)$raw_boards as $raw_board){
+                $new_board = new Pinim_Board_Item();
+                $new_board->populate_datas($raw_board);
+                //TOUFIX check for board ID ?
+                $boards[] = $new_board;
+            }
         }
 
         return $boards;
@@ -334,7 +336,7 @@ class Pinim_Boards {
         
         //get raw boards from cache or request them
         
-        if ( !$raw_boards = pinim()->get_cached_data('raw_followed_boards') ){
+        if ( !$raw_boards = get_user_meta( get_current_user_id(),pinim()->usermeta_followed_boards,true ) ){
             
             //auth to pinterest
             pinim_account()->do_pinterest_auth();
@@ -343,22 +345,26 @@ class Pinim_Boards {
 
                 $user_data = pinim_account()->get_user_profile();
                 $raw_boards = pinim()->bot->pinners->followingBoards($user_data['username'])->toArray();
-                pinim()->set_cached_data('raw_followed_boards',$raw_boards);
+                $success = update_user_meta( get_current_user_id(),pinim()->usermeta_followed_boards,$raw_boards );
 
             }
             
         }
+        
+        if ($raw_boards){
 
-        //keep only boards (not stories or ads or...)
-        $raw_boards = array_filter((array)$raw_boards, function($board){
-            return ($board['type'] == 'board');
-        });
+            //keep only boards (not stories or ads or...)
+            $raw_boards = array_filter((array)$raw_boards, function($board){
+                return ($board['type'] == 'board');
+            });
 
-        foreach((array)$raw_boards as $raw_board){
-            $new_board = new Pinim_Board_Item();
-            $new_board->populate_datas($raw_board);
-            //TOUFIX check for board ID ?
-            $boards[] = $new_board;
+            foreach((array)$raw_boards as $raw_board){
+                $new_board = new Pinim_Board_Item();
+                $new_board->populate_datas($raw_board);
+                //TOUFIX check for board ID ?
+                $boards[] = $new_board;
+            }
+            
         }
 
         return $boards;
@@ -483,7 +489,8 @@ class Pinim_Boards {
     function get_boards_layout(){
         
         $default = pinim()->get_options('boards_layout');
-        $stored = pinim()->get_cached_data('boards_layout');
+        
+        $stored = get_user_meta( get_current_user_id(),pinim()->usermeta_layout_filter,true );
         $filter = $stored ? $stored : $default;
 
         $requested = ( isset($_REQUEST['boards_layout']) ) ? $_REQUEST['boards_layout'] : null;
@@ -491,7 +498,7 @@ class Pinim_Boards {
 
         if ( $requested && in_array($requested,$allowed) ) {
             $filter = $requested;
-            pinim()->set_cached_data('boards_layout',$filter);
+            update_user_meta( get_current_user_id(), pinim()->usermeta_layout_filter, $filter );
             
         }
         
@@ -501,13 +508,13 @@ class Pinim_Boards {
     
     function get_screen_boards_filter(){
         $default = pinim()->get_options('boards_filter');
-        $stored = pinim()->get_cached_data('boards_filter');
-                
+        
+        $stored = get_user_meta( get_current_user_id(),pinim()->usermeta_boards_filter,true );
         $filter = $stored ? $stored : $default;
 
         if ( isset($_REQUEST['boards_filter']) ) {
             $filter = $_REQUEST['boards_filter'];
-            pinim()->set_cached_data('boards_filter',$filter);
+            update_user_meta( get_current_user_id(), pinim()->usermeta_boards_filter, $filter );
         }
         
         return $filter;
