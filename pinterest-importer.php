@@ -504,9 +504,9 @@ class PinIm {
             $user_stats = implode(",",$list);
 
             $user_icon = sprintf('<img src="%s" class="img-cover"/>',$user_icon);
-            $logout_link = pinim_get_menu_url(array('page'=>'account','do_logout'=>true));
+            $logout_url = pinim_get_menu_url(array('page'=>'account','do_logout'=>true));
 
-            $content = sprintf('<span id="user-info-thumb">%1$s</span><span id="user-info-username">%2$s</span> <small id="user-info-stats">(%3$s)</small> — <a id="user-logout-link" href="%4$s">%5$s</a>',$user_icon,$user_text,$user_stats,$logout_link,__('Logout','pinim'));
+            $content = sprintf('<span id="user-info-thumb">%1$s</span><span id="user-info-username">%2$s</span> <small id="user-info-stats">(%3$s)</small> — <a id="user-logout-link" href="%4$s">%5$s</a>',$user_icon,$user_text,$user_stats,$logout_url,__('Logout','pinim'));
             
         }else{ // not logged
             $user_icon = '';

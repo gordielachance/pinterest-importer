@@ -102,7 +102,15 @@ class Pinim_Account {
                     <?php settings_errors('feedback_login');?>
                     <?php $this->login_field_callback();?>
                     <?php $this->password_field_callback();?>
-                    <?php submit_button(__('Login to Pinterest','pinim'));?>
+                    <?php 
+                    if ( pinim()->get_cached_data() ) { //session exists
+                        $logout_url = pinim_get_menu_url(array('page'=>'account','do_logout'=>true));
+
+                        $content = printf('<a class="button" href="%s">%s</a>',$logout_url,__('Logout','pinim'));
+                    }else{
+                        submit_button(__('Login to Pinterest','pinim'));
+                    }
+                    ?>
                 </div>
             </form>
         </div>
@@ -116,7 +124,7 @@ class Pinim_Account {
 
     function login_field_callback(){
         $option = pinim()->get_cached_data('login');
-        $disabled = disabled( pinim()->bot->auth->isLoggedIn(), true, false);
+        $disabled = disabled( (bool)pinim()->get_cached_data(), true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Email');
         $input = sprintf(
@@ -133,7 +141,7 @@ class Pinim_Account {
     
     function password_field_callback(){
         $option = pinim()->get_cached_data('password');
-        $disabled = disabled( pinim()->bot->auth->isLoggedIn() , true, false);
+        $disabled = disabled( (bool)pinim()->get_cached_data() , true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Password');
         
