@@ -203,6 +203,7 @@
   margin: auto;
   display: block;
   text-align: center;
+  font-size: 0.8em;
 }
 /* line 148, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-text i.fa {
@@ -223,7 +224,6 @@
 /* line 167, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar.offline .pinim-pc-bar-text, .post-type-pin.pin_page_boards .pinim-pc-bar.empty .pinim-pc-bar-text {
   color: inherit;
-  font-size: 0.8em;
 }
 /* line 177, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar.incomplete .pinim-pc-bar-text {
