@@ -181,12 +181,14 @@
   -webkit-transition: all 0.5s ease-out;
   transition: all 0.5s ease-out;
   position: relative;
+  z-index:0;
 }
 /* line 132, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-fill-color {
   width: 100%;
   height: 100%;
   position: absolute;
+  z-index:-1;
 }
 /* line 136, ../scss/pinim.scss */
 .post-type-pin.pin_page_boards .pinim-pc-bar .pinim-pc-bar-fill .pinim-pc-bar-fill-color.pinim-pc-bar-fill-yellow {

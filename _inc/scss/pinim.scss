@@ -129,10 +129,12 @@
                 text-align:left;
                 @include transition(all 0.5s ease-out);
                 position:relative;
+                z-index:0;
                 .pinim-pc-bar-fill-color{
                     width:100%;
                     height:100%;
                     position: absolute;
+                    z-index:-1;
                     &.pinim-pc-bar-fill-yellow{
                         background-color:#FFE000;
                     }

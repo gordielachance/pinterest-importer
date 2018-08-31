@@ -140,6 +140,11 @@ class PinIm {
 
     }
     
+    /*
+    Get the IDs of ALL pins imported.
+    Is not a method of Pinim_Boards because we want to be independant of boards here (eg. user might have moved a WP pin)
+    */
+    
     public function get_processed_pin_ids(){
         if (!$this->processed_pins_ids){
             $this->processed_pins_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
@@ -339,7 +344,7 @@ class PinIm {
         if ( $screen->post_type != $this->pin_post_type ) return;
         
         wp_enqueue_script('pinim', $this->plugin_url.'_inc/js/pinim.js', array('jquery'),$this->version);
-        wp_enqueue_style('font-awesome', '//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css',false,'4.3.0');
+        wp_enqueue_style('font-awesome', '//maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css',false,'4.7.0');
         wp_enqueue_style('pinim', $this->plugin_url . '_inc/css/pinim.css',false,$this->version);
         
         //localize vars
