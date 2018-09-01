@@ -166,11 +166,6 @@ class PinIm {
         add_filter( "views_edit-pin", array($this, 'pins_list_views') );
         add_filter('post_row_actions', array($this, 'pins_row_actions'), 10, 2);
         
-        //sessions
-        add_action( 'current_screen', array( $this, 'register_session' ), 1);
-        add_action('wp_logout', array( $this, 'destroy_session' ) );
-        add_action('wp_login', array( $this, 'destroy_session' ) );
-        
         //promo
         add_action( 'all_admin_notices', array($this, 'plugin_page_header') );
     }
@@ -221,8 +216,8 @@ class PinIm {
             
         }else{
             
-            //force destroy session
-            $this->destroy_session();
+            //force destroy usercache
+            pinim_account()->destroy_usercache();
             
             if($current_version < '208'){ //switch post type to 'pin'
                 
@@ -392,53 +387,7 @@ class PinIm {
         }
         
     }
-    
-    /**
-     * Register a session so we can store the temporary data.
-     */
-    function register_session(){
-        $screen = get_current_screen();
-        if ( $screen->post_type != $this->pin_post_type ) return;
-        if( !session_id() ) session_start();
-    }
-    
-    function destroy_session(){
-        $this->debug_log('destroy_session');
 
-        //force update profile & user boards by deleting the user metas
-        delete_user_meta( get_current_user_id(), $this->usermeta_profile );
-        delete_user_meta( get_current_user_id(), $this->usermeta_boards );
-        delete_user_meta( get_current_user_id(), $this->usermeta_followed_boards );
-        
-        $this->delete_session_data();
-    }
-
-    //Would be better to use transients here, but that would mean that we would store pwd in db.
-    function set_cached_data($key,$data){
-        $_SESSION['pinim'][$key] = $data;
-        return true;
-    }
-    
-    function delete_session_data($key = null){
-        if (!isset($_SESSION['pinim'])) return false;
-        
-        if ($key){
-            if (!isset($_SESSION['pinim'][$key])) return false;
-            unset($_SESSION['pinim'][$key]);
-            return;
-        }
-        unset($_SESSION['pinim']);
-    }
-    
-    function get_cached_data($keys = null){
-        
-        if (!isset($_SESSION['pinim'])) return null;
-        $session = $_SESSION['pinim'];
-        
-        return pinim_get_array_value($keys, $session);
-
-    }
-    
     function plugin_page_header(){
         $screen = get_current_screen();
         if ( $screen->post_type != pinim()->pin_post_type ) return;
@@ -467,7 +416,7 @@ class PinIm {
         $user_icon = $user_text = $user_stats = null;
         
         
-        if ( pinim()->get_cached_data() ) { //session exists
+        if ( pinim_account()->has_credentials() ) { //session exists
             
             $user_data = pinim_account()->get_user_profile();
 

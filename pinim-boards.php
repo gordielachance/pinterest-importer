@@ -200,7 +200,7 @@ class Pinim_Boards {
         
         $all_boards = array();
         //check that we are logged
-        if ( !pinim()->get_cached_data() ) { //session exists
+        if ( !pinim_account()->has_credentials() ) { //session exists
             $login_url = pinim_get_menu_url(array('page'=>'account'));
             add_settings_error('feedback_boards','not_logged',sprintf(__('Please <a href="%s">login</a> to be able to list your board.','pinim'),$login_url),'error inline');
         }else{
