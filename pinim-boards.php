@@ -177,13 +177,9 @@ class Pinim_Boards {
                 $success = $board->cache_to_xml();
 
                 //
-                if (is_wp_error($success)){    
+                if (is_wp_error($success)){
                     add_settings_error('feedback_boards', 'export_board_cache', $success->get_error_message(),'inline');
                 }
-            break;
-                
-            case 'import_board_pins':
-                die("IMPORT BOARD PINS");
             break;
                 
         }

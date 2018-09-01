@@ -195,7 +195,6 @@ class Pinim_Board_Item{
         return $is_secret;
     }
 
-    
     //TO FIX TO CHECK
     //should compare with pin ids ?
     function is_fully_imported(){
@@ -1283,7 +1282,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         $import_bt = pinim_get_menu_url(
             array(
-                'page'      => 'boards',
+                'page'      => 'pending-importation',
                 'action'    => 'import_board_pins',
                 'board_id'  => $board->board_id
             )

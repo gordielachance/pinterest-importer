@@ -173,6 +173,29 @@ class Pinim_Pending_Imports {
                 }
                 
                 $success = $this->bulk_import_pins($all_pins);
+                
+                if (is_wp_error($success)){
+                    add_settings_error('feedback_pending_import', 'import_pin', $success->get_error_message(),'inline');
+                }
+                
+            break;
+                
+            case 'import_board_pins':
+                $board_id = isset($_GET['board_id']) ? $_GET['board_id'] : null;
+                if (!$board_id) return;
+                
+                $board = pinim_boards()->get_board($board_id);
+                if ( is_wp_error($board) ) return $board;
+
+                foreach((array)$board->raw_pins as $raw_pin){
+                    $board_pins[] = new Pinim_Pending_Pin($raw_pin);
+                }
+                $success = pinim_pending_imports()->bulk_import_pins($board_pins);
+                
+                if (is_wp_error($success)){
+                    add_settings_error('feedback_pending_import', 'import_pin', $success->get_error_message(),'inline');
+                }
+                
             break;
                 
         }
