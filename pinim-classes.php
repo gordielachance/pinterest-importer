@@ -505,8 +505,9 @@ class Pinim_Pending_Pin{
     function get_board(){
 
         //load boards
+        //TOUFIX this is slowing the whole plugin
         $boards = pinim_boards()->get_boards();
-        
+
         $pin_board_id = $this->board_id;
 
         $boards = array_filter(
@@ -550,9 +551,9 @@ class Pinim_Pending_Pin{
      */
     
     function get_post(){
-        
+
         if (!$this->post){
-            if ($post_id = pinim_get_post_by_pin_id($this->pin_id)){
+            if ($post_id = self::get_post_by_pin_id($this->pin_id)){
                 $this->post = get_post($post_id);
                 $datas = pinim_get_pin_log($this->post->ID);
                 $this->populate_datas($datas);
@@ -560,6 +561,30 @@ class Pinim_Pending_Pin{
         }
 
         return $this->post;
+    }
+    
+    /**
+     * Checks if a pin ID already has been imported
+     * @param type $pin_id
+     * @return boolean
+     */
+
+    static function get_post_by_pin_id($pin_id){
+        $query_args = array(
+            'post_type'         => pinim()->pin_post_type,
+            'post_status'       => array('publish','pending','draft','future','private'),
+            'meta_query'        => array(
+                array(
+                    'key'     => '_pinterest-pin_id',
+                    'value'   => $pin_id,
+                    'compare' => '='
+                )
+            ),
+            'posts_per_page'    => 1
+        );
+        $query = new WP_Query($query_args);
+        if (!$query->have_posts()) return false;
+        return $query->posts[0]->ID;
     }
 
     function get_link_action_import(){
@@ -1802,7 +1827,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
 }
 
-class Pinim_Pending_Pins_Table extends WP_List_Table {
+class Pinim_Pins_Table extends WP_List_Table {
     
     var $input_data = array();
     var $pin_idx = -1;

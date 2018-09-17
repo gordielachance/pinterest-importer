@@ -16,30 +16,6 @@ function pinim_get_menu_url($args = array()){
 }
 
 /**
- * Checks if a pin ID already has been imported
- * @param type $pin_id
- * @return boolean
- */
-
-function pinim_get_post_by_pin_id($pin_id){
-    $query_args = array(
-        'post_type'         => pinim()->pin_post_type,
-        'post_status'       => array('publish','pending','draft','future','private'),
-        'meta_query'        => array(
-            array(
-                'key'     => '_pinterest-pin_id',
-                'value'   => $pin_id,
-                'compare' => '='
-            )
-        ),
-        'posts_per_page'    => 1
-    );
-    $query = new WP_Query($query_args);
-    if (!$query->have_posts()) return false;
-    return $query->posts[0]->ID;
-}
-
-/**
  * Checks if a featured pin image already has been imported (eg. If we have two pins with the same image)
  * @param type $img_url
  * @return boolean

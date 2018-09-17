@@ -210,7 +210,7 @@ class Pinim_Pending_Imports {
         */
         
         $pins = array();
-        $this->table_pins = new Pinim_Pending_Pins_Table();
+        $this->table_pins = new Pinim_Pins_Table();
         
         if ( !pinim_pending_imports()->get_all_raw_pins() ){
             $boards_url = pinim_get_menu_url(array('page'=>'boards'));
