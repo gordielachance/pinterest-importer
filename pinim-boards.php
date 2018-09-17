@@ -3,6 +3,15 @@
 class Pinim_Boards {
     
     /**
+    * populated boards. 
+    * Once we have populated them, will be arrays instead of nulls
+    */
+    var $boards = array(
+        'user'  =>      null,
+        'followed' =>   null
+    );
+    
+    /**
     * @var The one true Instance
     */
     private static $instance;
@@ -299,99 +308,108 @@ class Pinim_Boards {
     }
 
     function get_boards_user(){
-        $boards = $raw_boards = array();
+
+        if ( $this->boards['user'] === null ){ //not yet populated
         
-        //get raw boards from cache or request them
-        if ( !$raw_boards = get_user_meta( get_current_user_id(),pinim()->usermeta_boards,true ) ){
+            //do populate boards
 
-            //auth to pinterest
-            pinim_account()->do_pinterest_auth();
+            $boards = $raw_boards = array();
 
-            if ( $logged = pinim()->bot->auth->isLoggedIn() ){
+            //get raw boards from cache or request them
+            if ( !$raw_boards = get_user_meta( get_current_user_id(),pinim()->usermeta_boards,true ) ){
 
-                $raw_boards = pinim()->bot->boards->forMe();
-                
-                $success = update_user_meta( get_current_user_id(),pinim()->usermeta_boards,$raw_boards );
+                //auth to pinterest
+                pinim_account()->do_pinterest_auth();
+
+                if ( $logged = pinim()->bot->auth->isLoggedIn() ){
+
+                    $raw_boards = pinim()->bot->boards->forMe();
+
+                    $success = update_user_meta( get_current_user_id(),pinim()->usermeta_boards,$raw_boards );
+
+                }
 
             }
+
+            if ($raw_boards){
+                //keep only boards (not stories or ads or...)
+                $raw_boards = array_filter((array)$raw_boards, function($board){
+                    return ($board['type'] == 'board');
+                });
+
+                foreach((array)$raw_boards as $raw_board){
+                    $new_board = new Pinim_Board_Item();
+                    $new_board->populate_datas($raw_board);
+                    //TOUFIX check for board ID ?
+                    $boards[] = $new_board;
+                }
+            }
+
+            $this->boards['user'] = $boards;
             
         }
         
-        if ($raw_boards){
-            //keep only boards (not stories or ads or...)
-            $raw_boards = array_filter((array)$raw_boards, function($board){
-                return ($board['type'] == 'board');
-            });
-
-            foreach((array)$raw_boards as $raw_board){
-                $new_board = new Pinim_Board_Item();
-                $new_board->populate_datas($raw_board);
-                //TOUFIX check for board ID ?
-                $boards[] = $new_board;
-            }
-        }
-
-        return $boards;
+        return $this->boards['user'];
         
     }
     
     function get_boards_followed(){
         
-        $boards = $raw_boards = array();
+        if ( $this->boards['followed'] === null ){ //not yet populated
         
-        //get raw boards from cache or request them
-        
-        if ( !$raw_boards = get_user_meta( get_current_user_id(),pinim()->usermeta_followed_boards,true ) ){
-            
-            //auth to pinterest
-            pinim_account()->do_pinterest_auth();
+            $boards = $raw_boards = array();
 
-            if ( $logged = pinim()->bot->auth->isLoggedIn() ){
+            //get raw boards from cache or request them
 
-                $user_data = pinim_account()->get_user_profile();
-                $raw_boards = pinim()->bot->pinners->followingBoards($user_data['username'])->toArray();
-                $success = update_user_meta( get_current_user_id(),pinim()->usermeta_followed_boards,$raw_boards );
+            if ( !$raw_boards = get_user_meta( get_current_user_id(),pinim()->usermeta_followed_boards,true ) ){
+
+                //auth to pinterest
+                pinim_account()->do_pinterest_auth();
+
+                if ( $logged = pinim()->bot->auth->isLoggedIn() ){
+
+                    $user_data = pinim_account()->get_user_profile();
+                    $raw_boards = pinim()->bot->pinners->followingBoards($user_data['username'])->toArray();
+                    $success = update_user_meta( get_current_user_id(),pinim()->usermeta_followed_boards,$raw_boards );
+
+                }
 
             }
+
+            if ($raw_boards){
+
+                //keep only boards (not stories or ads or...)
+                $raw_boards = array_filter((array)$raw_boards, function($board){
+                    return ($board['type'] == 'board');
+                });
+
+                foreach((array)$raw_boards as $raw_board){
+                    $new_board = new Pinim_Board_Item();
+                    $new_board->populate_datas($raw_board);
+                    //TOUFIX check for board ID ?
+                    $boards[] = $new_board;
+                }
+
+            }
+
+            $this->boards['followed'] = $boards;
             
         }
         
-        if ($raw_boards){
-
-            //keep only boards (not stories or ads or...)
-            $raw_boards = array_filter((array)$raw_boards, function($board){
-                return ($board['type'] == 'board');
-            });
-
-            foreach((array)$raw_boards as $raw_board){
-                $new_board = new Pinim_Board_Item();
-                $new_board->populate_datas($raw_board);
-                //TOUFIX check for board ID ?
-                $boards[] = $new_board;
-            }
-            
-        }
-
-        return $boards;
-
+        return $this->boards['followed'];
+        
     }
 
     function get_boards(){
 
         $boards = $this->get_boards_user();
-        if ( is_wp_error($boards) ) return $boards;
 
         if ( (pinim()->get_options('enable_followed')=='on') ){
             $followed_boards = $this->get_boards_followed();
             $boards = array_merge($boards,$followed_boards);
         }
 
-        //remove boards with errors
-        foreach ((array)$boards as $key=>$board){
-            if ( is_wp_error($board) ) unset($boards[$key]);
-        }
-
-        //TO FIX check if we should not save some stuff in the session, at this step
+        //TOUFIX check if we should not save some stuff in the session, at this step
         return $boards;
     }
 

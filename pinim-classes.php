@@ -505,7 +505,6 @@ class Pinim_Pending_Pin{
     function get_board(){
 
         //load boards
-        //TOUFIX this is slowing the whole plugin
         $boards = pinim_boards()->get_boards();
 
         $pin_board_id = $this->board_id;
