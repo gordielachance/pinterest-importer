@@ -1043,7 +1043,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         
         if ( $board->pins ){ //clear cache bt 
             
-            $clear_bt_class = array('button');
+            $clear_bt_class = array();
             $clear_bt = pinim_get_menu_url(
                 array(
                     'page'      => 'boards',
@@ -1171,7 +1171,35 @@ class Pinim_Boards_Table extends WP_List_Table {
         $pending_pins = array_filter((array)$board->pins, function($pin){
             return ( !$pin->post_id );
         });
+        
+        //import pins bt
 
+        $import_bt_class = array('button');
+        $import_bt_txt = __('Import','pinim');
+        if ( !$pending_pins ){
+            $import_bt_class[] = 'disabled';
+        }else{
+            /*
+            $remaining_count = 0;
+            foreach ((array)$board->pins as $pin){
+                if ( !$pin->post_id ) $remaining_count++;
+            }
+            //$import_bt_txt = sprintf( _n( 'Import %s pin', 'Import %s pins', $remaining_count,'pinim' ), $remaining_count );
+            */
+        }
+
+        $import_bt = pinim_get_menu_url(
+            array(
+                'page'      => 'pending-importation',
+                'action'    => 'import_board_pins',
+                'board_id'  => $board->board_id
+            )
+        );
+
+        $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$import_bt_class),$import_bt,$import_bt_txt);
+        
+        //
+        
         if ( $board->pins ){
 
             $pc_status_classes = array('pinim-pc-bar');
@@ -1218,32 +1246,6 @@ class Pinim_Boards_Table extends WP_List_Table {
             $output .= $bar_wrapper;
             
         }
-        
-        //import pins bt
-
-        $import_bt_class = array('button');
-        $import_bt_txt = __('Import','pinim');
-        if ( !$pending_pins ){
-            $import_bt_class[] = 'disabled';
-        }else{
-            /*
-            $remaining_count = 0;
-            foreach ((array)$board->pins as $pin){
-                if ( !$pin->post_id ) $remaining_count++;
-            }
-            //$import_bt_txt = sprintf( _n( 'Import %s pin', 'Import %s pins', $remaining_count,'pinim' ), $remaining_count );
-            */
-        }
-
-        $import_bt = pinim_get_menu_url(
-            array(
-                'page'      => 'pending-importation',
-                'action'    => 'import_board_pins',
-                'board_id'  => $board->board_id
-            )
-        );
-
-        $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$import_bt_class),$import_bt,$import_bt_txt);
         
 
         return $output;
