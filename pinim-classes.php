@@ -727,7 +727,6 @@ class Pinim_Pending_Pin{
         
         //populate the post.
         $post = get_post($post_id);
-        $this->post_id = $post->ID;
 
         //set post format
         $post_format = $this->get_post_format();
@@ -787,6 +786,10 @@ class Pinim_Pending_Pin{
             $error->add('pin_content_error', $error_msg, $post_id);
             return $error;
         }
+        
+        //populate
+        $this->post_id = $post_id;
+        pinim()->processed_pins_ids[$post_id] = $this->pin_id;
 
         return $post_id;
 
