@@ -113,6 +113,10 @@
         .view_filter{
             float:right;
         }
+        
+        .sync-count{
+            @include opacity(.5);
+        }
 
         .pinim-pc-bar{
             position: relative;

@@ -43,7 +43,7 @@ class Pinim_Pending_Imports {
     
     private function bulk_import_pins($pending_pins){
 
-        $existing_pin_ids = pinim()->get_processed_pin_ids();
+        $existing_pin_ids = pinim()->get_imported_pin_ids();
         $imported_pins = array();
         
         //remove pins that already exists in the DB if any
@@ -166,8 +166,14 @@ class Pinim_Pending_Imports {
             break;
 
             case 'import_all_pins':
-                $new_pins = $this->get_new_pins();
-                $success = $this->bulk_import_pins($new_pins);
+
+                //keep only pending pins
+                $all_pins = $this->get_all_pins();
+                $pending_pins = array_filter((array)$all_pins, function($pin){
+                    return ( !$pin->post_id );
+                });
+                
+                $success = $this->bulk_import_pins($pending_pins);
                 
                 if (is_wp_error($success)){
                     add_settings_error('feedback_pending_import', 'import_pin', $success->get_error_message(),'inline');
@@ -183,10 +189,12 @@ class Pinim_Pending_Imports {
                 if ( is_wp_error($board) ) return $board;
 
                 //populate board pins
-                foreach((array)$board->raw_pins as $raw_pin){
-                    $board_pins[] = new Pinim_Pending_Pin($raw_pin);
+                $pending_pins = array();
+                foreach((array)$board->pins as $pin){
+                    if ( $pin->post_id ) continue;
+                    $pending_pins[] = $pin;
                 }
-                $success = pinim_pending_imports()->bulk_import_pins($board_pins);
+                $success = pinim_pending_imports()->bulk_import_pins($pending_pins);
                 
                 if (is_wp_error($success)){
                     add_settings_error('feedback_pending_import', 'import_pin', $success->get_error_message(),'inline');
@@ -205,18 +213,21 @@ class Pinim_Pending_Imports {
         INIT PENDING  PINS
         */
         
-        $pins = array();
+        //keep only pending pins
+        $all_pins = pinim_pending_imports()->get_all_pins();
+        $pending_pins = array_filter((array)$all_pins, function($pin){
+            return ( !$pin->post_id );
+        });
+        
         $this->table_pins = new Pinim_Pins_Table();
         
-        if ( !pinim_pending_imports()->get_all_pins_cache() ){
+        if ( !$pending_pins ){
             $boards_url = pinim_get_menu_url(array('page'=>'boards'));
-            add_settings_error('feedback_pending_import','not_logged',sprintf(__('To list the pins you can import here, you first need to <a href="%s">cache some Pinterest Boards</a>.','pinim'),$boards_url),'error inline');
+            $link = sprintf('<a href="%s">%s</a>',$boards_url,__('cache some boards','pinim'));
+            add_settings_error('feedback_pending_import','not_logged',sprintf(__('No pending pins.  Either all of them have been imported, or you need to %s.','pinim'),$link),'error inline');
         }
-        
-        //display pins
-        $new_raw_pins = $this->get_new_pins();
-        
-        $this->table_pins->input_data = $pins;
+
+        $this->table_pins->input_data = $pending_pins;
         $this->table_pins->prepare_items();
         
         
@@ -238,7 +249,7 @@ class Pinim_Pending_Imports {
         <?php
     }
 
-    function get_all_pins_cache(){
+    function get_all_pins(){
 
         $pins = array();
 
@@ -247,8 +258,8 @@ class Pinim_Pending_Imports {
         if (!is_wp_error($boards)) {
 
             foreach ((array)$boards as $board){
-                if ( !$board->raw_pins ) continue;
-                $pins = array_merge($pins,$board->raw_pins);
+                if ( !$board->pins ) continue;
+                $pins = array_merge($pins,$board->pins);
             }
             
         }
@@ -256,32 +267,6 @@ class Pinim_Pending_Imports {
         return $pins;
 
     }
-    
-    /*
-    Get pins that have not been imported yet
-    returns array of Pinim_Pending_Pin objects
-    */
-    
-    function get_new_pins(){
-        $raw_pins = $this->get_all_pins_cache();
-        
-        //remove pins that already exists in the DB
-        $existing_pin_ids = pinim()->get_processed_pin_ids();
-        foreach((array)$raw_pins as $key=>$pin){
-            if ( in_array( $pin['id'],$existing_pin_ids ) ){
-                unset($raw_pins[$key]);
-                continue;
-            }
-        }
-        
-        foreach ((array)$raw_pins as $raw_pin){
-            $pins[] = new Pinim_Pending_Pin($raw_pin);
-        }
-        
-        return $pins;
-    }
-    
-
 
 }
 

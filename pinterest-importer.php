@@ -141,13 +141,21 @@ class PinIm {
     }
     
     /*
-    Get the IDs of ALL pins imported.
-    Is not a method of Pinim_Boards because we want to be independant of boards here (eg. user might have moved a WP pin)
+    Get an array of imported pins.
+    key is the post_id
+    value is the pin_id
     */
     
-    public function get_processed_pin_ids(){
+    public function get_imported_pin_ids(){
+        global $wpdb;
+
         if (!$this->processed_pins_ids){
-            $this->processed_pins_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
+            
+            $results = $wpdb->get_results( $wpdb->prepare("SELECT post_id,meta_value as pin_id FROM $wpdb->postmeta WHERE meta_key = %s" , '_pinterest-pin_id') );
+            
+            foreach(($results) as $row){
+                $this->processed_pins_ids[$row->post_id] = $row->pin_id;
+            }
         }
         return $this->processed_pins_ids;
     }
@@ -175,7 +183,10 @@ class PinIm {
     }
     
     function pins_list_views($views){
-        $pending_pins = pinim_pending_imports()->get_new_pins();
+        $pending_pins = array_filter((array)$all_pins, function($pin){
+            return ( !$pin->post_id );
+        });
+        
         $pending_count = count($pending_pins);
         
         $awaiting_url = pinim_get_menu_url(array('page'=>'pending-importation'));
@@ -394,7 +405,7 @@ class PinIm {
         $screen = get_current_screen();
         if ( $screen->post_type != pinim()->pin_post_type ) return;
 
-        $pins_count = count( pinim()->get_processed_pin_ids() );
+        $pins_count = count( pinim()->get_imported_pin_ids() );
         if ($pins_count > 1){
             $rate_link_wp = 'https://wordpress.org/support/view/plugin-reviews/pinterest-importer?rate#postform';
             $rate_link = '<a href="'.$rate_link_wp.'" target="_blank" href=""><i class="fa fa-star"></i> '.__('Reviewing the plugin','pinim').'</a>';

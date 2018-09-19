@@ -91,11 +91,13 @@ class Pinim_Boards {
             case 'bulk_build_board_cache':
 
                 foreach((array)$boards as $board){
-
-                    //
-                    $success = $board->get_pins();
-                    if (is_wp_error($success)){    
-                        add_settings_error('feedback_boards', 'bulk_build_board_cache', $success->get_error_message(),'inline');
+                    if ($board->is_sync){
+                        add_settings_error('feedback_boards', 'build_board_cache',_e('This board is aready synced','pinim'),'inline');
+                    }else{
+                        $success = $board->get_pins();
+                        if (is_wp_error($success)){    
+                            add_settings_error('feedback_boards', 'bulk_build_board_cache', $success->get_error_message(),'inline');
+                        }
                     }
 
                 }
@@ -165,10 +167,13 @@ class Pinim_Boards {
 
             case 'build_board_cache':
 
-                //
-                $success = $board->get_pins();
-                if (is_wp_error($success)){    
-                    add_settings_error('feedback_boards', 'build_board_cache', $success->get_error_message(),'inline');
+                if ($board->is_sync){
+                    add_settings_error('feedback_boards', 'build_board_cache',_e('This board is aready up-to-date','pinim'),'inline');
+                }else{
+                    $success = $board->get_pins();
+                    if (is_wp_error($success)){    
+                        add_settings_error('feedback_boards', 'build_board_cache', $success->get_error_message(),'inline');
+                    }
                 }
 
             break;
@@ -249,12 +254,15 @@ class Pinim_Boards {
             $this->table_boards_user->input_data = $all_boards;
             $this->table_boards_user->prepare_items();
 
-            //display feedback with import links
-            $pending_pins = pinim_pending_imports()->get_new_pins();
-            $pending_count = count($pending_pins);
+            //keep only pending pins
+            $all_pins = pinim_pending_imports()->get_all_pins();
+            $pending_pins = array_filter((array)$all_pins, function($pin){
+                return ( !$pin->post_id );
+            });
             
-            if ( $pending_count ){
+            if ( $pending_pins ){
 
+                $pending_count = count($pending_pins);
                 $feedback =  array( __("We're ready to process !","pinim") );
                 $feedback[] = sprintf( _n( '%s new pin was found in the boards cache.', '%s new pins were found in the boards cache.', $pending_count, 'pinim' ), $pending_count );
                 $feedback[] = sprintf( __('You can <a href="%1$s">import them all</a>, or go to the <a href="%2$s">Pins list</a> for advanced control.',"pinim"),
@@ -436,9 +444,9 @@ class Pinim_Boards {
         switch ($filter){
 
             case 'cached':
-                
+
                 foreach((array)$boards as $board){
-                    if ( empty($board->raw_pins) ) continue;
+                    if ( empty($board->pins) ) continue;
                     $output[] = $board;
 
                 }
@@ -448,7 +456,7 @@ class Pinim_Boards {
             case 'not_cached':
                 
                 foreach((array)$boards as $board){
-                    if ( !empty($board->raw_pins) ) continue;
+                    if ( !empty($board->pins) ) continue;
                     $output[] = $board;
 
                 }
@@ -458,8 +466,10 @@ class Pinim_Boards {
             case 'complete':
                 
                 foreach((array)$boards as $board){
-                    if (!$board->raw_pins) continue; //empty
-                    if ($board->is_fully_imported()){
+                    $pending_pins = array_filter((array)$board->pins, function($pin){
+                        return ( !$pin->post_id );
+                    });
+                    if ( !$pending_pins ){
                         $output[] = $board;
                     }
                 }
@@ -469,7 +479,10 @@ class Pinim_Boards {
             case 'incomplete':
                 
                 foreach((array)$boards as $board){
-                    if (!$board->raw_pins || !$board->is_fully_imported()){
+                    $pending_pins = array_filter((array)$board->pins, function($pin){
+                        return ( !$pin->post_id );
+                    });
+                    if ( $pending_pins ){
                         $output[] = $board;
                     }
                 }

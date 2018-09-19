@@ -78,14 +78,6 @@ function pinim_get_term_id($term_name,$term_tax,$term_args=array()){
     
 }
 
-function pinim_get_meta_value_by_key($meta_key,$limit = null){
-    global $wpdb;
-    if ($limit)
-        return $value = $wpdb->get_var( $wpdb->prepare("SELECT meta_value FROM $wpdb->postmeta WHERE meta_key = %s LIMIT %d" , $meta_key,$limit) );
-    else
-        return $value = $wpdb->get_col( $wpdb->prepare("SELECT meta_value FROM $wpdb->postmeta WHERE meta_key = %s" , $meta_key) );
-}
-
 /**
 * Make a nested HTML list from a multi-dimensionnal array.
 */
