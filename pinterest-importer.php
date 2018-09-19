@@ -175,7 +175,9 @@ class PinIm {
     }
     
     function pins_list_views($views){
-        $pending_count = count(pinim_pending_imports()->get_all_raw_pins());
+        $pending_pins = pinim_pending_imports()->get_new_pins();
+        $pending_count = count($pending_pins);
+        
         $awaiting_url = pinim_get_menu_url(array('page'=>'pending-importation'));
 
         $views['pending_import'] = sprintf('<a href="%s">%s <span class="count">(%s)</span></a>',$awaiting_url,__('Pending importation','pinim'),$pending_count);

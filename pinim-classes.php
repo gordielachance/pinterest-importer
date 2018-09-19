@@ -410,54 +410,38 @@ class Pinim_Board_Item{
         $url = pinim()->pinterest_url . $url;
         return $url;
     }
-    
-    function get_xml_cache_datas(){
-        if ( !$json_file = $this->get_board_raw_pins_log_path() ) return;
-        
-        $datas = array();
-        
-        foreach((array)$this->raw_pins as $pin){
-            $xml_pin = array(
-                'id' =>             pinim_get_array_value('id',$pin),
-                'title' =>          pinim_get_array_value('grid_title',$pin),
-                'description' =>    pinim_get_array_value('grid_description',$pin),
-                'link' =>           pinim_get_array_value('link',$pin),
-                'image' =>          pinim_get_array_value(array('images','orig','url'),$pin),
-                'date' =>           pinim_get_array_value('created_at',$pin),
-                'board' =>          pinim_get_array_value(array('board','url'),$pin),
-                'pinner' =>         pinim_get_array_value(array('pinner','username'),$pin),
-            );
-            $datas[] = apply_filters('pinim_pin_xml',$xml_pin,$pin);
-        }
-        
-        return $datas;
-    }
-    
+
     function cache_to_xml(){
         
-        if ( !$xml_pins = $this->get_xml_cache_datas() ) return;
-        
+        if ( !$json_file = $this->get_board_raw_pins_log_path() ) return;
+
+        //flatten array
+        $input = array();
+        foreach((array)$this->raw_pins as $raw_pin){
+            $flat_pin = pinim_array_flatten($raw_pin);
+            $input[] = $flat_pin;
+        }
+
         $domtree = new DOMDocument('1.0', 'UTF-8');
         $domtree->formatOutput = true;
         $xmlRoot = $domtree->createElement("xml");
         $xmlRoot = $domtree->appendChild($xmlRoot);
         
         //create and append other elements
-        foreach((array)$xml_pins as $xml_pin){
-            $pin = $domtree->createElement('pin');
+        foreach((array)$input as $pin){
+            $xml_pin = $domtree->createElement('pin');
 
-            foreach ($xml_pin as $key => $val) {
+            foreach ($pin as $key => $val) {
                 $info     = $domtree->createElement($key);
                 $info_data = $domtree->createTextNode($val);
                 $info->appendChild($info_data);
                 
-                $pin->appendChild($info);
+                $xml_pin->appendChild($info);
             }
 
-            $domtree->appendChild($pin);
+            $domtree->appendChild($xml_pin);
         }
-        
-        
+
         //save it to a file using a dialog box
         $file_name = sprintf('board-%s-%s.xml',$this->board_id,$this->get_cache_timestamp());
         header('Content-Disposition: attachment;filename=' . $file_name);
@@ -487,7 +471,7 @@ class Pinim_Pending_Pin{
             if ( is_array($data_or_id) ) { //obj
                 $this->populate_datas($data_or_id);
             }else{ //id
-                if ( $datas = $this->get_raw_pin($data_or_id) ){
+                if ( $datas = $this->get_pin_cache($data_or_id) ){
                     $this->populate_datas($datas);
                 }
                 
@@ -522,9 +506,9 @@ class Pinim_Pending_Pin{
     /*
      * Get raw datas for the pin
      */
-    private static function get_raw_pin($pin_id){
+    private static function get_pin_cache($pin_id){
 
-        $all_pins = pinim_pending_imports()->get_all_raw_pins();
+        $all_pins = pinim_pending_imports()->get_all_pins_cache();
         
         //remove all but ours
         $pins = array_filter(
@@ -1102,40 +1086,42 @@ class Pinim_Boards_Table extends WP_List_Table {
         $total_pins_count  = $board->get_datas('pin_count');
         $cache_pins_count = count($board->raw_pins);
         
-        //build cache bt
-        $build_bt_class = array('button');
-        if ( !$board->needs_refresh ){
-            $build_bt_class[] = 'disabled';
+        
+        
+        if ( $board->needs_refresh ){ //build cache bt
+            
+            $build_bt_class = array('button');
+            $build_bt = pinim_get_menu_url(
+                array(
+                    'page'      => 'boards',
+                    'action'    => 'build_board_cache',
+                    'board_id' => $board->board_id
+                )
+            );
+
+            $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$build_bt_class),$build_bt,__('Build','pinim'));
+            
         }
         
-        $build_bt = pinim_get_menu_url(
-            array(
-                'page'      => 'boards',
-                'action'    => 'build_board_cache',
-                'board_id' => $board->board_id
-            )
-        );
+        if ( $board->raw_pins ){ //clear cache bt 
+            
+            $clear_bt_class = array('button');
+            $clear_bt = pinim_get_menu_url(
+                array(
+                    'page'      => 'boards',
+                    'action'    => 'clear_board_cache',
+                    'board_id' => $board->board_id
+                )
+            );
 
-        $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$build_bt_class),$build_bt,__('Build','pinim'));
-        
-        //clear cache bt
-        $clear_bt_class = array('button');
-
-        if ( !$board->raw_pins ){
-            $clear_bt_class[] = 'disabled';
+            $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$clear_bt_class),$clear_bt,__('Clear','pinim'));
+            
         }
         
-        $clear_bt = pinim_get_menu_url(
-            array(
-                'page'      => 'boards',
-                'action'    => 'clear_board_cache',
-                'board_id' => $board->board_id
-            )
-        );
 
-        $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$clear_bt_class),$clear_bt,__('Clear','pinim'));
         
         //XML output bt
+        /*
         $xml_bt_class = array('button');
 
         if ( !$board->raw_pins ){
@@ -1151,10 +1137,15 @@ class Pinim_Boards_Table extends WP_List_Table {
         );
 
         $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$xml_bt_class),$xml_bt,__('Get XML','pinim'));
+        */
         
         //cache status
-        $pin_cache_txt = sprintf( _n( '%s/%s cached pin', '%s/%s cached pins', $cache_pins_count,'pinim' ), $cache_pins_count,$total_pins_count);
-        $output .= sprintf('<small>%s</small>',$pin_cache_txt);
+        $hide_cache_status = ( !$total_pins_count || !$cache_pins_count || ($cache_pins_count == $total_pins_count) );
+        
+        if (!$hide_cache_status){
+            $pin_cache_txt = sprintf( _n( '%s/%s cached pin', '%s/%s cached pins', $cache_pins_count,'pinim' ), $cache_pins_count,$total_pins_count);
+            $output .= sprintf('<small>%s</small>',$pin_cache_txt);
+        }
 
         return $output;
         

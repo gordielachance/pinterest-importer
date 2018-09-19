@@ -139,3 +139,17 @@ function pinim_get_pin_capability($cap = 'edit_posts'){
     $post_type_obj = get_post_type_object( pinim()->pin_post_type );
     return $post_type_obj->cap->$cap;
 }
+
+//https://stackoverflow.com/questions/9546181/flatten-multidimensional-array-concatenating-keys
+function pinim_array_flatten($array, $prefix = '', $delimiter = '.') {
+    $result = array();
+    foreach($array as $key=>$value) {
+        if(is_array($value)) {
+            $result = $result + pinim_array_flatten($value, $prefix . $key . $delimiter);
+        }
+        else {
+            $result[$prefix.$key] = $value;
+        }
+    }
+    return $result;
+}

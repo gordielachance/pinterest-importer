@@ -188,10 +188,9 @@ function page_settings(){
         $option = pinim()->get_options('enable_followed');
         
         printf(
-            '<input type="checkbox" name="%s[enable_followed]" value="on" %s/> %s',
+            '<input type="checkbox" name="%s[enable_followed]" value="on" %s/>',
             pinim()->meta_name_options,
-            checked( $option, 'on', false ),
-            __("List followed boards in addition of users boards.","pinim")
+            checked( $option, 'on', false )
         );
     }
     
