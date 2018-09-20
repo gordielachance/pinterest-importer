@@ -134,12 +134,12 @@ function pin_custom_content($post,$pin,$is_update){
 * Improved errors & responses from pinim-class-bridge; plugin was crashing
 * Removed the ‘me’ stuff, so force user to login with username (so we got it) instead of username or email.
 = 0.4.3 =
-* new function Pinim_Pending_Pin::get_post_content()
-* renamed Pinim_Pending_Pin::build_post_content() to Pinim_Pending_Pin::append_medias()
+* new function Pinim_Pin_Item::get_post_content()
+* renamed Pinim_Pin_Item::build_post_content() to Pinim_Pin_Item::append_medias()
 * ignore pin source if does not exists (pin uploaded by user on Pinterest)
 = 0.4.2 =
 * two new options about post stati when importing pins.
-* removed functions get_blank_post() and get_post_status(), which have been merged with Pinim_Pending_Pin::save()
+* removed functions get_blank_post() and get_post_status(), which have been merged with Pinim_Pin_Item::save()
 * renamed the filter 'pinim_before_pin_insert' to 'pinim_before_save_pin'.
 = 0.4.1 =
 * New filter 'pinim_attachment_before_insert'

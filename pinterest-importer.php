@@ -61,7 +61,7 @@ class PinIm {
     var $page_pending_imports = null;
     var $page_settings = null;
     
-    private $processed_pins_ids = null;
+    var $processed_pins_ids = null;
     private $uploads_dir = null;
     
     var $usermeta_profile = 'pinim_profile';
@@ -200,7 +200,7 @@ class PinIm {
         if ( $post->post_type == $this->pin_post_type ) {
             if ( $pin_id = pinim_get_pin_id_for_post($post->ID) ){
 
-                $pin = new Pinim_Pending_Pin();
+                $pin = new Pinim_Pin_Item();
                 $pin->pin_id = $pin_id;
                 
                 $url = $pin->get_pinterest_pin_url();

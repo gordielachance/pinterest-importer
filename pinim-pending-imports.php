@@ -122,7 +122,7 @@ class Pinim_Pending_Imports {
         
         //populate bulk pins
         foreach((array)$bulk_pin_ids as $pin_id){
-            $bulk_pins[] = new Pinim_Pending_Pin($pin_id);
+            $bulk_pins[] = $this->get_single_cached_pin($pin_id);
         }
 
         if(!$bulk_pins) return;
@@ -156,7 +156,7 @@ class Pinim_Pending_Imports {
                 if (!$pin_id) return;
                 
                 //populate & save pin
-                $pin = new Pinim_Pending_Pin($pin_id);
+                $pin = $this->get_single_cached_pin($pin_id);
                 $pins = array($pin);
                 $success = $this->bulk_import_pins($pins);
                 if (is_wp_error($success)){
@@ -168,7 +168,7 @@ class Pinim_Pending_Imports {
             case 'import_all_pins':
 
                 //keep only pending pins
-                $all_pins = $this->get_all_pins();
+                $all_pins = $this->get_cached_pins();
                 $pending_pins = array_filter((array)$all_pins, function($pin){
                     return ( !$pin->post_id );
                 });
@@ -214,7 +214,7 @@ class Pinim_Pending_Imports {
         */
         
         //keep only pending pins
-        $all_pins = pinim_pending_imports()->get_all_pins();
+        $all_pins = pinim_pending_imports()->get_cached_pins();
         $pending_pins = array_filter((array)$all_pins, function($pin){
             return ( !$pin->post_id );
         });
@@ -249,7 +249,7 @@ class Pinim_Pending_Imports {
         <?php
     }
 
-    function get_all_pins(){
+    function get_cached_pins(){
 
         $pins = array();
 
@@ -267,6 +267,28 @@ class Pinim_Pending_Imports {
         return $pins;
 
     }
+    
+    /*
+     * Get raw datas for the pin
+     */
+    function get_single_cached_pin($pin_id){
+
+        $all_pins = $this->get_cached_pins();
+        
+        //remove all but ours
+        $pins = array_filter(
+            (array)$all_pins,
+            function ($e) use ($pin_id) {
+                return $e->pin_id == $pin_id;
+            }
+        );  
+
+        if (empty($pins)) return false;
+        $pin = array_shift($pins);
+
+        return $pin;
+    }
+    
 
 }
 

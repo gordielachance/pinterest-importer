@@ -214,7 +214,7 @@ class Pinim_Account {
     }
     
     function destroy_usercache(){
-        $this->debug_log('destroy_usercache');
+        pinim()->debug_log('destroy_usercache');
 
         //force update profile & user boards by deleting the user metas
         delete_user_meta( get_current_user_id(), $this->usermeta_profile );

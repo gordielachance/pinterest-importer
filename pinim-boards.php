@@ -168,7 +168,7 @@ class Pinim_Boards {
             case 'build_board_cache':
 
                 if ($board->is_sync){
-                    add_settings_error('feedback_boards', 'build_board_cache',_e('This board is aready up-to-date','pinim'),'inline');
+                    add_settings_error('feedback_boards', 'build_board_cache',sprintf(__('The board "%s" is aready up-to-date.','pinim'),$board->get_datas('name')),'inline');
                 }else{
                     $success = $board->get_pins();
                     if (is_wp_error($success)){    
@@ -255,7 +255,7 @@ class Pinim_Boards {
             $this->table_boards_user->prepare_items();
 
             //keep only pending pins
-            $all_pins = pinim_pending_imports()->get_all_pins();
+            $all_pins = pinim_pending_imports()->get_cached_pins();
             $pending_pins = array_filter((array)$all_pins, function($pin){
                 return ( !$pin->post_id );
             });
