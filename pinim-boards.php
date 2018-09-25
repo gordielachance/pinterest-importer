@@ -208,14 +208,13 @@ class Pinim_Boards {
         INIT BOARDS
         */
         
-        $all_boards = array();
         //check that we are logged
         if ( !pinim_account()->has_credentials() ) { //session exists
             $login_url = pinim_get_menu_url(array('page'=>'account'));
-            add_settings_error('feedback_boards','not_logged',sprintf(__('Please <a href="%s">login</a> to be able to list your board.','pinim'),$login_url),'error inline');
-        }else{
-            $all_boards = $this->get_boards();
+            add_settings_error('feedback_boards','not_logged',sprintf(__('You need to <a href="%s">login</a> to be able to sync your board.','pinim'),$login_url),'error inline');
         }
+        
+        $all_boards = $this->get_boards();
 
         $has_new_boards = false;
         $this->table_boards_user = new Pinim_Boards_Table();
@@ -254,12 +253,13 @@ class Pinim_Boards {
             $this->table_boards_user->input_data = $all_boards;
             $this->table_boards_user->prepare_items();
 
-            //keep only pending pins
+            //check for pending pins
+
             $all_pins = pinim_pending_imports()->get_cached_pins();
             $pending_pins = array_filter((array)$all_pins, function($pin){
                 return ( !$pin->post_id );
             });
-            
+
             if ( $pending_pins ){
 
                 $pending_count = count($pending_pins);

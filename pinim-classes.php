@@ -987,6 +987,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         $output = null;
         $total_pins_count  = $board->get_datas('pin_count');
+        $can_sync = pinim_account()->has_credentials();
         
         //keep only cached pins
         $cached_pins = array_filter((array)$board->pins, function($pin){
@@ -999,7 +1000,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         //if ( !$board->is_sync ){ //build cache bt
             
             $build_bt_class = array('button');
-            if (!$total_pins_count){
+            if ( !$total_pins_count || !$can_sync ){
                 $build_bt_class[] = 'disabled';
             }
             
