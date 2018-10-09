@@ -246,6 +246,8 @@ class PinIm {
         //update DB version
         update_option("_pinterest-importer-db_version", $this->db_version );
 
+        //updates pinim cache
+        pinim_account()->destroy_usercache();
     }
 
     function register_post_type() {
