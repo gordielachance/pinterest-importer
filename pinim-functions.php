@@ -78,14 +78,6 @@ function pinim_get_term_id($term_name,$term_tax,$term_args=array()){
     
 }
 
-function pinim_get_meta_value_by_key($meta_key,$limit = null){
-    global $wpdb;
-    if ($limit)
-        return $value = $wpdb->get_var( $wpdb->prepare("SELECT meta_value FROM $wpdb->postmeta WHERE meta_key = %s LIMIT %d" , $meta_key,$limit) );
-    else
-        return $value = $wpdb->get_col( $wpdb->prepare("SELECT meta_value FROM $wpdb->postmeta WHERE meta_key = %s" , $meta_key) );
-}
-
 /**
 * Make a nested HTML list from a multi-dimensionnal array.
 */
@@ -135,44 +127,21 @@ function pinim_get_list_from_array($input,$parent_slugs=array() ){
 
 }
 
-/**
- * Validates a board url, like
- * 'https://www.pinterest.com/USERNAME/SLUG/'
- * or '/USERNAME/SLUG/'
- * @param type $url
-* @param type $return
- * @return \WP_Error
- */
-
-function pinim_validate_board_url($url, $return=null){
-    preg_match("~(?:http(?:s)?://(?:www\.)?pinterest.com)?/([^/]+)/([^/]+)/?~", $url, $matches);
-
-    if (!isset($matches[1]) || !isset($matches[2])){
-        return new WP_Error('pinim',__('This board URL is not valid','pinim'));
-    }
-    
-    $output = null;
-    
-    switch ($return){
-        case 'username':
-            $output = $matches[1];
-        break;
-        case 'slug':
-            $output = $matches[2];
-        break;
-        case 'short_url':
-            $output = pinim_get_board_url($matches[1],$matches[2], true);
-        break;
-        default: //long url
-            $output = pinim_get_board_url($matches[1],$matches[2]);
-        break;
-        
-    }
-
-    return $output;
-}
-
 function pinim_get_pin_capability($cap = 'edit_posts'){
     $post_type_obj = get_post_type_object( pinim()->pin_post_type );
     return $post_type_obj->cap->$cap;
+}
+
+//https://stackoverflow.com/questions/9546181/flatten-multidimensional-array-concatenating-keys
+function pinim_array_flatten($array, $prefix = '', $delimiter = '.') {
+    $result = array();
+    foreach($array as $key=>$value) {
+        if(is_array($value)) {
+            $result = $result + pinim_array_flatten($value, $prefix . $key . $delimiter);
+        }
+        else {
+            $result[$prefix.$key] = $value;
+        }
+    }
+    return $result;
 }

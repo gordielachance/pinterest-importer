@@ -16,8 +16,15 @@ class Pinim_Account {
     }
     
     function init(){
+        
+        //auth session
+        add_action( 'current_screen', array( $this, 'register_session' ), 1);
+        
         add_action( 'admin_menu',array( $this,'admin_menu' ),9,2);
+        add_action( 'current_screen', array( $this, 'maybe_logout'), 9 );
         add_action( 'current_screen', array( $this, 'page_account_init') );
+        add_action('wp_logout', array( $this, 'destroy_usercache' ) );
+        add_action('wp_login', array( $this, 'destroy_usercache' ) );
     }
     
     function admin_menu(){
@@ -31,15 +38,17 @@ class Pinim_Account {
         );
     }
     
-    function page_account_init(){
-        
+    function maybe_logout(){
         //want to logout
-        if ( isset($_REQUEST['do_logout']) ){
-            pinim()->destroy_session();
-            $logged_out_link = pinim_get_menu_url(array('page'=>'account','did_logout'=>true));
-            wp_redirect( $logged_out_link );
-            die();
-        }
+        if ( !isset($_REQUEST['do_logout']) ) return;
+        
+        $this->destroy_usercache();
+        $logged_out_link = pinim_get_menu_url(array('page'=>'account','did_logout'=>true));
+        wp_redirect( $logged_out_link );
+        die();
+    }
+    
+    function page_account_init(){
         
         //has logout
         if ( isset($_REQUEST['did_logout']) ){
@@ -57,8 +66,8 @@ class Pinim_Account {
             
             //store login & password in session for further authentification
             if ($login && $password){
-                pinim()->set_session_data('login',$login);
-                pinim()->set_session_data('password',$password);
+                $this->set_session_data('login',$login);
+                $this->set_session_data('password',$password);
             }
 
             //auth to pinterest
@@ -102,7 +111,15 @@ class Pinim_Account {
                     <?php settings_errors('feedback_login');?>
                     <?php $this->login_field_callback();?>
                     <?php $this->password_field_callback();?>
-                    <?php submit_button(__('Login to Pinterest','pinim'));?>
+                    <?php 
+                    if ( $this->has_credentials() ) { //session exists
+                        $logout_url = pinim_get_menu_url(array('page'=>'account','do_logout'=>true));
+
+                        $content = printf('<a class="button" href="%s">%s</a>',$logout_url,__('Logout','pinim'));
+                    }else{
+                        submit_button(__('Login to Pinterest','pinim'));
+                    }
+                    ?>
                 </div>
             </form>
         </div>
@@ -115,8 +132,8 @@ class Pinim_Account {
     }
 
     function login_field_callback(){
-        $option = pinim()->get_session_data('login');
-        $disabled = disabled( pinim()->bot->auth->isLoggedIn(), true, false);
+        $option = $this->get_session_data('login');
+        $disabled = disabled( (bool)$this->has_credentials(), true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Email');
         $input = sprintf(
@@ -132,8 +149,8 @@ class Pinim_Account {
     }
     
     function password_field_callback(){
-        $option = pinim()->get_session_data('password');
-        $disabled = disabled( pinim()->bot->auth->isLoggedIn() , true, false);
+        $option = $this->get_session_data('password');
+        $disabled = disabled( (bool)$this->has_credentials() , true, false);
         $el_id = 'pinim_form_login_username';
         $el_txt = __('Password');
         
@@ -149,14 +166,14 @@ class Pinim_Account {
     }
 
     /**
-    Login to pinterest using our custom bridge class
+    Login to pinterest
     **/
     function do_pinterest_auth(){
 
         if ( !$logged = pinim()->bot->auth->isLoggedIn() ){
             
-            $login = pinim()->get_session_data('login');
-            $password = pinim()->get_session_data('password');
+            $login = $this->get_session_data('login');
+            $password = $this->get_session_data('password');
 
             if (!$login || !$password){
                 return new WP_Error( 'pinim',__('Missing login and/or password','pinim') );
@@ -173,23 +190,80 @@ class Pinim_Account {
 
         return $logged;
 
-   }
+    }
     
-    function get_user_profile(){
-        if ( !$user_data = pinim()->get_session_data('profile') ){
+    function get_user_profile(){ //TOFIX cache ?
+
+        $user_profile = get_user_meta( get_current_user_id(),pinim()->usermeta_profile,true );
+
+        
+        if ( !$user_profile ){
 
             //auth to pinterest
             $this->do_pinterest_auth();
             
             if ( $logged = pinim()->bot->auth->isLoggedIn() ){
-                $user_data = pinim()->bot->user->profile();
-                pinim()->set_session_data('profile',$user_data);
+                $user_profile = pinim()->bot->user->profile();
+                $success = update_user_meta( get_current_user_id(),pinim()->usermeta_profile, $user_profile );
             }else{
                 return new WP_Error( 'php-pinterest-bot',pinim()->bot->getLastError() );
             }
         }
         
-        return $user_data;
+        return $user_profile;
+    }
+    
+    function destroy_usercache(){
+        pinim()->debug_log('destroy_usercache');
+
+        //force update profile & user boards by deleting the user metas
+        delete_user_meta( get_current_user_id(), pinim()->usermeta_profile );
+        delete_user_meta( get_current_user_id(), pinim()->usermeta_boards );
+        delete_user_meta( get_current_user_id(), pinim()->usermeta_followed_boards );
+        
+        $this->delete_session_data();
+    }
+    
+    /**
+     * AUTH SESSION 
+     So we can store the auth data (we don't want to store it in the database because of security reasons)
+     */
+    function register_session(){
+        $screen = get_current_screen();
+        if ( $screen->post_type != pinim()->pin_post_type ) return;
+        if( !session_id() ) session_start();
+    }
+    
+    private function get_session_data($keys = null){
+        
+        if (!isset($_SESSION['pinim'])) return null;
+        $session = $_SESSION['pinim'];
+        
+        return pinim_get_array_value($keys, $session);
+
+    }
+    
+    //Would be better to use transients here, but that would mean that we would store pwd in db.
+    private function set_session_data($key,$data){
+        $_SESSION['pinim'][$key] = $data;
+        return true;
+    }
+    
+    private function delete_session_data($key = null){
+        if (!isset($_SESSION['pinim'])) return false;
+        
+        if ($key){
+            if (!isset($_SESSION['pinim'][$key])) return false;
+            unset($_SESSION['pinim'][$key]);
+            return;
+        }
+        unset($_SESSION['pinim']);
+    }
+    
+    function has_credentials(){
+        $has_login = $this->get_session_data('login');
+        $has_pwd = $this->get_session_data('password');
+        return ($has_login && $has_pwd);
     }
 
 }

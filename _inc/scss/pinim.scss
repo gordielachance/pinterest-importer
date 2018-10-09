@@ -113,6 +113,10 @@
         .view_filter{
             float:right;
         }
+        
+        .sync-count{
+            @include opacity(.5);
+        }
 
         .pinim-pc-bar{
             position: relative;
@@ -120,8 +124,8 @@
             background-color:rgba(#CCC, 0.4);
             clear:both;
             width:100%;
-            height:1.3em;
-            line-height:1.3em;
+            height:1.5em;
+            line-height:1.5em;
 
             .pinim-pc-bar-fill{
                 display:block;
@@ -129,10 +133,12 @@
                 text-align:left;
                 @include transition(all 0.5s ease-out);
                 position:relative;
+                z-index:0;
                 .pinim-pc-bar-fill-color{
                     width:100%;
                     height:100%;
                     position: absolute;
+                    z-index:-1;
                     &.pinim-pc-bar-fill-yellow{
                         background-color:#FFE000;
                     }
@@ -145,6 +151,7 @@
                     margin:auto;
                     display:block;
                     text-align:center;
+                    font-size: 0.8em;
                     i.fa{
                         padding:0 0.5em;
                     }
@@ -156,7 +163,7 @@
                 color:white;
             }
 
-            &.offline,&.empty{
+            &.empty{
                 .pinim-pc-bar-fill{
                     width:100%!important;
                 }
@@ -193,7 +200,7 @@
                     text-align:center;
                 }
 
-                .column-pin_count_imported{
+                .column-cached_pins_imported{
                     text-align:center;
                 }
 

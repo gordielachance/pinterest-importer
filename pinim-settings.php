@@ -50,10 +50,7 @@ class Pinim_Settings {
                     $new_input['default_status'] = $input['default_status'];
                 }
             }
-            
-            //autocache
-            $new_input['can_autocache']  = isset ($input['can_autocache']) ? 'on' : 'off';
-            
+
             //followed
             $new_input['enable_followed']  = isset ($input['enable_followed']) ? 'on' : 'off';
 
@@ -105,15 +102,7 @@ class Pinim_Settings {
             'pinim-settings-page', // Page
             'settings_general' //section
         );
-        
-        add_settings_field(
-            'can_autocache', 
-            __('Auto Cache','pinim'), 
-            array( $this, 'can_autocache_callback' ), 
-            'pinim-settings-page', // Page
-            'settings_general'//section
-        );
-        
+
         add_settings_field(
             'enable_followed', 
             __('Followed boards','pinim'), 
@@ -193,29 +182,15 @@ function page_settings(){
     function pinim_settings_general_desc(){
         
     }
-    
-    function can_autocache_callback(){
-        
-        $option = pinim()->get_options('can_autocache');
-        $warning = '<i class="fa fa-exclamation-triangle" aria-hidden="true"></i> '.__("Auto-caching too many boards, or boards with a large amount of pins will slow the plugin, because we need to query informations for each pin of each board.","pinim");
-        
-        printf(
-            '<input type="checkbox" name="%1$s[can_autocache]" value="on" %2$s/> %3$s<p><small>%4$s</small></p>',
-            pinim()->meta_name_options,
-            checked( $option, 'on', false ),
-            __("Enable board auto-caching.","pinim"),
-            $warning
-        );
-    }
+
     
     function enable_followed_callback(){
         $option = pinim()->get_options('enable_followed');
         
         printf(
-            '<input type="checkbox" name="%s[enable_followed]" value="on" %s/> %s',
+            '<input type="checkbox" name="%s[enable_followed]" value="on" %s/>',
             pinim()->meta_name_options,
-            checked( $option, 'on', false ),
-            __("List followed boards in addition of users boards.","pinim")
+            checked( $option, 'on', false )
         );
     }
     

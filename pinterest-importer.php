@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: Pinterest Importer
-Description: Backup your Pinterest.com account by importing pins in Wordpress.  Supports boards, secret boards, and downloads HD images.
-Version: 0.6.0
+Description: Backup your Pinterest.com account by importing pins in Wordpress.  Supports regular boards, secret boards and followed boards. Downloads HD images & pins metadatas.
+Version: 0.7.0
 Author: G.Breant
 Author URI: https://profiles.wordpress.org/grosbouff/#content-plugins
 Plugin URI: http://wordpress.org/extend/plugins/pinterest-importer
@@ -19,12 +19,12 @@ class PinIm {
     /**
     * @public string plugin version
     */
-    public $version = '0.6.0';
+    public $version = '0.7.0';
 
     /**
     * @public string plugin DB version
     */
-    public $db_version = '209';
+    public $db_version = '210';
 
     /** Paths *****************************************************************/
 
@@ -55,7 +55,6 @@ class PinIm {
     var $root_term_name = 'Pinterest.com';
     
     var $session = null;
-    var $bridge = null;
     
     var $page_account = null;
     var $page_boards = null;
@@ -63,6 +62,13 @@ class PinIm {
     var $page_settings = null;
     
     var $processed_pins_ids = null;
+    private $uploads_dir = null;
+    
+    var $usermeta_profile = 'pinim_profile';
+    var $usermeta_boards = 'pinim_boards';
+    var $usermeta_followed_boards = 'pinim_followed_boards';
+    var $usermeta_boards_filter = 'pinim_boards_filter';
+    var $usermeta_layout_filter = 'pinim_layout_filter';
 
     /**
     * @var The one true Instance
@@ -96,13 +102,13 @@ class PinIm {
             $this->options_default = array(
                 'boards_per_page'       => 10,
                 'pins_per_page'         => 25,
+                'pagination_limit'      => 50, //pinterest default is 50
                 'category_root_id'      => null,
                 'boards_layout'         => 'advanced',
                 'boards_filter'         => 'all',
                 'pins_filter'           => 'pending',
                 'enable_followed'       => false,
                 'default_status'        => 'publish',
-                'can_autocache'         => 'on',
                 'can_autoprivate'       => 'on'
             );
         
@@ -114,7 +120,7 @@ class PinIm {
         require $this->plugin_dir . 'pinim-functions.php';
         require $this->plugin_dir . 'pinim-templates.php';
         
-        $this->processed_pins_ids = pinim_get_meta_value_by_key('_pinterest-pin_id');
+        
 
         if ( is_admin() ){
             
@@ -133,6 +139,26 @@ class PinIm {
         }
 
     }
+    
+    /*
+    Get an array of imported pins.
+    key is the post_id
+    value is the pin_id
+    */
+    
+    public function get_imported_pin_ids(){
+        global $wpdb;
+
+        if (!$this->processed_pins_ids){
+            
+            $results = $wpdb->get_results( $wpdb->prepare("SELECT post_id,meta_value as pin_id FROM $wpdb->postmeta WHERE meta_key = %s" , '_pinterest-pin_id') );
+            
+            foreach(($results) as $row){
+                $this->processed_pins_ids[$row->post_id] = $row->pin_id;
+            }
+        }
+        return $this->processed_pins_ids;
+    }
 
     function setup_actions(){  
         add_action( 'plugins_loaded', array($this, 'upgrade'));//upgrade
@@ -148,11 +174,6 @@ class PinIm {
         add_filter( "views_edit-pin", array($this, 'pins_list_views') );
         add_filter('post_row_actions', array($this, 'pins_row_actions'), 10, 2);
         
-        //sessions
-        add_action( 'current_screen', array( $this, 'register_session' ), 1);
-        add_action('wp_logout', array( $this, 'destroy_session' ) );
-        add_action('wp_login', array( $this, 'destroy_session' ) );
-        
         //promo
         add_action( 'all_admin_notices', array($this, 'plugin_page_header') );
     }
@@ -162,7 +183,13 @@ class PinIm {
     }
     
     function pins_list_views($views){
-        $pending_count = pinim_pending_imports()->get_pins_count_pending();
+        $all_pins = pinim_pending_imports()->get_cached_pins();
+        $pending_pins = array_filter((array)$all_pins, function($pin){
+            return ( !$pin->post_id );
+        });
+        
+        $pending_count = count($pending_pins);
+        
         $awaiting_url = pinim_get_menu_url(array('page'=>'pending-importation'));
 
         $views['pending_import'] = sprintf('<a href="%s">%s <span class="count">(%s)</span></a>',$awaiting_url,__('Pending importation','pinim'),$pending_count);
@@ -173,7 +200,11 @@ class PinIm {
     function pins_row_actions($actions, $post){
         if ( $post->post_type == $this->pin_post_type ) {
             if ( $pin_id = pinim_get_pin_id_for_post($post->ID) ){
-                $url = pinim_get_pinterest_pin_url($pin_id);
+
+                $pin = new Pinim_Pin_Item();
+                $pin->pin_id = $pin_id;
+                
+                $url = $pin->get_pinterest_pin_url();
                 $actions['pinterest']  = sprintf('<a href="%1$s" target="_blank">%2$s</a>',$url,__('View on Pinterest','pinim'),'view');
             }
         }
@@ -199,8 +230,8 @@ class PinIm {
             
         }else{
             
-            //force destroy session
-            $this->destroy_session();
+            //force destroy usercache
+            pinim_account()->destroy_usercache();
             
             if($current_version < '208'){ //switch post type to 'pin'
                 
@@ -209,30 +240,8 @@ class PinIm {
                 $result = $wpdb->get_results ( $querystr );
                 
             }
-            
-            if($current_version < '204'){
-                $boards_settings = pinim_get_boards_options();
-                foreach((array)$boards_settings as $key=>$board){
-                    if (isset($board['id'])){
-                        $boards_settings[$key]['board_id'] = $board['id'];
-                        unset($boards_settings[$key]['id']);
-                    }
-                }
-                update_user_meta( get_current_user_id(), $this->meta_name_user_boards_options, $boards_settings);
-            }
-            
-            if($current_version < '206'){
-                $boards_settings = pinim_get_boards_options();
-                foreach((array)$boards_settings as $key=>$board){
-                    if (!isset($board['username']) || !isset($board['slug']) ) continue;
-                    $boards_settings[$key]['url'] = pinim_get_board_url($board['username'],$board['slug'], true);
-                }
-                update_user_meta( get_current_user_id(), $this->meta_name_user_boards_options, $boards_settings);
-            }
+
         }
-
-
-
 
         //update DB version
         update_option("_pinterest-importer-db_version", $this->db_version );
@@ -344,13 +353,12 @@ class PinIm {
         if ( $screen->post_type != $this->pin_post_type ) return;
         
         wp_enqueue_script('pinim', $this->plugin_url.'_inc/js/pinim.js', array('jquery'),$this->version);
-        wp_enqueue_style('font-awesome', '//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css',false,'4.3.0');
+        wp_enqueue_style('font-awesome', '//maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css',false,'4.7.0');
         wp_enqueue_style('pinim', $this->plugin_url . '_inc/css/pinim.css',false,$this->version);
         
         //localize vars
         $localize_vars=array();
         $localize_vars['ajaxurl']=admin_url( 'admin-ajax.php' );
-        $localize_vars['update_warning']=__( 'Updating a pin will override it.  Continue ?',   'pinim' );
         wp_localize_script('pinim','pinimL10n', $localize_vars);
         
     }
@@ -374,7 +382,7 @@ class PinIm {
         if ( $log = pinim_get_pin_log($post->ID) ){
             add_meta_box(
                     'pinterest_log',
-                    __( 'Pinterest Log', 'pinim' ),
+                    __( 'Pinterest Metadatas', 'pinim' ),
                     array(&$this,'pinim_metabox_log_content'),
                     $this->pin_post_type
             );
@@ -393,52 +401,12 @@ class PinIm {
         }
         
     }
-    
-    /**
-     * Register a session so we can store the temporary data.
-     */
-    function register_session(){
-        $screen = get_current_screen();
-        if ( $screen->post_type != $this->pin_post_type ) return;
-        if( !session_id() ) session_start();
-    }
-    
-    function destroy_session(){
-        $this->debug_log('destroy_session');
-        $this->delete_session_data();
-    }
 
-    //Would be better to use transients here, but that would mean that we would store pwd in db.
-    function set_session_data($key,$data){
-        $_SESSION['pinim'][$key] = $data;
-        return true;
-    }
-    
-    function delete_session_data($key = null){
-        if (!isset($_SESSION['pinim'])) return false;
-        
-        if ($key){
-            if (!isset($_SESSION['pinim'][$key])) return false;
-            unset($_SESSION['pinim'][$key]);
-            return;
-        }
-        unset($_SESSION['pinim']);
-    }
-    
-    function get_session_data($keys = null){
-        
-        if (!isset($_SESSION['pinim'])) return null;
-        $session = $_SESSION['pinim'];
-        
-        return pinim_get_array_value($keys, $session);
-
-    }
-    
     function plugin_page_header(){
         $screen = get_current_screen();
         if ( $screen->post_type != pinim()->pin_post_type ) return;
 
-        $pins_count = count( pinim()->processed_pins_ids );
+        $pins_count = count( pinim()->get_imported_pin_ids() );
         if ($pins_count > 1){
             $rate_link_wp = 'https://wordpress.org/support/view/plugin-reviews/pinterest-importer?rate#postform';
             $rate_link = '<a href="'.$rate_link_wp.'" target="_blank" href=""><i class="fa fa-star"></i> '.__('Reviewing the plugin','pinim').'</a>';
@@ -462,7 +430,7 @@ class PinIm {
         $user_icon = $user_text = $user_stats = null;
         
         
-        if ( pinim()->get_session_data() ) { //session exists
+        if ( pinim_account()->has_credentials() ) { //session exists
             
             $user_data = pinim_account()->get_user_profile();
 
@@ -504,9 +472,9 @@ class PinIm {
             $user_stats = implode(",",$list);
 
             $user_icon = sprintf('<img src="%s" class="img-cover"/>',$user_icon);
-            $logout_link = pinim_get_menu_url(array('page'=>'account','do_logout'=>true));
+            $logout_url = pinim_get_menu_url(array('page'=>'account','do_logout'=>true));
 
-            $content = sprintf('<span id="user-info-thumb">%1$s</span><span id="user-info-username">%2$s</span> <small id="user-info-stats">(%3$s)</small> — <a id="user-logout-link" href="%4$s">%5$s</a>',$user_icon,$user_text,$user_stats,$logout_link,__('Logout','pinim'));
+            $content = sprintf('<span id="user-info-thumb">%1$s</span><span id="user-info-username">%2$s</span> <small id="user-info-stats">(%3$s)</small> — <a id="user-logout-link" href="%4$s">%5$s</a>',$user_icon,$user_text,$user_stats,$logout_url,__('Logout','pinim'));
             
         }else{ // not logged
             $user_icon = '';
@@ -532,6 +500,23 @@ class PinIm {
         } else {
             error_log($prefix.$message);
         }
+    }
+    
+    /*
+    Get path where are written pinim files
+    */
+    function get_uploads_dir(){
+        
+        if (!$this->uploads_dir){
+            $dir = WP_CONTENT_DIR . '/uploads/pinim';
+            if (!file_exists($dir)) {
+                wp_mkdir_p($dir);
+            }
+            $this->uploads_dir = trailingslashit($dir);
+        }
+        
+        return $this->uploads_dir;
+
     }
 
 }

@@ -1,65 +1,42 @@
 <?php
 
 class Pinim_Board_Item{
-    
-    var $short_url;
-    var $username;
-    var $slug;
+
     var $board_id;
+    var $username;
 
-    var $datas;
-    var $options;
-    var $in_queue;
-    
-    var $raw_pins = array();
+    var $datas = array();
+    var $options = array(); //db stored options
+    var $total_pins = null;
     var $pins = array();
+    var $is_sync = null;
 
-    protected $options_default;
-    protected $session_default;
+    //options
+    protected $options_default = array(
+        'private'       => null,
+        'categories'    => null,
+        'last_pin_cached' => null,
+    );
 
-    function __construct($url,$datas=null){
-        
-        $short_url = pinim_validate_board_url($url,'short_url');
-        
-        if ( is_wp_error($short_url) ) return $short_url;
+    function __construct($datas = null){
 
-        $this->short_url = $short_url;
-        $this->username = pinim_validate_board_url($url,'username');
-        $this->slug = pinim_validate_board_url($url,'slug');
-        
-        //session
-        $this->session_default = array(
-            'username'      => $this->username,
-            'slug'          => $this->slug,
-            'url'           => $this->short_url,
-            'raw_pins'      => null,
-            'page'          => -1,
-            'in_queue'      => false,
-            'offset'        => 0,
-        );
-        
-        //datas
+        if($datas){
+            $this->populate_board_datas($datas);
+        }
+
+    }
+
+    function populate_board_datas($datas){
         $this->datas = (array)$datas;
         
-        //board id
-        $this->board_id = $this->get_datas('id');
-
-
-        //options
-        $this->options_default = array(
-            'username'      => $this->username,
-            'slug'          => $this->slug,
-            'url'           => $this->short_url,
-            'board_id'      => $this->board_id,
-            'autocache'     => null,
-            'private'       => null,
-            'categories'    => null
-        );
+        //basic data
+        $this->board_id = $this->get_datas( 'id' );
+        $this->username = $this->get_datas( array('owner','username') );
         
-        $options = $this->get_options();
-        $this->options = wp_parse_args($options,$this->options_default);
-        
-        $this->populate_session();
+        //pins
+        $this->total_pins = $this->get_datas('pin_count'); //TOFIX TOCHECK use 'sectionless_pin_count' ?
+        $this->pins = $this->get_cache_pins();
+        $this->is_sync = ( count($this->pins) >= $this->total_pins ); 
 
     }
 
@@ -69,7 +46,7 @@ class Pinim_Board_Item{
             $boards_options = pinim_get_boards_options();
 
             if (!$boards_options) return null;
-
+            
             //keep only our board
             $board_id = $this->board_id;
             $board_options = array_filter(
@@ -79,7 +56,10 @@ class Pinim_Board_Item{
                 }
             );  
 
-            $this->options = array_shift($board_options); //get first one only
+            $options = array_shift($board_options); //get first one only
+            unset( $options['board_id'] ); //that one was stored only to retrieve the options set, no need to populate it.
+            
+            $this->options = wp_parse_args((array)$options,$this->options_default);
 
         }
 
@@ -91,8 +71,11 @@ class Pinim_Board_Item{
 
     function save_options(){
         
+        $updated = $this->options;
+        $updated['board_id'] = $this->board_id;
+        
         $boards_options = (array)pinim_get_boards_options();
-        $boards_options[$this->board_id] = $this->options;
+        $boards_options[] = $updated;
         $boards_options = array_filter($boards_options);
 
         if ($success = update_user_meta( get_current_user_id(), pinim()->meta_name_user_boards_options, $boards_options)){
@@ -103,62 +86,22 @@ class Pinim_Board_Item{
         }
 
     }
-
-    function populate_session(){
-
-        //get it
-        $boards_sessions = pinim()->get_session_data('boards_options');
-        
-        //keep only our board
-        $board_id = $this->board_id;
-        $boards_sessions = array_filter(
-            (array)$boards_sessions,
-            function ($e) use ($board_id) {
-                return ($e['board_id'] == $board_id);
-            }
-        );   
-
-        $board_session = array_shift($boards_sessions); //keep only first one
-        $board_session = wp_parse_args($board_session,$this->session_default);
-
-        $this->raw_pins = $board_session['raw_pins'];
-        $this->in_queue = $board_session['in_queue'];
-
-    }
     
-    function save_session(){
-        
-        //all boards session
-        $boards_sessions = pinim()->get_session_data('boards_options');
+    function save_form($form_data){
 
-        $session = array(
-            'board_id'      => $this->board_id,
-            'username'      => $this->username,
-            'slug'          => $this->slug,
-            'url'           => $this->short_url,
-            'datas'         => $this->datas,
-            'raw_pins'      => $this->raw_pins,
-            'in_queue'      => $this->in_queue,
-        );
+        //private
+        $this->options['private'] = ( isset($form_data['private']) );
 
-        //keep all but our board
-        $board_id = $this->board_id;
-        $boards_sessions = array_filter(
-            (array)$boards_sessions,
-            function ($e) use ($board_id) {
-                return ($e['board_id'] != $board_id);
-            }
-        );  
-
-        $boards_sessions[] = $session;
-
-        if ( $success = pinim()->set_session_data('boards_options',$boards_sessions) ){
-            $this->populate_session();
-            return $success;
+        //custom category
+        if ( isset($form_data['categories']) && ($form_data['categories']=='custom') && isset($form_data['category_custom']) && get_term_by('id', $form_data['category_custom'], 'category') ){ //custom cat
+            $this->options['categories'] = $form_data['category_custom'];
         }
 
+        //save
+        return $this->save_options();
+
     }
-    
+
     function get_category(){
         
         $cats_ids = null;
@@ -187,48 +130,6 @@ class Pinim_Board_Item{
         return pinim_get_array_value($keys, $this->datas);
     }
 
-    function get_pc_cached_pins(){
-        $percent = 0;
-        $count = count( $this->raw_pins );
-        if ($total_pins  = $this->get_datas('pin_count')){
-            $percent = $count / $total_pins * 100;
-        }
-        return $percent;
-    }
-    
-    /*
-    This is heavy computing, so cache this.
-    */
-    
-    function get_count_imported_pins(){
-
-        $cache_key = sprintf('board-%s-imported-pins',$this->board_id);
-        $imported = wp_cache_get( $cache_key, 'pinim' );
-        
-        if ( false === $imported ) {
-            $imported = 0;
-
-            foreach ((array)$this->raw_pins as $raw_pin){
-                if ( in_array( $raw_pin['id'],pinim()->processed_pins_ids ) ) $imported++;
-            }
-            wp_cache_set( $cache_key, $imported, 'pinim' );
-        }
-        
-        return $imported;
-    }
-    
-    function get_pc_imported_pins(){
-        $percent = 0;
-        $count = $this->get_count_imported_pins();
-        if ($total_pins  = $this->get_datas('pin_count')){
-            $percent = $count / $total_pins * 100;
-        }
-        
-        if ($percent > 100) $percent = 100;
-        
-        return $percent;
-    }
-    
     function is_private_board(){
 
         $is_secret = false;
@@ -241,86 +142,254 @@ class Pinim_Board_Item{
         }
         return $is_secret;
     }
-    
+
     /*
-    Checks that all raw pins for this board have been loaded
+    Get the time the cache was updated
     */
-    function is_pins_cache_built(){
-
-        $total_pins  = $this->get_datas('pin_count');
-        if ($total_pins === false) return false;
-        
-        return ( count($this->raw_pins) >= $total_pins );
+    function get_cache_timestamp(){
+        $json_file = $this->get_board_raw_pins_log_path();
+        if ( !$json_file || is_wp_error($json_file)  ) return;
+        if ( !file_exists($json_file) ) return;
+        $date = filectime($json_file);
+        return strtotime($date);
     }
     
-    //TO FIX TO CHECK
-    //should compare with pin ids ?
-    function is_fully_imported(){
+    private function get_cache_pins(){
+        $pins = array();
+        $json_file = $this->get_board_raw_pins_log_path();
+        if ( !$json_file || is_wp_error($json_file)  ) return;
+        if ( !file_exists($json_file) ) return;
         
-        $imported = false;
-
-        if ( $this->raw_pins && ( $this->get_count_imported_pins() >= count( $this->raw_pins ) ) ){
-            $imported = true;
+        try{
+            $handle = fopen($json_file, 'r');
+            $json_data = fread($handle,filesize($json_file));
+            fclose($handle);
+        } catch ( Exception $e ) {
+            return new WP_Error('load_cached_raw_pins',sprintf(__("Unable to load the cached file '%s'",'pinim'),$json_file));
         }
+        
+        if ( $pins_data = json_decode($json_data,true) ){
+            foreach((array)$pins_data as $pin_data){
+                $pins[] = new Pinim_Pin_Item($pin_data);
+            }
+            return $pins;
+        }else{
+            return new WP_Error('load_cached_raw_pins',sprintf(__("Unable to decode the JSON file '%s'",'pinim'),$json_file));
+        }
+    }
+    
+    private function write_pins_cache(){
+        //custom log
+        $json_file = $this->get_board_raw_pins_log_path();
+        if ( !$json_file || is_wp_error($json_file)  ) return;
+        
+        $pins_data = array();
+        
+        foreach((array)$this->pins as $pin){
+            $pins_data[] = $pin->datas;
+        }
+        
+        $pins_data = array_filter($pins_data);
 
-        return $imported;
+        $json_data = json_encode($pins_data);
+        
+        try{
+            $handle = fopen($json_file, 'w');
+            flock($handle, LOCK_EX);
+            fwrite($handle, $json_data);
+            flock($handle, LOCK_UN);
+            fclose($handle);
 
+        } catch ( Exception $e ) {
+            $error_msg = sprintf(__("Unable to write the cached file '%s'",'pinim'),$json_file);
+            pinim()->debug_log($error_msg,sprintf('board #%s',$this->board_id));
+            return new WP_Error('write_pins_cache',$error_msg);
+        }
+        
+        return true;
+
+    }
+    
+    function delete_pins_cache(){
+        $json_file = $this->get_board_raw_pins_log_path();
+        if ( !$json_file || is_wp_error($json_file)  ) return;
+        if ( !file_exists($json_file) ) return;
+        
+        unlink($json_file);
+        $this->pins = array();
+
+        pinim()->debug_log(sprintf('deleted cache file %s',$json_file),sprintf('board #%s',$this->board_id));
+    }
+    
+    function get_board_raw_pins_log_path(){
+        
+        if ( !$this->board_id ){
+            return new WP_Error('get_board_raw_pins_log_path',__('Missing board ID','pinim'));
+        }
+        
+        $log_dir = pinim()->get_uploads_dir();
+        return $log_dir . sprintf('%s.json',$this->board_id);
+    }
+    
+    function delete_board_raw_pins_log(){
+        $json_file = $this->get_board_raw_pins_log_path();
+        if ( !$json_file || is_wp_error($json_file)  ) return;
+        wp_delete_file($json_file);
     }
     
     /*
-     * Append new pins to the board.
-     */
-    
-    function set_pins_queue(){
-
-    }
+    Get the raw pins from Pinterest.
+    As we get the newest pin first on Pinterest, process the last page first.
+    If a cache exist, don't get the last XX pages.
+    */
     
     function get_pins(){
-        $error = null;
+
+        pinim()->debug_log('get_pins...',sprintf('board #%s',$this->board_id));
         
-        while ( !$this->is_pins_cache_built() ) {
-            
-            pinim()->debug_log('get_pins()',sprintf('board #%s',$this->board_id));
-
-            $offset = count($this->raw_pins);
-            
-            //print_r($offset);die();
-
-            $slice = $this->get_pins_slice($offset);
-            if ( !is_wp_error($slice) ){
-                
-                //keep only pins (not stories or ads or...)
-                $slice = array_filter($slice, function($pin){
-                    return ($pin['type'] == 'pin');
-                });
-                
-                //append those pins
-                $this->raw_pins = array_merge((array)$this->raw_pins,$slice);
-                $this->raw_pins = array_filter($this->raw_pins);
-                
-                $this->save_session();
-
-            }
-
+        $total_pins = $this->total_pins;
+        $limit = pinim()->get_options('pagination_limit');
+        $total_pages = ceil($total_pins / $limit);
+        
+        $cached_pins = $this->get_cache_pins();
+        $cached_pin_ids = array();
+        
+        foreach((array)$cached_pins as $pin){
+            $cached_pin_ids[] = $pin->pin_id;
         }
 
-        return $this->raw_pins;
+        $pin_offset = count($cached_pin_ids);
+        $page_offset = floor($pin_offset / $limit);
 
+        $current_page = $total_pages - $page_offset;  //we start at the last page
+        
+        if ($page_offset){
+            pinim()->debug_log(sprintf('(%s pages of cache already exists (%s pins) and will be ignored.',$page_offset,$page_offset*$limit),sprintf('board #%s',$this->board_id));
+        }
+        
+        while( $current_page > 0 ){
+            
+            $pins_data = $this->get_pins_page($current_page);
+
+            if ( is_wp_error($pins_data) ){
+                pinim()->debug_log($pins_data->get_error_message(),sprintf('board #%s',$this->board_id));
+                break;
+            }
+
+            //eventually remove pins that are already populated in cache
+            $duplicate_pin_count = 0;
+            foreach((array)$pins_data as $key=>$pin){
+                if (!in_array($pin['id'],$cached_pin_ids)) continue;
+                unset($pins_data[$key]);
+                $duplicate_pin_count+=1;
+            }
+
+            if ($duplicate_pin_count){
+                pinim()->debug_log(sprintf('(ignored %s duplicate pins)',$duplicate_pin_count),sprintf('board #%s',$this->board_id));
+            }
+            
+            $new_pins = array();
+            foreach( (array)$pins_data as $pin_data ){
+                $new_pins[] = new Pinim_Pin_Item($pin_data);
+            }
+
+            //add new pins at the beginning
+            $this->pins = array_merge((array)$new_pins,((array)$this->pins));
+            
+            //update pins cache at each slice (in case the script crashes)
+            $success = $this->write_pins_cache();
+            if ( is_wp_error($success) ) break;
+
+            $current_page -= 1;
+            
+        }
+
+        $this->is_sync = true;
+
+        pinim()->debug_log(sprintf('get_pins... completed, %s pins in cache',count($this->pins)),sprintf('board #%s',$this->board_id));
+                                 
     }
-    
-    private function get_pins_slice($offset = 0,$limit = 50){
 
-        pinim()->debug_log(sprintf('getting %s pins; offset = %s',$limit,$offset),sprintf('board #%s',$this->board_id));
+    private function get_pins_page($page=1){
         
         //private boards requires to be logged
         if ( $this->is_private_board() ){
             $logged = pinim_account()->do_pinterest_auth();
             if (is_wp_error($logged) ) return $logged;
         }
+        
+        //pagination
+        $limit = pinim()->get_options('pagination_limit');
+        $total_pins = $this->total_pins;
+        $total_pages = ceil($total_pins / $limit);
+        $offset = ($page - 1) * $limit;
+        
+        if ( $page > $total_pages ){
+            return new WP_Error('empty_pins_slice',sprintf('cannot fetch page %s/%s',$page,$total_pages));
+        }
+
+        pinim()->debug_log(sprintf('getting pins page %s/%s',$page,$total_pages),sprintf('board #%s',$this->board_id));
         $slice = pinim()->bot->boards->pins($this->board_id)->take($limit)->skip($offset)->toArray();
+        
+        //keep only pins (not stories or ads or...)
+        $slice = array_filter($slice, function($pin){
+            return ($pin['type'] == 'pin');
+        });
+        
+        if ( empty($slice) ){
+            return new WP_Error('empty_pins_slice','Empty pins slice');
+        }
         
         return $slice;
         
+    }
+    
+    function get_pinterest_board_url(){
+        $url = $this->get_datas( array('url') );
+        $url = pinim()->pinterest_url . $url;
+        return $url;
+    }
+
+    function cache_to_xml(){
+        
+        $json_file = $this->get_board_raw_pins_log_path();
+        if ( !$json_file || is_wp_error($json_file)  ) return;
+
+        //flatten array
+        $input = array();
+        foreach((array)$this->pins as $pin){
+            $flat_pin = pinim_array_flatten($pin->datas);
+            $input[] = $flat_pin;
+        }
+
+        $domtree = new DOMDocument('1.0', 'UTF-8');
+        $domtree->formatOutput = true;
+        $xmlRoot = $domtree->createElement("xml");
+        $xmlRoot = $domtree->appendChild($xmlRoot);
+        
+        //create and append other elements
+        foreach((array)$input as $pin){
+            $xml_pin = $domtree->createElement('pin');
+
+            foreach ($pin as $key => $val) {
+                $info     = $domtree->createElement($key);
+                $info_data = $domtree->createTextNode($val);
+                $info->appendChild($info_data);
+                
+                $xml_pin->appendChild($info);
+            }
+
+            $domtree->appendChild($xml_pin);
+        }
+
+        //save it to a file using a dialog box
+        $file_name = sprintf('board-%s-%s.xml',$this->board_id,$this->get_cache_timestamp());
+        header('Content-Disposition: attachment;filename=' . $file_name);
+        header('Content-Type: text/xml');
+        ob_clean();
+        flush();
+        echo $domtree->saveXML();
+        exit;
     }
 
 }
@@ -328,48 +397,35 @@ class Pinim_Board_Item{
 class Pinim_Pin_Item{
     
     var $pin_id;
-    
-    var $options;
-    var $datas_raw;
-    var $datas;
     var $board_id;
+    var $post_id;
+    
+    var $datas;
     var $board;
+    var $options;
     var $post; //wp post
     
     
-    function __construct($pin_id){
+    function __construct($datas = null){
 
-        $this->pin_id = $pin_id;
-        $this->datas = $this->get_raw_datas();
-        $this->board_id = $this->get_datas(array('board','id'));
+        if($datas){
+            $this->populate_pin_datas($datas);
+        }
         
-        //TO FIX : we should store the username and board slug, so storing is easier ?
-
     }
     
-    function get_raw_datas(){
-
-        $all_pins = pinim_pending_imports()->get_all_raw_pins();
-        //remove unecessary items
-        $current_pin_id = $this->pin_id;
-        $pins = array_filter(
-            (array)$all_pins,
-            function ($e) use ($current_pin_id) {
-                return $e['id'] == $current_pin_id;
-            }
-        );  
-
-        if (empty($pins)) return false;
-        $pin = array_shift($pins);
-
-        return $pin;
+    private function populate_pin_datas($datas){
+        $this->datas = $datas;
+        $this->pin_id = $this->get_datas(array('id'));
+        $this->board_id = $this->get_datas(array('board','id'));
+        $this->post_id = $this->get_post_by_pin_id();
     }
 
     function get_board(){
 
         //load boards
         $boards = pinim_boards()->get_boards();
-        
+
         $pin_board_id = $this->board_id;
 
         $boards = array_filter(
@@ -382,40 +438,45 @@ class Pinim_Pin_Item{
         return array_shift($boards); //keep only first
         
     }
-    /*
-     * Get data from Pinterest
-     */
     
     function get_datas($keys = null){
         return pinim_get_array_value($keys, $this->datas);
     }
-    
-    /*
-     * Get post saved on Wordpress
-     */
-    
-    function get_post(){
-        
-        if (!$this->post){
-            if ($post_id = pinim_get_post_by_pin_id($this->pin_id)){
-                $this->post = get_post($post_id);
-                
-                $this->datas = pinim_get_pin_log($this->post->ID);
-                $this->board_id = pinim_get_pin_meta('board_id',$this->post->ID,true);
-                
-            }
-            
-        }
 
-        return $this->post;
+    /**
+     * Checks if a pin ID already has been imported
+     * @return boolean
+     */
+
+    private function get_post_by_pin_id(){
+        $all_pin_ids = pinim()->get_imported_pin_ids();
+        return array_search($this->pin_id,$all_pin_ids); //returns the key (post_id), searching by value (pin_id)
+        
+        /*
+        $query_args = array(
+            'post_type'         => pinim()->pin_post_type,
+            'post_status'       => array('publish','pending','draft','future','private'),
+            'meta_query'        => array(
+                array(
+                    'key'     => '_pinterest-pin_id',
+                    'value'   => $this->pin_id,
+                    'compare' => '='
+                )
+            ),
+            'posts_per_page'    => 1
+        );
+        $query = new WP_Query($query_args);
+        if (!$query->have_posts()) return false;
+        return $query->posts[0]->ID;
+        */
     }
-    
+
     function get_link_action_import(){
         //Refresh cache
         $link_args = array(
             'page'      => 'pending-importation',
-            'action'    => 'pins_import_pins',
-            'pin_ids'  => $this->pin_id,
+            'action'    => 'import_pin',
+            'pin_id'  => $this->pin_id,
             //'paged'     => ( isset($_REQUEST['paged']) ? $_REQUEST['paged'] : null),
         );
 
@@ -497,7 +558,7 @@ class Pinim_Pin_Item{
     }
 
     function append_medias(){
-        $post_format = get_post_format( $this->post->ID );
+        $post_format = get_post_format( $this->post_id );
         $link = $this->get_datas('link');
         $domain = $this->get_datas('domain');
         $content = null;
@@ -505,7 +566,7 @@ class Pinim_Pin_Item{
         switch($post_format){
 
             case 'image':
-                $thumb = get_the_post_thumbnail($this->post->ID,'full');
+                $thumb = get_the_post_thumbnail($this->post_id,'full');
                 $content =sprintf('<a href="%s" title="%s">%s</a>',$link,the_title_attribute('echo=0'),$thumb);
                 
             break;
@@ -586,7 +647,7 @@ class Pinim_Pin_Item{
             );
             
             
-        }elseif(!$post = (array)$this->get_post()){
+        }elseif( !$this->post_id ){
             $error->add('nothing_to_update',__("The current pin has never been imported and can't be updated",'pinim'));
             return $error;
         }
@@ -640,8 +701,8 @@ class Pinim_Pin_Item{
         // We should reverse that.
 
         
-        //populate the post.  Can't use Pinim_Pin_Item::get_post() here since the pin ID as not been stored yet.
-        $this->post = get_post($post_id);
+        //populate the post.
+        $post = get_post($post_id);
 
         //set post format
         $post_format = $this->get_post_format();
@@ -650,7 +711,7 @@ class Pinim_Pin_Item{
             return $error;
         }
 
-        $attachment_id = $this->attach_remote_image();
+        $attachment_id = $this->attach_remote_image($post);
 
         //set featured image
         if ( !is_wp_error($attachment_id) ){
@@ -661,7 +722,7 @@ class Pinim_Pin_Item{
                     }
                 }
             
-                set_post_thumbnail($this->post, $attachment_id);
+                set_post_thumbnail($post, $attachment_id);
                 $hd_file = wp_get_attachment_image_src($attachment_id, 'full');
                 $hd_url = $hd_file[0];
                 
@@ -686,8 +747,8 @@ class Pinim_Pin_Item{
 
         //finalize post
         $update_post = array();
-        $update_post['ID'] = $this->post->ID;
-        $update_post['post_content'] = $this->post->post_content.$this->append_medias()."\n".$this->get_source_link(); //set post content
+        $update_post['ID'] = $post->ID;
+        $update_post['post_content'] = $post->post_content.$this->append_medias()."\n".$this->get_source_link(); //set post content
 
         if (!$is_update){ //new pin
             $update_post['post_status'] = pinim()->get_options('default_status');
@@ -701,6 +762,10 @@ class Pinim_Pin_Item{
             $error->add('pin_content_error', $error_msg, $post_id);
             return $error;
         }
+        
+        //populate
+        $this->post_id = $post_id;
+        pinim()->processed_pins_ids[$post_id] = $this->pin_id;
 
         return $post_id;
 
@@ -710,7 +775,7 @@ class Pinim_Pin_Item{
      * Import and pin image; store original URL as attachment meta
      * @return \WP_Error|string
      */
-    function attach_remote_image() {
+    function attach_remote_image($post) {
 
         $image_url = $this->get_datas_image_url();
 
@@ -762,13 +827,13 @@ class Pinim_Pin_Item{
 
             // Construct the attachment array.
             $attachment_data = array (
-                'post_date'     => $this->post->post_date, //use same date than parent
-                'post_date_gmt' => $this->post->post_date_gmt
+                'post_date'     => $post->post_date, //use same date than parent
+                'post_date_gmt' => $post->post_date_gmt
             );
 
             $attachment_data = apply_filters('pinim_attachment_before_insert',$attachment_data,$this);
 
-            $attachment_id = media_handle_sideload( $file_array, $this->post->ID, null, $attachment_data );
+            $attachment_id = media_handle_sideload( $file_array, $post->ID, null, $attachment_data );
 
             // Check for handle sideload errors:
            if ( is_wp_error( $attachment_id ) ){
@@ -782,6 +847,12 @@ class Pinim_Pin_Item{
         }
 
         return $attachment_id;
+    }
+    
+    function get_pinterest_pin_url(){
+        $url = sprintf('/pin/%s',$this->pin_id);
+        $url = pinim()->pinterest_url . $url;
+        return $url;
     }
     
 }
@@ -868,7 +939,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         //Build row actions
         $actions = array(
-            'pinterest'  => sprintf('<a href="%1$s" target="_blank">%2$s</a>',pinim_get_board_url($board->username,$board->slug),__('View on Pinterest','pinim'),'view'),
+            'pinterest'  => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$board->get_pinterest_board_url(),__('View on Pinterest','pinim'),'view'),
         );
         
         $board_name  = $board->get_datas('name');
@@ -914,31 +985,76 @@ class Pinim_Boards_Table extends WP_List_Table {
         return $board->username;
     }
     
-    function column_autocache($board){
+    function column_cache($board){
 
-        $option = $board->get_options('autocache');
+        $output = null;
+        $total_pins_count  = $board->total_pins;
+        $can_sync = pinim_account()->has_credentials();
+        
+        //keep only cached pins
+        $cached_pins = array_filter((array)$board->pins, function($pin){
+            return ( $pin->datas );
+        });
+        
+        $cache_pins_count = count($cached_pins);
+ 
+        $build_bt_class = array('button');
+        if ( !$total_pins_count || !$can_sync || $board->is_sync ){
+            $build_bt_class[] = 'disabled';
+        }
 
-        return sprintf(
-            '<input type="checkbox" name="pinim_form_boards[%1$s][autocache]" value="on" %2$s/>',
-            $this->board_idx,
-            checked($option, true, false )
+
+        $build_bt = pinim_get_menu_url(
+            array(
+                'page'      => 'boards',
+                'action'    => 'build_board_cache',
+                'board_id' => $board->board_id
+            )
         );
+
+        $bt_txt = __('Sync','pinim');
+        $bt_txt .= sprintf(' <span class="sync-count">%s/%s</span>',$cache_pins_count,$total_pins_count);
+
+        $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$build_bt_class),$build_bt,$bt_txt);
+
+        if ( $board->pins ){ //clear cache bt 
+            
+            $clear_bt_class = array();
+            $clear_bt = pinim_get_menu_url(
+                array(
+                    'page'      => 'boards',
+                    'action'    => 'clear_board_cache',
+                    'board_id' => $board->board_id
+                )
+            );
+
+            $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$clear_bt_class),$clear_bt,__('Clear Cache','pinim'));
+            
+        }
+
+        //XML output bt
+        /*
+        $xml_bt_class = array('button');
+
+        if ( !$board->pins ){
+            $xml_bt_class[] = 'disabled';
+        }
+        
+        $xml_bt = pinim_get_menu_url(
+            array(
+                'page'      => 'boards',
+                'action'    => 'export_board_cache',
+                'board_id' => $board->board_id
+            )
+        );
+
+        $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$xml_bt_class),$xml_bt,__('Get XML','pinim'));
+        */
+
+        return $output;
         
     }
-    
-    function column_in_queue($board){
-        $option = $board->in_queue;
-        $can_queue = !$board->is_fully_imported();
 
-        return sprintf(
-            '<input type="checkbox" name="pinim_form_boards[%1$s][in_queue]" value="on" %2$s %3$s />',
-            $this->board_idx,
-            checked($option, true, false ),
-            disabled( $can_queue, false, false ) 
-        );
-        
-    }
-    
     function column_private($board){
 
         //privacy
@@ -955,12 +1071,11 @@ class Pinim_Boards_Table extends WP_List_Table {
     }
     
     function column_board_thumbnail($board){
-        if ( !$images = $board->get_datas('cover_images') ) return;
-        $image_key = array_values($images);//reset keys
-        $image = array_shift($image_key);
+
+        if ( !$image = $board->get_datas('image_cover_url') ) return;
         return sprintf(
             '<img src="%1$s" class="img-cover"/>',
-            $image['url']
+            $image
         );
     }
     
@@ -993,7 +1108,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         
         $cat_args = array(
             'hide_empty'    => false,
-            'depth'         => 20, //TO FIX better value here ?
+            'depth'         => 20, //aTO FIX better value here ?
             'hierarchical'  => 1,
             'echo'          => false,
             'selected'      => $selected_cat,
@@ -1015,24 +1130,62 @@ class Pinim_Boards_Table extends WP_List_Table {
     }
     
     function column_pin_count_remote($board){
-        return $board->get_datas('pin_count');
+        return $board->total_pins;
     }
     
-    function column_pin_count_imported($board){
+    function column_cached_pins_imported($board){
         
-            $percent = 0;
-            
+        $output = null;
+        $percent = 0;
+
+        $imported_pins = array_filter((array)$board->pins, function($pin){
+            return ( $pin->post_id );
+        });
+        
+        $pending_pins = array_filter((array)$board->pins, function($pin){
+            return ( !$pin->post_id );
+        });
+        
+        //import pins bt
+
+        $import_bt_class = array('button');
+        $import_bt_txt = __('Import','pinim');
+        if ( !$pending_pins ){
+            $import_bt_class[] = 'disabled';
+        }else{
+            /*
+            $remaining_count = 0;
+            foreach ((array)$board->pins as $pin){
+                if ( !$pin->post_id ) $remaining_count++;
+            }
+            //$import_bt_txt = sprintf( _n( 'Import %s pin', 'Import %s pins', $remaining_count,'pinim' ), $remaining_count );
+            */
+        }
+
+        $import_bt = pinim_get_menu_url(
+            array(
+                'page'      => 'pending-importation',
+                'action'    => 'import_board_pins',
+                'board_id'  => $board->board_id
+            )
+        );
+
+        $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$import_bt_class),$import_bt,$import_bt_txt);
+        
+        //
+        
+        if ( $board->pins ){
+
             $pc_status_classes = array('pinim-pc-bar');
             $text_bar = $bar_width = null;
-            
-            if ( $board->raw_pins ){
-                $percent = $board->get_pc_imported_pins();
-                $percent = floor($percent);
-            }
-            
+
+            $percent = count($imported_pins) / count( $board->pins ) * 100;
+            if ($percent > 100) $percent = 100;
+            $percent = floor($percent);
+
             $bar_width = $percent;
-            
-            $text_bar = sprintf('%s/%s',$board->get_count_imported_pins(),$board->get_datas('pin_count'));
+
+            $text_bar = sprintf('%s/%s',count($imported_pins),count($board->pins));
             $text_bar .= '<i class="fa fa-refresh" aria-hidden="true"></i>';
 
             switch($percent){
@@ -1047,30 +1200,29 @@ class Pinim_Boards_Table extends WP_List_Table {
                     $pc_status_classes[] = 'incomplete';
                 break;
             }
-        
-            if ( $board->is_pins_cache_built() ){ //pins cache totally loaded
+
+            if ( $board->is_sync ){ //pins cache totally loaded
                 if ($percent<50){
                     $pc_status_classes[] = 'color-light';
                 }
-            }else{
-                $pc_status_classes[] = "offline";
-                $link = pinim_get_menu_url(
-                    array(
-                        'page'      => 'boards',
-                        'action'    => 'boards_cache_pins',
-                        'board_ids' => $board->board_id
-                    )
-                );
-
-                $text_bar = sprintf('<a href="%s">%s</a>',$link,__('Build pins cache','pinim'));
-
             }
 
 
             $pc_status_classes = pinim_get_classes_attr($pc_status_classes);
             $red_opacity = (100 - $percent) / 100;
+            
+            $text_bar_el = sprintf('<span class="pinim-pc-bar-text">%s</span>',$text_bar);
+            $yellow_bar_el = '<span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-yellow"></span>';
+            $red_bar_el = sprintf('<span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-red" style="opacity:%s"></span>',$red_opacity);
+            $bar_fill = sprintf('<span class="pinim-pc-bar-fill" style="width:%s">%s%s%s',$bar_width.'%',$yellow_bar_el,$red_bar_el,$text_bar_el);
+            $bar_wrapper = sprintf('<p><span %s>%s</span></p>',$pc_status_classes,$bar_fill);
+            
+            $output .= $bar_wrapper;
+            
+        }
+        
 
-            return sprintf('<span %1$s><span class="pinim-pc-bar-fill" style="width:%2$s"><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-yellow"></span><span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-red" style="opacity:%3$s"></span><span class="pinim-pc-bar-text">%4$s</span></span>',$pc_status_classes,$bar_width.'%',$red_opacity,$text_bar);
+        return $output;
 
     }
 
@@ -1097,27 +1249,22 @@ class Pinim_Boards_Table extends WP_List_Table {
             'title'                 => __('Board Title','pinim'),
             'category'              => __('Category','pinim'),
             'private'               => __('Private','pinim'),
-            'pin_count_remote'      => __('Board Pins','pinim'),
-            'pin_count_imported'    => __('Status','pinim'),
-            'autocache'             => __('Auto-cache','pinim')
+            'cache'                 => __('Cache','pinim'),
+            'cached_pins_imported'    => __('Status','pinim')
         );
         
-        if ( pinim()->get_options('can_autocache') != 'on' ){
-            $columns['autocache'] = sprintf('<strike>%s</strike>',$columns['autocache']);
+        //should we display the usernames column ?
+        $board_usernames = array();
+        
+        foreach((array)$this->input_data as $board){
+            $board_usernames[] = $board->get_datas(array('owner','username'));
         }
         
-        if ( pinim_boards()->get_screen_boards_filter() != 'not_cached' ){
-            $columns['in_queue'] = __('Queue pins','pinim');
-        }
+        $board_usernames = array_unique($board_usernames);
 
-        $followed_boards = pinim_boards()->filter_boards($this->input_data,'followed');
-        
-        if ($followed_boards){
+        if (count($board_usernames) > 1){
             $columns['username'] = __('Username','pinim');
         }
-        
-        
-        
 
         return $columns;
     }
@@ -1142,14 +1289,12 @@ class Pinim_Boards_Table extends WP_List_Table {
             'title'                 => array('title',false),     //true means it's already sorted
             'private'               => array('private',false),
             'pin_count_remote'      => array('pin_count_remote',false),
-            'pin_count_imported'    => array('pin_count_imported',false),
-            'autocache'             => array('autocache',false),
-            'in_queue'              => array('in_queue',false),
+            'cached_pins_imported'    => array('cached_pins_imported',false),
             'username'              => array('username',false),
             
         );
         
-        //do not allow to sort 'pin_count_imported' as it should force to populate the pins from all boards to work
+        //do not allow to sort 'cached_pins_imported' as it should force to populate the pins from all boards to work
 
         return $sortable_columns;
     }
@@ -1157,27 +1302,20 @@ class Pinim_Boards_Table extends WP_List_Table {
     /**
      * @param string $which
      */
+    //TOFIX nothing needed ?
+    /*
     protected function extra_tablenav( $which ) {
         ?>
         <div class="alignleft actions">
         <?php
         if ( 'top' == $which && !is_singular() ) {
-
-            /*
-            switch (pinim_boards()->get_screen_boards_filter()){
-                case 'pending':
-                    //Import All Pins
-                    submit_button( pinim_pending_imports()->all_action_str['import_all_pins'], 'button', 'all_boards_action', false );
-                break;
-            }
-             * 
-             */
         }
 
         ?>
         </div>
         <?php
     }
+    */
     
     /**
      * Get an associative array ( id => link ) with the list
@@ -1192,7 +1330,7 @@ class Pinim_Boards_Table extends WP_List_Table {
     protected function get_views() {
 
         $link_all = $link_user = $link_cached = $link_not_cached = null;
-        $link_all_classes = $link_user_classes = $link_cached_classes = $link_not_cached_classes = $link_in_queue_classes = $link_followed_classes = array();
+        $link_all_classes = $link_user_classes = $link_cached_classes = $link_not_cached_classes = $link_followed_classes = array();
         
         $all_boards = pinim_boards()->get_boards();
         
@@ -1204,7 +1342,6 @@ class Pinim_Boards_Table extends WP_List_Table {
         $user_count = count(pinim_boards()->filter_boards($all_boards,'user'));
         $cached_count = count(pinim_boards()->filter_boards($all_boards,'cached'));
         $not_cached_count = count(pinim_boards()->filter_boards($all_boards,'not_cached'));
-        $in_queue_count = count(pinim_boards()->filter_boards($all_boards,'in_queue'));
         $followed_count = count(pinim_boards()->filter_boards($all_boards,'followed'));
 
         switch (pinim_boards()->get_screen_boards_filter()){
@@ -1219,9 +1356,6 @@ class Pinim_Boards_Table extends WP_List_Table {
             break;
             case 'not_cached':
                 $link_not_cached_classes[] = 'current';
-            break;
-            case 'in_queue':
-                $link_in_queue_classes[] = 'current';
             break;
             case 'followed':
                 $link_followed_classes[] = 'current';
@@ -1279,20 +1413,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             __('Not cached','pinim'),
             $not_cached_count
         );
-        
-        $link_in_queue = sprintf(
-            __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
-            pinim_get_menu_url(
-                array(
-                    'page'          => 'boards',
-                    'boards_filter' =>'in_queue'
-                )
-            ),
-            pinim_get_classes_attr($link_in_queue_classes),
-            __('In queue','pinim'),
-            $in_queue_count
-        );
-        
+
         $link_followed = sprintf(
             __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
             pinim_get_menu_url(
@@ -1309,11 +1430,10 @@ class Pinim_Boards_Table extends WP_List_Table {
         $links = array(
             'all'           => $link_all,
             'cached'        => $link_cached,
-            'not_cached'    => $link_not_cached,
-            'in_queue'      => $link_in_queue
+            'not_cached'    => $link_not_cached
         );
         
-        if ( pinim()->get_options('enable_followed') && $followed_count ){
+        if ( (pinim()->get_options('enable_followed')=='on') && $followed_count ){
             $links['user'] = $link_user;
             $links['followed'] = $link_followed;
         }
@@ -1431,8 +1551,9 @@ class Pinim_Boards_Table extends WP_List_Table {
         //TO FIX can be cleared out
         
         $actions = array(
-            'boards_cache_pins'         => __('Build Pins Cache','pinim'),
-            'boards_save_settings'      => __('Save Settings','pinim')
+            'bulk_save_board_settings'  => __('Save Settings','pinim'),
+            'bulk_build_board_cache'    => __('Build Cache','pinim'),
+            'bulk_clear_board_cache'    => __('Clear Cache','pinim'),
         );
         return $actions;
     }
@@ -1537,16 +1658,19 @@ class Pinim_Boards_Table extends WP_List_Table {
                     $result = $a->is_private_board() - $b->is_private_board();
                 break;
                 case 'pin_count_remote':
-                    $result = $a->get_datas('pin_count') - $b->get_datas('pin_count');
+                    $result = $a->total_pins - $b->total_pins;
                 break;
-                case 'pin_count_imported':
-                    $result = $a->get_pc_imported_pins() - $b->get_pc_imported_pins();
-                break;
-                case 'autocache':
-                    $result = $a->get_options('autocache') - $b->get_options('autocache');
-                break;
-                case 'in_queue':
-                    $result = $a->in_queue  - $b->in_queue;
+                case 'cached_pins_imported':
+                    
+                    //keep only imported pins
+                    $a_imported_pins = array_filter((array)$a->pins, function($pin){
+                        return ( $pin->post_id );
+                    });
+                    $b_imported_pins = array_filter((array)$b->pins, function($pin){
+                        return ( $pin->post_id );
+                    });
+                    
+                    $result = $a_imported_pins - $b_imported_pins;
                 break;
                 case 'username':
                     $result = $a->username  - $b->username;
@@ -1621,7 +1745,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
 }
 
-class Pinim_Pending_Pins_Table extends WP_List_Table {
+class Pinim_Pins_Table extends WP_List_Table {
     
     var $input_data = array();
     var $pin_idx = -1;
@@ -1681,7 +1805,7 @@ class Pinim_Pending_Pins_Table extends WP_List_Table {
         $pin_id = $this->get_pin_id($pin);
         
         return array(
-            'pinterest'     => sprintf('<a href="%1$s" target="_blank">%2$s</a>',pinim_get_pinterest_pin_url($pin_id),__('View on Pinterest','pinim'),'view'),
+            'pinterest'     => sprintf('<a href="%1$s" target="_blank">%2$s</a>',$pin->get_pinterest_pin_url(),__('View on Pinterest','pinim'),'view'),
             'import'        => $pin->get_link_action_import()
         );
     }
@@ -1787,7 +1911,18 @@ class Pinim_Pending_Pins_Table extends WP_List_Table {
 
         if ( 'top' == $which && !is_singular() ) {
             //Import All Pins
-            submit_button( pinim_pending_imports()->all_action_str['import_all_pins'], 'button', 'all_pins_action', false, array('id'=>'import_all_bt') );
+
+            $link_args = array(
+                'page'      => 'pending-importation',
+                'action'    => 'import_pin'
+            );
+            
+            printf(
+                '<a class="button" href="%1$s">%2$s</a>',
+                pinim_get_menu_url($link_args),
+                __('Import all','pinim')
+
+            );
         }
 
         ?>
@@ -1949,7 +2084,7 @@ class Pinim_Pending_Pins_Table extends WP_List_Table {
     function get_bulk_actions() {
         $actions = array();
         
-        $actions['pins_import_pins'] = __('Import pins','pinim');
+        $actions['bulk_import_pins'] = __('Import pins','pinim');
         
         return $actions;
     }
@@ -1988,8 +2123,8 @@ class Pinim_Pending_Pins_Table extends WP_List_Table {
            break;
 
            case 'date_updated':
-               $post_a = $a->get_post();
-               $post_b = $b->get_post();
+               $post_a = $a->get_post($this->post_id);
+               $post_b = $b->get_post($this->post_id);
                $timestamp_a = get_post_modified_time( 'U', false, $post_a );
                $timestamp_b = get_post_modified_time( 'U', false, $post_b );
                $result = strcmp($timestamp_a, $timestamp_b);
