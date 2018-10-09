@@ -217,9 +217,9 @@ class Pinim_Account {
         pinim()->debug_log('destroy_usercache');
 
         //force update profile & user boards by deleting the user metas
-        delete_user_meta( get_current_user_id(), $this->usermeta_profile );
-        delete_user_meta( get_current_user_id(), $this->usermeta_boards );
-        delete_user_meta( get_current_user_id(), $this->usermeta_followed_boards );
+        delete_user_meta( get_current_user_id(), pinim()->usermeta_profile );
+        delete_user_meta( get_current_user_id(), pinim()->usermeta_boards );
+        delete_user_meta( get_current_user_id(), pinim()->usermeta_followed_boards );
         
         $this->delete_session_data();
     }
