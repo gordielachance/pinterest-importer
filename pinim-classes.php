@@ -36,7 +36,7 @@ class Pinim_Board_Item{
         //pins
         $this->total_pins = $this->get_datas('pin_count'); //TOFIX TOCHECK use 'sectionless_pin_count' ?
         $this->pins = $this->get_cache_pins();
-        $this->is_sync = ( count($this->pins) >= $this->total_pins ); 
+        $this->is_sync = ( !$this->total_pins || ( count($this->pins) >= $this->total_pins ) ); 
 
     }
 
