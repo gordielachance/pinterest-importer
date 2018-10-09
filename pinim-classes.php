@@ -1329,8 +1329,8 @@ class Pinim_Boards_Table extends WP_List_Table {
 
     protected function get_views() {
 
-        $link_all = $link_user = $link_cached = $link_not_cached = null;
-        $link_all_classes = $link_user_classes = $link_cached_classes = $link_not_cached_classes = $link_followed_classes = array();
+        $link_all = $link_user = $link_cached = $link_to_sync = null;
+        $link_all_classes = $link_user_classes = $link_cached_classes = $link_to_sync_classes = $link_followed_classes = array();
         
         $all_boards = pinim_boards()->get_boards();
         
@@ -1341,7 +1341,9 @@ class Pinim_Boards_Table extends WP_List_Table {
         $all_count = count($all_boards);
         $user_count = count(pinim_boards()->filter_boards($all_boards,'user'));
         $cached_count = count(pinim_boards()->filter_boards($all_boards,'cached'));
-        $not_cached_count = count(pinim_boards()->filter_boards($all_boards,'not_cached'));
+        $to_sync_count = count(pinim_boards()->filter_boards($all_boards,'to_sync'));
+        $complete_count = count(pinim_boards()->filter_boards($all_boards,'complete'));
+        $pending_count = count(pinim_boards()->filter_boards($all_boards,'pending'));
         $followed_count = count(pinim_boards()->filter_boards($all_boards,'followed'));
 
         switch (pinim_boards()->get_screen_boards_filter()){
@@ -1354,8 +1356,14 @@ class Pinim_Boards_Table extends WP_List_Table {
             case 'cached':
                 $link_cached_classes[] = 'current';
             break;
-            case 'not_cached':
-                $link_not_cached_classes[] = 'current';
+            case 'to_sync':
+                $link_to_sync_classes[] = 'current';
+            break;
+            case 'complete':
+                $link_complete_classes[] = 'current';
+            break;
+            case 'pending':
+                $link_pending_classes[] = 'current';
             break;
             case 'followed':
                 $link_followed_classes[] = 'current';
@@ -1401,17 +1409,43 @@ class Pinim_Boards_Table extends WP_List_Table {
             $cached_count
         );
 
-        $link_not_cached = sprintf(
+        $link_to_sync = sprintf(
             __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
             pinim_get_menu_url(
                 array(
                     'page'          => 'boards',
-                    'boards_filter' => 'not_cached'
+                    'boards_filter' => 'to_sync'
                 )
             ),
-            pinim_get_classes_attr($link_not_cached_classes),
-            __('Not cached','pinim'),
-            $not_cached_count
+            pinim_get_classes_attr($link_to_sync_classes),
+            __('To sync','pinim'),
+            $to_sync_count
+        );
+        
+        $link_pending = sprintf(
+            __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+            pinim_get_menu_url(
+                array(
+                    'page'          => 'boards',
+                    'boards_filter' => 'pending'
+                )
+            ),
+            pinim_get_classes_attr($link_pending_classes),
+            __('Pending boards','pinim'),
+            $pending_count
+        );
+        
+        $link_complete = sprintf(
+            __('<a href="%1$s"%2$s>%3$s <span class="count">(<span class="imported-count">%4$s</span>)</span></a>'),
+            pinim_get_menu_url(
+                array(
+                    'page'          => 'boards',
+                    'boards_filter' => 'complete'
+                )
+            ),
+            pinim_get_classes_attr($link_complete_classes),
+            __('Complete boards','pinim'),
+            $complete_count
         );
 
         $link_followed = sprintf(
@@ -1428,9 +1462,11 @@ class Pinim_Boards_Table extends WP_List_Table {
         );
 
         $links = array(
-            'all'           => $link_all,
-            'cached'        => $link_cached,
-            'not_cached'    => $link_not_cached
+            'all' =>        $link_all,
+            'cached' =>     $link_cached,
+            'to_sync' => $link_to_sync,
+            'pending' =>    $link_pending,
+            'complete' =>   $link_complete,
         );
         
         if ( (pinim()->get_options('enable_followed')=='on') && $followed_count ){

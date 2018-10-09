@@ -242,8 +242,14 @@ class Pinim_Boards {
                 case 'cached':
                     $all_boards = $this->filter_boards($all_boards,'cached');
                 break;
-                case 'not_cached':
-                    $all_boards = $this->filter_boards($all_boards,'not_cached');
+                case 'to_sync':
+                    $all_boards = $this->filter_boards($all_boards,'to_sync');
+                break;
+                case 'pending':
+                    $all_boards = $this->filter_boards($all_boards,'pending');
+                break;
+                case 'complete':
+                    $all_boards = $this->filter_boards($all_boards,'complete');
                 break;
                 case 'followed':
                     $all_boards = $this->filter_boards($all_boards,'followed');
@@ -442,19 +448,17 @@ class Pinim_Boards {
             case 'cached':
 
                 foreach((array)$boards as $board){
-                    if ( empty($board->pins) ) continue;
+                    if ( !$board->is_sync ) continue;
                     $output[] = $board;
-
                 }
                 
             break;
             
-            case 'not_cached':
+            case 'to_sync':
                 
                 foreach((array)$boards as $board){
-                    if ( !empty($board->pins) ) continue;
+                    if ( $board->is_sync ) continue;
                     $output[] = $board;
-
                 }
                 
             break;
@@ -462,6 +466,7 @@ class Pinim_Boards {
             case 'complete':
                 
                 foreach((array)$boards as $board){
+                    if ( !$board->is_sync ) continue;
                     $pending_pins = array_filter((array)$board->pins, function($pin){
                         return ( !$pin->post_id );
                     });
@@ -472,9 +477,10 @@ class Pinim_Boards {
                 
             break;
             
-            case 'incomplete':
+            case 'pending':
                 
                 foreach((array)$boards as $board){
+                    if ( !$board->is_sync ) continue;
                     $pending_pins = array_filter((array)$board->pins, function($pin){
                         return ( !$pin->post_id );
                     });
