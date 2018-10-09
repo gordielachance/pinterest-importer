@@ -192,7 +192,7 @@ class Pinim_Account {
 
     }
     
-    function get_user_profile(){ //TOUFIX cache ?
+    function get_user_profile(){ //TOFIX cache ?
 
         $user_profile = get_user_meta( get_current_user_id(),pinim()->usermeta_profile,true );
 

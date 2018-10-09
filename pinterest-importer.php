@@ -183,6 +183,7 @@ class PinIm {
     }
     
     function pins_list_views($views){
+        $all_pins = pinim_pending_imports()->get_cached_pins();
         $pending_pins = array_filter((array)$all_pins, function($pin){
             return ( !$pin->post_id );
         });

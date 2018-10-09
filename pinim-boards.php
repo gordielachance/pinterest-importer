@@ -92,7 +92,7 @@ class Pinim_Boards {
 
                 foreach((array)$boards as $board){
                     if ($board->is_sync){
-                        add_settings_error('feedback_boards', 'build_board_cache',_e('This board is aready synced','pinim'),'inline');
+                        add_settings_error('feedback_boards', 'build_board_cache',_e('This board is already synced','pinim'),'inline');
                     }else{
                         $success = $board->get_pins();
                         if (is_wp_error($success)){    
@@ -168,7 +168,7 @@ class Pinim_Boards {
             case 'build_board_cache':
 
                 if ($board->is_sync){
-                    add_settings_error('feedback_boards', 'build_board_cache',sprintf(__('The board "%s" is aready up-to-date.','pinim'),$board->get_datas('name')),'inline');
+                    add_settings_error('feedback_boards', 'build_board_cache',sprintf(__('The cache of the board "%s" is already filled.','pinim'),$board->get_datas('name')),'inline');
                 }else{
                     $success = $board->get_pins();
                     if (is_wp_error($success)){    
@@ -338,9 +338,7 @@ class Pinim_Boards {
                 });
 
                 foreach((array)$raw_boards as $raw_board){
-                    $new_board = new Pinim_Board_Item();
-                    $new_board->populate_datas($raw_board);
-                    //TOUFIX check for board ID ?
+                    $new_board = new Pinim_Board_Item($raw_board);
                     $boards[] = $new_board;
                 }
             }
@@ -384,9 +382,7 @@ class Pinim_Boards {
                 });
 
                 foreach((array)$raw_boards as $raw_board){
-                    $new_board = new Pinim_Board_Item();
-                    $new_board->populate_datas($raw_board);
-                    //TOUFIX check for board ID ?
+                    $new_board = new Pinim_Board_Item($raw_board);
                     $boards[] = $new_board;
                 }
 
@@ -409,7 +405,7 @@ class Pinim_Boards {
             $boards = array_merge($boards,$followed_boards);
         }
 
-        //TOUFIX check if we should not save some stuff in the session, at this step
+        //TOFIX check if we should not save some stuff in the session, at this step
         return $boards;
     }
 

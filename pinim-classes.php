@@ -7,6 +7,7 @@ class Pinim_Board_Item{
 
     var $datas = array();
     var $options = array(); //db stored options
+    var $total_pins = null;
     var $pins = array();
     var $is_sync = null;
 
@@ -17,25 +18,25 @@ class Pinim_Board_Item{
         'last_pin_cached' => null,
     );
 
-    function __construct($username = null, $boardname = null){
-        
-        if ($username && $boardname){
-            if ( $datas = pinim()->bot->boards->info($username, $boardname) ){
-                $this->populate_datas($datas);
-            }
+    function __construct($datas = null){
+
+        if($datas){
+            $this->populate_board_datas($datas);
         }
 
     }
 
-    function populate_datas($datas){
+    function populate_board_datas($datas){
         $this->datas = (array)$datas;
         
         //basic data
         $this->board_id = $this->get_datas( 'id' );
         $this->username = $this->get_datas( array('owner','username') );
+        
+        //pins
+        $this->total_pins = $this->get_datas('pin_count'); //TOFIX TOCHECK use 'sectionless_pin_count' ?
         $this->pins = $this->get_cache_pins();
-
-        $this->is_sync = ( count($this->pins) >= $this->get_datas('pin_count') );
+        $this->is_sync = ( count($this->pins) >= $this->total_pins ); 
 
     }
 
@@ -246,12 +247,13 @@ class Pinim_Board_Item{
 
         pinim()->debug_log('get_pins...',sprintf('board #%s',$this->board_id));
         
-        $total_pins = $this->get_datas('pin_count');
+        $total_pins = $this->total_pins;
         $limit = pinim()->get_options('pagination_limit');
         $total_pages = ceil($total_pins / $limit);
         
         $cached_pins = $this->get_cache_pins();
-
+        $cached_pin_ids = array();
+        
         foreach((array)$cached_pins as $pin){
             $cached_pin_ids[] = $pin->pin_id;
         }
@@ -318,7 +320,7 @@ class Pinim_Board_Item{
         
         //pagination
         $limit = pinim()->get_options('pagination_limit');
-        $total_pins = $this->get_datas('pin_count');
+        $total_pins = $this->total_pins;
         $total_pages = ceil($total_pins / $limit);
         $offset = ($page - 1) * $limit;
         
@@ -407,12 +409,12 @@ class Pinim_Pin_Item{
     function __construct($datas = null){
 
         if($datas){
-            $this->populate_datas($datas);
+            $this->populate_pin_datas($datas);
         }
         
     }
     
-    function populate_datas($datas){
+    private function populate_pin_datas($datas){
         $this->datas = $datas;
         $this->pin_id = $this->get_datas(array('id'));
         $this->board_id = $this->get_datas(array('board','id'));
@@ -709,7 +711,7 @@ class Pinim_Pin_Item{
             return $error;
         }
 
-        $attachment_id = $this->attach_remote_image();
+        $attachment_id = $this->attach_remote_image($post);
 
         //set featured image
         if ( !is_wp_error($attachment_id) ){
@@ -773,7 +775,7 @@ class Pinim_Pin_Item{
      * Import and pin image; store original URL as attachment meta
      * @return \WP_Error|string
      */
-    function attach_remote_image() {
+    function attach_remote_image($post) {
 
         $image_url = $this->get_datas_image_url();
 
@@ -986,7 +988,7 @@ class Pinim_Boards_Table extends WP_List_Table {
     function column_cache($board){
 
         $output = null;
-        $total_pins_count  = $board->get_datas('pin_count');
+        $total_pins_count  = $board->total_pins;
         $can_sync = pinim_account()->has_credentials();
         
         //keep only cached pins
@@ -995,31 +997,26 @@ class Pinim_Boards_Table extends WP_List_Table {
         });
         
         $cache_pins_count = count($cached_pins);
+ 
+        $build_bt_class = array('button');
+        if ( !$total_pins_count || !$can_sync || $board->is_sync ){
+            $build_bt_class[] = 'disabled';
+        }
 
-        //TOUFIX
-        //if ( !$board->is_sync ){ //build cache bt
-            
-            $build_bt_class = array('button');
-            if ( !$total_pins_count || !$can_sync ){
-                $build_bt_class[] = 'disabled';
-            }
-            
-            
-            $build_bt = pinim_get_menu_url(
-                array(
-                    'page'      => 'boards',
-                    'action'    => 'build_board_cache',
-                    'board_id' => $board->board_id
-                )
-            );
 
-            $bt_txt = __('Sync','pinim');
-            $bt_txt .= sprintf(' <span class="sync-count">%s/%s</span>',$cache_pins_count,$total_pins_count);
+        $build_bt = pinim_get_menu_url(
+            array(
+                'page'      => 'boards',
+                'action'    => 'build_board_cache',
+                'board_id' => $board->board_id
+            )
+        );
 
-            $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$build_bt_class),$build_bt,$bt_txt);
-            
-        //}
-        
+        $bt_txt = __('Sync','pinim');
+        $bt_txt .= sprintf(' <span class="sync-count">%s/%s</span>',$cache_pins_count,$total_pins_count);
+
+        $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$build_bt_class),$build_bt,$bt_txt);
+
         if ( $board->pins ){ //clear cache bt 
             
             $clear_bt_class = array();
@@ -1034,9 +1031,7 @@ class Pinim_Boards_Table extends WP_List_Table {
             $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$clear_bt_class),$clear_bt,__('Clear Cache','pinim'));
             
         }
-        
 
-        
         //XML output bt
         /*
         $xml_bt_class = array('button');
@@ -1135,7 +1130,7 @@ class Pinim_Boards_Table extends WP_List_Table {
     }
     
     function column_pin_count_remote($board){
-        return $board->get_datas('pin_count');
+        return $board->total_pins;
     }
     
     function column_cached_pins_imported($board){
@@ -1307,18 +1302,20 @@ class Pinim_Boards_Table extends WP_List_Table {
     /**
      * @param string $which
      */
+    //TOFIX nothing needed ?
+    /*
     protected function extra_tablenav( $which ) {
         ?>
         <div class="alignleft actions">
         <?php
         if ( 'top' == $which && !is_singular() ) {
-            //TOUFIX
         }
 
         ?>
         </div>
         <?php
     }
+    */
     
     /**
      * Get an associative array ( id => link ) with the list
@@ -1661,7 +1658,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                     $result = $a->is_private_board() - $b->is_private_board();
                 break;
                 case 'pin_count_remote':
-                    $result = $a->get_datas('pin_count') - $b->get_datas('pin_count');
+                    $result = $a->total_pins - $b->total_pins;
                 break;
                 case 'cached_pins_imported':
                     
