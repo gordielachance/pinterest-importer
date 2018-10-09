@@ -7,11 +7,11 @@ Tested up to: 4.9.8
 Stable tag: trunk
 License: GPLv2 or later
 
-Backup your Pinterest.com account by importing pins in Wordpress.  Supports boards, secret boards, and downloads HD images.
+Backup your Pinterest.com account by importing pins in Wordpress.  Supports regular boards, secret boards and followed boards. Downloads HD images & pins metadatas.
 
 == Description ==
 
-Pinterest Importer allows you to connect to your Pinterest.com account; to grab all your pins (including from secret boards); and to import them in Wordpress.
+Pinterest Importer allows you to connect to your Pinterest.com account; to grab all your pins (including from secret and optionnally followed boards); and to import them in Wordpress.
 
 The difference with other plugins is that it is not based on the (very limited) official Pinterest API; which also requires SSL.
 This means that you can make a full backup (instead of getting only the last x pins); but it also means the plugin may broke one day or another.
@@ -19,15 +19,15 @@ Better use it quick !
 
 * Nice GUI
 * Uses a custom post type, which makes it easy to use specific theme templates or capabilities, etc.
-* Get pins from your boards and secret boards; but also from your followed boards.
+* Get pins from regular boards, secret boards and followed boards (optional).
 * Assign a Wordpress category to each of your board (or let us handle it automatically)
 * Supports both image & video pins; and sets automatically the corresponding post format
-* Downloads original HD images from pins
+* Downloads original HD images from pins.
 * Can be used on an ongoing basis : pins will not be imported several times
-* Displays the original pin data in a metabox (Pinterest Log)
+* Backup & display the pin metadatas in a metabox
 * Set pin creation date as post date
 * Handles hashtags, which are converted to post tags
-* Caches raw pins in a JSON file; which is updated when necessary, without the need of a full board reload.
+* Cache pins in a JSON file for every board
 
 = Donate! =
 It truly took me a LOT of time to code this plugin.
@@ -89,8 +89,9 @@ function pin_custom_content($post,$pin,$is_update){
 = 0.7.0 =
 * Lots of code cleanup
 * Clearer interface
-* Store raw pins in a cached JSON file; which can be updated (without a full reload) when the board 'pin_count' exceed the total of cached pins.
-* Link to clear that cache if the user wants a full reload.
+* Much faster than before
+* Store raw pins in a cached JSON file for every board, and updates it only when the board's 'pin_count' exceed the total of cached pins.
+* Option to enable followed boards
 
 = 0.6.0 =
 * Finally resurrected !
