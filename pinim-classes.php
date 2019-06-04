@@ -985,32 +985,15 @@ class Pinim_Boards_Table extends WP_List_Table {
         return $board->username;
     }
     
-    function column_cache($board){
+    function column_actions($board){
 
         $output = null;
-
-        if ( $board->pins ){
-            
-            /* 
-            Clear Cache BT
-            */
-            
-            $clear_bt_class = array('button');
-            $clear_bt = pinim_get_menu_url(
-                array(
-                    'page'      => 'boards',
-                    'action'    => 'clear_board_cache',
-                    'board_id' => $board->board_id
-                )
-            );
-
-            $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$clear_bt_class),$clear_bt,__('Clear Cache','pinim'));
-            
-        }elseif ( $board->total_pins ){
-            
-            /* 
-            Sync Cache BT
-            */
+        
+        /* 
+        Sync Cache BT
+        */
+        
+        if ( $board->total_pins && !$board->is_sync ){
             
             $can_sync = pinim_account()->has_credentials();
 
@@ -1023,7 +1006,7 @@ class Pinim_Boards_Table extends WP_List_Table {
 
             $build_bt_class = array('button');
 
-            if ( !$can_sync || $board->is_sync ){
+            if ( !$can_sync ){
                 $build_bt_class[] = 'disabled';
             }
 
@@ -1041,6 +1024,28 @@ class Pinim_Boards_Table extends WP_List_Table {
 
             $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$build_bt_class),$build_bt,$bt_txt);
         }
+        
+        /* 
+        Clear Cache BT
+        */
+        
+        $json_file = $board->get_board_raw_pins_log_path();
+
+        if ( file_exists($json_file) ){
+            
+            $clear_bt_class = array('button');
+            $clear_bt = pinim_get_menu_url(
+                array(
+                    'page'      => 'boards',
+                    'action'    => 'clear_board_cache',
+                    'board_id' => $board->board_id
+                )
+            );
+
+            $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$clear_bt_class),$clear_bt,__('Clear Cache','pinim'));
+            
+        }
+
 
         //XML output bt
         /*
@@ -1256,8 +1261,8 @@ class Pinim_Boards_Table extends WP_List_Table {
             'title'                 => __('Board Title','pinim'),
             'category'              => __('Category','pinim'),
             'private'               => __('Private','pinim'),
-            'cache'                 => __('Cache','pinim'),
-            'cached_pins_imported'    => __('Status','pinim')
+            'actions'               => __('Actions','pinim'),
+            'cached_pins_imported'  => __('Status','pinim')
         );
         
         //should we display the usernames column ?
