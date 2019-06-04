@@ -162,7 +162,7 @@
   float: right;
 }
 /* line 117, ../scss/pinim.scss */
-.post-type-pin.pin_page_boards .sync-count {
+.post-type-pin.pin_page_boards .pins-count {
   filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=50);
   opacity: 0.5;
 }
