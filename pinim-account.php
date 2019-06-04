@@ -183,7 +183,11 @@ class Pinim_Account {
             $result = pinim()->bot->auth->login($login,$password);
 
             if (!$result) {
-                return new WP_Error( 'php-pinterest-bot',pinim()->bot->getLastError() );
+                if ( !$error_msg = pinim()->bot->getLastError() ){
+                    $error_msg = __('Unknown php-pinterest-bot error while logging in.','pinim');
+                }
+                
+                return new WP_Error( 'php-pinterest-bot',$error_msg );
             }
             
         }
