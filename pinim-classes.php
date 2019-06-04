@@ -988,40 +988,14 @@ class Pinim_Boards_Table extends WP_List_Table {
     function column_cache($board){
 
         $output = null;
-        $can_sync = pinim_account()->has_credentials();
-        
-        //keep only cached pins
-        $cached_pins = array_filter((array)$board->pins, function($pin){
-            return ( $pin->datas );
-        });
-        
-        $cache_pins_count = count($cached_pins);
 
-        $build_bt_class = array('button');
-        
-        //if ( $board->pins ){
-        
-        if ( !$board->total_pins || !$can_sync || $board->is_sync ){
-            $build_bt_class[] = 'disabled';
-        }
-
-
-        $build_bt = pinim_get_menu_url(
-            array(
-                'page'      => 'boards',
-                'action'    => 'build_board_cache',
-                'board_id' => $board->board_id
-            )
-        );
-
-        $bt_txt = __('Sync','pinim');
-        $bt_txt .= sprintf(' <span class="sync-count">%s/%s</span>',$cache_pins_count,$board->total_pins);
-
-        $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$build_bt_class),$build_bt,$bt_txt);
-
-        if ( $board->pins ){ //clear cache bt 
+        if ( $board->pins ){
             
-            $clear_bt_class = array();
+            /* 
+            Clear Cache BT
+            */
+            
+            $clear_bt_class = array('button');
             $clear_bt = pinim_get_menu_url(
                 array(
                     'page'      => 'boards',
@@ -1032,6 +1006,40 @@ class Pinim_Boards_Table extends WP_List_Table {
 
             $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$clear_bt_class),$clear_bt,__('Clear Cache','pinim'));
             
+        }elseif ( $board->total_pins ){
+            
+            /* 
+            Sync Cache BT
+            */
+            
+            $can_sync = pinim_account()->has_credentials();
+
+            //keep only cached pins
+            $cached_pins = array_filter((array)$board->pins, function($pin){
+                return ( $pin->datas );
+            });
+
+            $cache_pins_count = count($cached_pins);
+
+            $build_bt_class = array('button');
+
+            if ( !$can_sync || $board->is_sync ){
+                $build_bt_class[] = 'disabled';
+            }
+
+
+            $build_bt = pinim_get_menu_url(
+                array(
+                    'page'      => 'boards',
+                    'action'    => 'build_board_cache',
+                    'board_id' => $board->board_id
+                )
+            );
+
+            $bt_txt = __('Sync Cache','pinim');
+            $bt_txt .= sprintf(' <span class="pins-count">%s/%s</span>',$cache_pins_count,$board->total_pins);
+
+            $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$build_bt_class),$build_bt,$bt_txt);
         }
 
         //XML output bt
@@ -1052,6 +1060,34 @@ class Pinim_Boards_Table extends WP_List_Table {
 
         $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$xml_bt_class),$xml_bt,__('Get XML','pinim'));
         */
+        
+        /*
+        Import Pins BT
+        */
+        
+        $pending_pins = array_filter((array)$board->pins, function($pin){
+            return ( !$pin->post_id );
+        });
+
+        
+        //import pins bt
+
+        $import_bt_class = array('button');
+        $import_bt_txt = __('Import Pins','pinim');
+        
+        if ( $pending_pins ){
+
+            $import_bt = pinim_get_menu_url(
+                array(
+                    'page'      => 'pending-importation',
+                    'action'    => 'import_board_pins',
+                    'board_id'  => $board->board_id
+                )
+            );
+
+            $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$import_bt_class),$import_bt,$import_bt_txt);
+            
+        }
 
         return $output;
         
@@ -1143,86 +1179,55 @@ class Pinim_Boards_Table extends WP_List_Table {
         $imported_pins = array_filter((array)$board->pins, function($pin){
             return ( $pin->post_id );
         });
-        
-        $pending_pins = array_filter((array)$board->pins, function($pin){
-            return ( !$pin->post_id );
-        });
-        
-        //import pins bt
 
-        $import_bt_class = array('button');
-        $import_bt_txt = __('Import','pinim');
-        if ( !$pending_pins ){
-            $import_bt_class[] = 'disabled';
-        }else{
-            /*
-            $remaining_count = 0;
-            foreach ((array)$board->pins as $pin){
-                if ( !$pin->post_id ) $remaining_count++;
-            }
-            //$import_bt_txt = sprintf( _n( 'Import %s pin', 'Import %s pins', $remaining_count,'pinim' ), $remaining_count );
-            */
-        }
+        $pc_status_classes = array('pinim-pc-bar');
+        $text_bar = $bar_width = null;
 
-        $import_bt = pinim_get_menu_url(
-            array(
-                'page'      => 'pending-importation',
-                'action'    => 'import_board_pins',
-                'board_id'  => $board->board_id
-            )
-        );
-
-        $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$import_bt_class),$import_bt,$import_bt_txt);
-        
-        //
-        
         if ( $board->pins ){
-
-            $pc_status_classes = array('pinim-pc-bar');
-            $text_bar = $bar_width = null;
-
             $percent = count($imported_pins) / count( $board->pins ) * 100;
-            if ($percent > 100) $percent = 100;
-            $percent = floor($percent);
+        }
+        
+        if ($percent > 100) $percent = 100;
+        $percent = floor($percent);
 
-            $bar_width = $percent;
+        $bar_width = $percent;
 
+        if ( $board->pins ){
             $text_bar = sprintf('%s/%s',count($imported_pins),count($board->pins));
             $text_bar .= '<i class="fa fa-refresh" aria-hidden="true"></i>';
-
-            switch($percent){
-                case 0:
-                    $pc_status_classes[] = 'empty';
-                break;
-                case 100:
-                    $pc_status_classes[] = 'complete';
-                    $text_bar = '<i class="fa fa-check-circle" aria-hidden="true"></i>';
-                break;
-                default:
-                    $pc_status_classes[] = 'incomplete';
-                break;
-            }
-
-            if ( $board->is_sync ){ //pins cache totally loaded
-                if ($percent<50){
-                    $pc_status_classes[] = 'color-light';
-                }
-            }
-
-
-            $pc_status_classes = pinim_get_classes_attr($pc_status_classes);
-            $red_opacity = (100 - $percent) / 100;
-            
-            $text_bar_el = sprintf('<span class="pinim-pc-bar-text">%s</span>',$text_bar);
-            $yellow_bar_el = '<span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-yellow"></span>';
-            $red_bar_el = sprintf('<span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-red" style="opacity:%s"></span>',$red_opacity);
-            $bar_fill = sprintf('<span class="pinim-pc-bar-fill" style="width:%s">%s%s%s',$bar_width.'%',$yellow_bar_el,$red_bar_el,$text_bar_el);
-            $bar_wrapper = sprintf('<p><span %s>%s</span></p>',$pc_status_classes,$bar_fill);
-            
-            $output .= $bar_wrapper;
-            
         }
-        
+
+        switch($percent){
+            case 0:
+                $pc_status_classes[] = 'empty';
+            break;
+            case 100:
+                $pc_status_classes[] = 'complete';
+                $text_bar = '<i class="fa fa-check-circle" aria-hidden="true"></i>';
+            break;
+            default:
+                $pc_status_classes[] = 'incomplete';
+            break;
+        }
+
+        if ( $board->is_sync ){ //pins cache totally loaded
+            if ($percent<50){
+                $pc_status_classes[] = 'color-light';
+            }
+        }
+
+
+        $pc_status_classes = pinim_get_classes_attr($pc_status_classes);
+        $red_opacity = (100 - $percent) / 100;
+
+        $text_bar_el = sprintf('<span class="pinim-pc-bar-text">%s</span>',$text_bar);
+        $yellow_bar_el = '<span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-yellow"></span>';
+        $red_bar_el = sprintf('<span class="pinim-pc-bar-fill-color pinim-pc-bar-fill-red" style="opacity:%s"></span>',$red_opacity);
+        $bar_fill = sprintf('<span class="pinim-pc-bar-fill" style="width:%s">%s%s%s',$bar_width.'%',$yellow_bar_el,$red_bar_el,$text_bar_el);
+        $bar_wrapper = sprintf('<p><span %s>%s</span></p>',$pc_status_classes,$bar_fill);
+
+        $output .= $bar_wrapper;
+
 
         return $output;
 
@@ -1420,7 +1425,7 @@ class Pinim_Boards_Table extends WP_List_Table {
                 )
             ),
             pinim_get_classes_attr($link_to_sync_classes),
-            __('To sync','pinim'),
+            __('Need cache sync','pinim'),
             $to_sync_count
         );
         
