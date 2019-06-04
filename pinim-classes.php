@@ -273,7 +273,7 @@ class Pinim_Board_Item{
 
             if ( is_wp_error($pins_data) ){
                 pinim()->debug_log($pins_data->get_error_message(),sprintf('board #%s',$this->board_id));
-                break;
+                return $pins_data;
             }
 
             //eventually remove pins that are already populated in cache
