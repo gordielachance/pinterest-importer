@@ -38,6 +38,7 @@ class Pins extends EntityProvider
     ];
 
     protected $searchScope  = 'pins';
+  
     protected $entityIdName = 'id';
 
     protected $messageEntityName = 'pin';
@@ -51,22 +52,28 @@ class Pins extends EntityProvider
      * @param int $boardId
      * @param string $description
      * @param string $link
+     * @param string $title
      * @return array
      */
-    public function create($imageUrl, $boardId, $description = '', $link = '')
+    public function create($imageUrl, $boardId, $description = '', $link = '', $title = '', $sectionId = null)
     {
-        // Upload image if first argument is not an url
-        if (!filter_var($imageUrl, FILTER_VALIDATE_URL)) {
+        // Upload image if first argument is a local file
+        if (file_exists($imageUrl)) {
             $imageUrl = $this->upload($imageUrl);
         }
 
         $requestOptions = [
-            'method'      => 'scraped',
+            'method' => 'scraped',
             'description' => $description,
-            'link'        => empty($link) ? '' : $link,
-            'image_url'   => $imageUrl,
-            'board_id'    => $boardId,
+            'link' => $link,
+            'image_url' => $imageUrl,
+            'board_id' => $boardId,
+            'title' => $title,
         ];
+
+        if ($sectionId !== null) {
+            $requestOptions['section'] = $sectionId;
+        }
 
         $this->post(UrlBuilder::RESOURCE_CREATE_PIN, $requestOptions);
 
@@ -80,9 +87,12 @@ class Pins extends EntityProvider
      * @param string $description
      * @param string $link
      * @param int|null $boardId
+     * @param string $title
+     * @param int|null $sectionId
      * @return bool
      */
-    public function edit($pindId, $description = '', $link = '', $boardId = null)
+
+    public function edit($pindId, $description = '', $link = '', $boardId = null, $title = '', $sectionId = null)
     {
         $requestOptions = ['id' => $pindId];
 
@@ -90,12 +100,21 @@ class Pins extends EntityProvider
             $requestOptions['description'] = $description;
         }
 
+        if (!empty($link)) {
+            $requestOptions['link'] = stripslashes($link);
+        }
+
         if ($boardId !== null) {
             $requestOptions['board_id'] = $boardId;
         }
 
-        if (!empty($link)) {
-            $requestOptions['link'] = stripslashes($link);
+
+        if (!empty($title)) {
+            $requestOptions['title'] = $title;
+        }
+
+        if ($sectionId !== null) {
+            $requestOptions['board_section_id'] = $sectionId;
         }
 
         return $this->post(UrlBuilder::RESOURCE_UPDATE_PIN, $requestOptions);

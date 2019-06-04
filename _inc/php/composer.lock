@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "seregazhuk/pinterest-bot",
-            "version": "v5.8.2",
+            "version": "v5.9.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/seregazhuk/php-pinterest-bot.git",
-                "reference": "3dd651232ca86523a7e1a577dc0e9dc7862d0d00"
+                "reference": "9621d078fb3b0b6651ac5987841a2a8ccc4f2a2d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/seregazhuk/php-pinterest-bot/zipball/3dd651232ca86523a7e1a577dc0e9dc7862d0d00",
-                "reference": "3dd651232ca86523a7e1a577dc0e9dc7862d0d00",
+                "url": "https://api.github.com/repos/seregazhuk/php-pinterest-bot/zipball/9621d078fb3b0b6651ac5987841a2a8ccc4f2a2d",
+                "reference": "9621d078fb3b0b6651ac5987841a2a8ccc4f2a2d",
                 "shasum": ""
             },
             "require": {
@@ -56,7 +56,7 @@
                 "php",
                 "pinterest"
             ],
-            "time": "2018-08-17T11:37:07+00:00"
+            "time": "2019-02-13T10:22:44+00:00"
         }
     ],
     "packages-dev": [],
