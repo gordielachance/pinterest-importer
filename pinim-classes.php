@@ -988,7 +988,6 @@ class Pinim_Boards_Table extends WP_List_Table {
     function column_cache($board){
 
         $output = null;
-        $total_pins_count  = $board->total_pins;
         $can_sync = pinim_account()->has_credentials();
         
         //keep only cached pins
@@ -997,9 +996,12 @@ class Pinim_Boards_Table extends WP_List_Table {
         });
         
         $cache_pins_count = count($cached_pins);
- 
+
         $build_bt_class = array('button');
-        if ( !$total_pins_count || !$can_sync || $board->is_sync ){
+        
+        //if ( $board->pins ){
+        
+        if ( !$board->total_pins || !$can_sync || $board->is_sync ){
             $build_bt_class[] = 'disabled';
         }
 
@@ -1013,7 +1015,7 @@ class Pinim_Boards_Table extends WP_List_Table {
         );
 
         $bt_txt = __('Sync','pinim');
-        $bt_txt .= sprintf(' <span class="sync-count">%s/%s</span>',$cache_pins_count,$total_pins_count);
+        $bt_txt .= sprintf(' <span class="sync-count">%s/%s</span>',$cache_pins_count,$board->total_pins);
 
         $output .= sprintf('<p><a class="%s" href="%s">%s</a></p>',implode(' ',$build_bt_class),$build_bt,$bt_txt);
 
@@ -1330,7 +1332,7 @@ class Pinim_Boards_Table extends WP_List_Table {
     protected function get_views() {
 
         $link_all = $link_user = $link_cached = $link_to_sync = null;
-        $link_all_classes = $link_user_classes = $link_cached_classes = $link_to_sync_classes = $link_followed_classes = array();
+        $link_all_classes = $link_user_classes = $link_cached_classes = $link_to_sync_classes = $link_complete_classes = $link_pending_classes = $link_followed_classes = array();
         
         $all_boards = pinim_boards()->get_boards();
         
