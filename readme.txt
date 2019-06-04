@@ -3,7 +3,7 @@ Contributors:grosbouff
 Donate link:http://bit.ly/gbreant
 Tags: importer,Pinterest,pins,backup
 Requires at least: 3.5
-Tested up to: 4.9.8
+Tested up to: 5.2.1
 Stable tag: trunk
 License: GPLv2 or later
 
@@ -85,6 +85,10 @@ function pin_custom_content($post,$pin,$is_update){
 
 
 == Changelog ==
+
+= 0.7.1 =
+* Updated php-pinterest-bot
+* Minor fixes
 
 = 0.7.0 =
 * Lots of code cleanup
