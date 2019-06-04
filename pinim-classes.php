@@ -1189,18 +1189,19 @@ class Pinim_Boards_Table extends WP_List_Table {
         $text_bar = $bar_width = null;
 
         if ( $board->pins ){
-            $percent = count($imported_pins) / count( $board->pins ) * 100;
+            $percent = count($imported_pins) / $board->total_pins * 100;
         }
-        
+
         if ($percent > 100) $percent = 100;
         $percent = floor($percent);
 
-        $bar_width = $percent;
-
         if ( $board->pins ){
-            $text_bar = sprintf('%s/%s',count($imported_pins),count($board->pins));
+            $text_bar = sprintf('%s/%s',count($imported_pins),$board->total_pins);
             $text_bar .= '<i class="fa fa-refresh" aria-hidden="true"></i>';
         }
+
+
+        $bar_width = $percent;
 
         switch($percent){
             case 0:
